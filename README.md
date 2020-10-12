@@ -5,6 +5,9 @@
 Welcome to GHOST, the database for supernovae and their host galaxies. This database contains ~16k sources in PS1, which were used to predict supernova classes in Gagliano et al. (2020). Installation instructions for the analysis tools are below.
 
 # Installation
+1. Create a clean conda environment.
+
+2. Run the following code: 
 ```bash
 pip install astro_ghost
 ```
@@ -40,7 +43,11 @@ getGHOST(real=False, verbose=verbose)
 
 #create a list of the supernova names, their skycoords, and their classes (these three are from TNS)
 snName = ['SN 2012dt', 'SN 1998bn', 'SN 1957B']
-snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), SkyCoord(187.32867*u.deg, -23.16367*u.deg, frame='icrs'), SkyCoord(186.26125*u.deg, +12.899444*u.deg, frame='icrs')]
+
+snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
+           SkyCoord(187.32867*u.deg, -23.16367*u.deg, frame='icrs'), \
+           SkyCoord(186.26125*u.deg, +12.899444*u.deg, frame='icrs')]
+
 snClass = ['SN IIP', 'SN', 'SN Ia']
 
 # run the association algorithm!
