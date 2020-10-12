@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from astro_ghost.stellarLocus import *
 import os
 import pickle
+import pkg_resources
 
 #10/11/2020: a new star/galaxy separation model, this time using a random forest classifier saved with hyperparameters chosen with randomGridSearch
 def separateStars_STRM(df, model_path='.', plot=0, verbose=0, starcut='gentle'):
@@ -12,12 +13,11 @@ def separateStars_STRM(df, model_path='.', plot=0, verbose=0, starcut='gentle'):
     only_na = df[~df.index.isin(df_dropped.index)]
     unsure = df_dropped.reset_index(drop=True)
 
-    #unsure = df.copy()
-
-    modelName = "/Star_Galaxy_RealisticModel_GHOST_PS1ClassLabels.sav"
+    modelName = "Star_Galaxy_RealisticModel_GHOST_PS1ClassLabels.sav"
+    stream = pkg_resources.resource_stream(__name__, modelName)
     if verbose:
         print("Loading model %s."%modelName)
-    model = pickle.load(open(model_path+modelName, 'rb'))
+    model = pickle.load(stream)
 
     if plot:
         sns.set_style("dark")
@@ -105,7 +105,9 @@ def separateStars_RF(df, model_path='.', plot=0, verbose=0):
         print("Found %s NED-identified galaxies in the candidate list!"%len(NED_gals))
     NED_unsure= df[df['NED_type'].isnull()]
 
-    model = pickle.load(open(model_path+"/Star_Galaxy_RealisticModel.sav", 'rb'))
+    modelName = "Star_Galaxy_RealisticModel.sav"
+    stream = pkg_resources.resource_stream(__name__, modelName)
+    model = pickle.load(stream)
 
     if plot:
         sns.set_style("dark")
