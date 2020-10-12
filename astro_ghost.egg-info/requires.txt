@@ -1,0 +1,16 @@
+pandas
+sklearn
+numpy
+seaborn
+matplotlib
+joypy
+astropy
+photutils
+scipy
+datetime
+requests
+imblearn
+rfpimp
+Pillow
+pyvo
+astroquery
