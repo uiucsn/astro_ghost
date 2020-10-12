@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import astropy.table as at
 import scipy.interpolate as scinterp
+import pkg_resources
 
 # recalibration done via https://iopscience.iop.org/article/10.3847/0004-637X/822/2/66
 # Hypercalibration: A Pan-starrs1-Based recalibration of the sloan digital sky survey
@@ -26,7 +27,10 @@ def calc_7DCD(df):
     #read the stellar locus table from SDSS
     df.replace(999.00, np.nan)
     df.replace(-999.00, np.nan)
-    skt = at.Table.read('tonry_ps1_locus.txt', format='ascii')
+
+    stream = pkg_resources.resource_stream(__name__, 'tonry_ps1_locus.txt')
+    
+    skt = at.Table.read(stream, format='ascii')
 
     gr = scinterp.interp1d(skt['ri'], skt['gr'], kind='cubic', fill_value='extrapolate')
     iz = scinterp.interp1d(skt['ri'], skt['iz'], kind='cubic', fill_value='extrapolate')
@@ -78,7 +82,7 @@ def plotLocus(df, color=0, save=0, type="", timestamp=""):
             plt.show()
     else:
         #read the stellar locus table from PS1
-        skt = at.Table.read('tonry_ps1_locus.txt', format='ascii')
+        skt = at.Table.read('./tonry_ps1_locus.txt', format='ascii')
 
         gr = scinterp.interp1d(skt['ri'], skt['gr'], kind='cubic', fill_value='extrapolate')
         iz = scinterp.interp1d(skt['ri'], skt['iz'], kind='cubic', fill_value='extrapolate')
