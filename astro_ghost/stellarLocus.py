@@ -24,11 +24,9 @@ def convert_to_SDSS(conversions, g_iPS1, band, mPS1):
 # df - the dataframe of potential hosts
 def calc_7DCD(df):
     #read the stellar locus table from SDSS
-#    star_colors = pd.read_csv('/Users/alexgagliano/Documents/Research/Transient_ML/tables/medianlocus.csv', delimiter=" ")
-    #star_colors = at.Table.read('tonry_ps1_locus.txt', format='ascii')
     df.replace(999.00, np.nan)
     df.replace(-999.00, np.nan)
-    skt = at.Table.read('/Users/alexgagliano/Documents/Research/Transient_ML/tables/tonry_ps1_locus.txt', format='ascii')
+    skt = at.Table.read('tonry_ps1_locus.txt', format='ascii')
 
     gr = scinterp.interp1d(skt['ri'], skt['gr'], kind='cubic', fill_value='extrapolate')
     iz = scinterp.interp1d(skt['ri'], skt['iz'], kind='cubic', fill_value='extrapolate')
@@ -80,7 +78,7 @@ def plotLocus(df, color=0, save=0, type="", timestamp=""):
             plt.show()
     else:
         #read the stellar locus table from PS1
-        skt = at.Table.read('/Users/alexgagliano/Documents/Research/Transient_ML/tables/tonry_ps1_locus.txt', format='ascii')
+        skt = at.Table.read('tonry_ps1_locus.txt', format='ascii')
 
         gr = scinterp.interp1d(skt['ri'], skt['gr'], kind='cubic', fill_value='extrapolate')
         iz = scinterp.interp1d(skt['ri'], skt['iz'], kind='cubic', fill_value='extrapolate')

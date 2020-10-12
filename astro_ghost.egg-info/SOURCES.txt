@@ -16,6 +16,7 @@ astro_ghost/hostMatching.py
 astro_ghost/sourceCleaning.py
 astro_ghost/starSeparation.py
 astro_ghost/stellarLocus.py
+astro_ghost/tonry_ps1_locus.txt
 astro_ghost/transientHelperFunctions.py
 astro_ghost/tutorial.py
 astro_ghost/tutorial_databaseSearch.py
