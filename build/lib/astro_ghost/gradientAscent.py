@@ -700,6 +700,7 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
                     ax.quiver(X[::n_plot,::n_plot], Y[::n_plot,::n_plot], dx[::n_plot,::n_plot], dy[::n_plot,::n_plot], color='#845C9B', angles='xy', scale_units = 'xy')
                     plt.axis('off')
                     plt.savefig("quiverMaps/quiverMap_%s.png"%transient_name, bbox_inches='tight')
+                    plt.close()
                 N_associated += 1
             f.flush()
             if N_associated%10 == 0:

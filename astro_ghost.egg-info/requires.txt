@@ -1,10 +1,10 @@
 pandas
-sklearn
+scikit-learn>=0.23.0
 numpy
 seaborn
 matplotlib
 joypy
-astropy
+astropy>=4.0
 photutils
 scipy
 datetime
@@ -14,3 +14,4 @@ rfpimp
 Pillow
 pyvo
 astroquery
+certifi>=2020.06.20

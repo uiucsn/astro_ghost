@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="astro_ghost",
-    version="0.0.10",
+    version="0.0.42",
     author="Alex Gagliano",
     author_email="gaglian2@illinois.edu",
     description="A package to associate transients with host galaxies, and a database of 16k SNe-host galaxies in PS1.",
@@ -16,7 +16,7 @@ setuptools.setup(
     package_data={
     '': ['Star_Galaxy_RealisticModel.sav','Star_Galaxy_IdealModel.sav', 'Star_Galaxy_RealisticModel_GHOST_PS1ClassLabels.sav','tonry_ps1_locus.txt'],
     },
-    install_requires=['pandas', 'sklearn', 'numpy', 'seaborn', 'matplotlib', 'joypy','astropy', 'photutils', 'scipy', 'datetime', 'requests','imblearn','rfpimp','Pillow', 'pyvo', 'astroquery'],
+    install_requires=['pandas', 'scikit-learn>=0.23.0', 'numpy', 'seaborn', 'matplotlib', 'joypy','astropy>=4.0', 'photutils', 'scipy', 'datetime', 'requests','imblearn','rfpimp','Pillow', 'pyvo', 'astroquery', 'certifi>=2020.06.20'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

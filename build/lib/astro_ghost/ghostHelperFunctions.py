@@ -30,7 +30,7 @@ def getGHOST(real=False, verbose=False):
     if not os.path.exists('./database'):
         os.makedirs('./database')
     if real:
-        url = 'http://ghost.ncsa.illinois.edu/static/GHOST.csv'
+        url = 'http://ghost.ncsa.illinois.edu/static/database/GHOST.csv'
         r = requests.get(url)
         fname = './database/GHOST.csv'
         open(fname , 'wb').write(r.content)
@@ -240,28 +240,35 @@ def getDBHostFromTransientName(SNNames):
 #          If the supernova is currently in the
 #          database, return the database object.
 #          If no host is found, return None
-def getHostFromHostName(hostName):
+def getHostFromHostName(hostNames):
     fullTable = fullData()
-    hostName = re.sub(r"\s+", "", str(hostName))
-    allHosts = np.array([re.sub(r"\s+", "", str(x)) for x in fullTable['NED_name']])
-    possibleNames = [hostName, hostName.upper(), hostName.lower()]
-    for name in possibleNames:
-        if name in allHosts:
-            host = fullTable.iloc[[np.where(name == allHosts)[0][0]]]
-            return host
-    print("Sorry, that host was not found in our database!\n")
-    return None
+    possibleNames = []
+
+    for name in hostNames:
+        possibleNames.append(name)
+        possibleNames.append(name.upper())
+        possibleNames.append(re.sub(r"\s+", "", str(name)))
+        possibleNames.append(name.lower())
+
+    host = fullTable[fullTable['NED_name'].isin(possibleNames)]
+    if host is None:
+        print("Sorry, no hosts were found in our database!\n")
+    return host
 
 def getHostFromHostCoords(hostCoords):
     fullTable = fullData()
     c2 = SkyCoord(fullTable['raMean']*u.deg, fullTable['decMean']*u.deg, frame='icrs')
-    sep = np.array(hostCoords.separation(c2).arcsec)
-    host = None
-    if np.nanmin(sep) <= 1:
-        host_idx = np.where(sep == np.nanmin(sep))[0][0]
-        host = fullTable.iloc[[host_idx]]
+    host = []
+    for hostCoord in hostCoords:
+        sep = np.array(hostCoord.separation(c2).arcsec)
+        if np.nanmin(sep) <= 1:
+            host_idx = np.where(sep == np.nanmin(sep))[0][0]
+            host.append(fullTable.iloc[[host_idx]])
+
+    if len(host) < 1:
+        print("Sorry, No hosts found in our database!\n")
     else:
-        print("Sorry, that host was not found in our database! The closest host is %.2f arcsec away.\n" %np.nanmin(sep))
+        host = pd.concat(host, ignore_index=True)
     return host
 
 # Returns basic statistics for transient,
@@ -307,40 +314,52 @@ def getTransientStatsFromHostName(hostName):
 # host of a previously identified transient, using
 # the pipeline outlined above.
 # inputs - the coordinates of the transient to search
-def getHostStatsFromTransientCoords(transientCoords):
+def getHostStatsFromTransientCoords(transientCoordsList):
     fullTable = fullData()
-    c2 = SkyCoord(fullTable['TransientRA']*u.deg, fullTable['TransientDEC']*u.deg, frame='icrs')
-    sep = np.array(transientCoords.separation(c2).arcsec)
-    host = None
-    if np.nanmin(sep) <= 1:
-        host_idx = np.where(sep == np.nanmin(sep))[0][0]
-        host = fullTable.iloc[[host_idx]]
-    getHostStatsFromTransientName(host['TransientName'].values[0])
+    names = []
+    for transientCoords in transientCoordsList:
+        c2 = SkyCoord(fullTable['TransientRA']*u.deg, fullTable['TransientDEC']*u.deg, frame='icrs')
+        sep = np.array(transientCoords.separation(c2).arcsec)
+        host = None
+        if np.nanmin(sep) <= 1:
+            host_idx = np.where(sep == np.nanmin(sep))[0][0]
+            host = fullTable.iloc[[host_idx]]
+            names.append(host['TransientName'].values[0])
+    getHostStatsFromTransientName(names)
 
 # Returns basic statistics for the most likely
 # host of a previously identified transient, using
 # the pipeline outlined above.
 # inputs - the coordinates of the transient to search
 def getHostStatsFromTransientName(SNName):
-    host = getHostFromTransientName(SNName)
-    if len(host) > 0:
-        if np.unique(host['NED_name']) != "":
-            print("Found host %s.\n"%host['NED_name'].values[0])
-        else:
-            print("Found host %s"%host['objName'])
-        print("RA, DEC (J2000): %f, %f"%(host['raMean'], host['decMean']))
-        if host['NED_redshift'].values[0] != '':
-            print("Redshift: %f"%host['NED_redshift'].values[0])
-        print("PS1 rMag: %.2f"%host['rApMag'].values[0])
-        print("g-r    r-i    i-z")
-        print("%.2f   %.2f   %.2f"%(host['g-r'].values[0], host['r-i'].values[0], host['i-z'].values[0]))
-    #    print("g-r: %.2f."%host['g-r'].values[0])
-    #    print("r-i: %.2f."%host['r-i'].values[0])
-    #    print("i-z: %.2f."%host['i-z'].values[0])
-        #print("There are %i supernovae associated with this object.\n"%len(host))
-        print("Associated supernovae: ")
-        for SN in np.array(host['TransientName']):
-            print(SN)
+    SNName = np.array(SNName)
+    fullTable = fullData()
+    host, notFound = getDBHostFromTransientName(SNName)
+    if host is not None:
+        for idx, row in host.iterrows():
+            if np.unique(row['NED_name']) != "":
+                print("Found host %s.\n"%row['NED_name'])
+            else:
+                print("Found host with PS1 ID %s"%row['objID'])
+            print("RA, DEC (J2000): %f, %f"%(row['raMean'], row['decMean']))
+            if row['NED_redshift'] != '':
+                print("Redshift: %f"%row['NED_redshift'])
+            print("PS1 rMag: %.2f"%row['rApMag'])
+            print("g-r          r-i          i-z")
+            print("%.2f+/-%.3f   %.2f+/-%.3f   %.2f+/-%.3f"%(row['g-r'],row['g-rErr'], row['r-i'], row['r-iErr'], row['i-z'], row['i-zErr']))
+        #    print("g-r: %.2f."%host['g-r'].values[0])
+        #    print("r-i: %.2f."%host['r-i'].values[0])
+        #    print("i-z: %.2f."%host['i-z'].values[0])
+            #print("There are %i supernovae associated with this object.\n"%len(host))
+            print("Associated supernovae: ")
+            if np.unique(row['NED_name']) != "":
+                tempHost = fullTable[fullTable['NED_name'] == row['NED_name']]
+            else:
+                tempHost = fullTable[fullTable['objID'] == row['objID']]
+            for SN in np.array(tempHost['TransientName'].values):
+                print(SN)
+    else:
+        print("No host info found!")
     return
 
 # Returns a postage stamp of the most likely
@@ -353,22 +372,25 @@ def getHostImage(transientName='', band="grizy", rad=60, save=0):
         print("Error! Please enter a supernova!\n")
         return
     fullTable = fullData()
-    host = getHostFromTransientName(transientName)
-    host.reset_index(drop=True, inplace=True)
-    tempSize = int(4*float(rad))
-    fn_save = host['objID'].values[0]
-    if np.unique(host['NED_name']) != "":
-        fn_save = host['NED_name'].values[0]
-        print("Showing postage stamp for %s"%np.unique(host['NED_name'])[0])
-    ra = np.unique(host['raMean'])[0]
-    dec = np.unique(host['decMean'])[0]
-    tempSize = int(4*rad)
-    img = getcolorim(ra, dec, output_size=tempSize, size=tempSize, filters=band, format="png")
-    plt.figure(figsize=(10,10))
-    plt.imshow(img)
-    if save:
-        img.save("%s.png" % fn_save)
-    return
+    host, notFound = getDBHostFromTransientName(transientName)
+    if host is not None:
+        host.reset_index(drop=True, inplace=True)
+        tempSize = int(4*float(rad))
+        fn_save = host['objID'].values[0]
+        if np.unique(host['NED_name']) != "":
+            fn_save = host['NED_name'].values[0]
+            print("Showing postage stamp for %s"%np.unique(host['NED_name'])[0])
+        ra = np.unique(host['raMean'])[0]
+        dec = np.unique(host['decMean'])[0]
+        tempSize = int(4*rad)
+        img = getcolorim(ra, dec, output_size=tempSize, size=tempSize, filters=band, format="png")
+        plt.figure(figsize=(10,10))
+        plt.imshow(img)
+        if save:
+            img.save("%s.png" % fn_save)
+        return
+    else:
+        print("Transient host not found!")
 
 # description
 # inputs
@@ -424,7 +446,6 @@ def coneSearchPairs(coord, radius):
 # inputs: none
 # outputs: the full GHOST database
 def fullData():
-    #path = str(pathlib.Path().absolute())
     path = sys.path[0]
     fullTable = pd.read_csv(path+"/database/GHOST.csv")
     return fullTable
@@ -437,12 +458,14 @@ def fullData():
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def getTransientHosts(snName, snCoord, snClass, verbose, starcut):
+def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal'):
     hostDB = None
     if not isinstance(snCoord, list) and not isinstance(snCoord, np.ndarray):
         snCoord = [snCoord]
         snName = [snName]
         snClass = [snClass]
+    if len(snClass) != len(snName):
+        snClass = ['']*len(snName)
 
     snName = [x.replace(" ", "") for x in snName]
     df_transients = pd.DataFrame({'Name':np.array(snName), 'snCoord':np.array(snCoord), 'snClass':np.array(snClass)})
@@ -486,9 +509,6 @@ def getTransientHosts(snName, snCoord, snClass, verbose, starcut):
 #         with stats provided at
 #         printout
 def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle'):
-    #the test data
-    #os.chdir(sys.path[0])
-
     if isinstance(snName, str):
         snName = snName.replace(" ", "")
         snRA = snCoord.ra.degree
@@ -506,8 +526,10 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle'):
     snDEC_arr = np.array(snDEC)
     snClass_arr = np.array(snClass)
 
-    now = datetime.now()
-    dateStr = "%i%.02i%.02i" % (now.year,now.month,now.day)
+    #now = datetime.now()
+    #dateStr = "%i%.02i%.02i" % (now.year,now.month,now.day)
+    dateStr = str(datetime.today()).replace("-", '').replace(".", '').replace(":", "").replace(" ", '')
+
     rad = 30 #arcsec
     fn_Host = "SNe_TNS_%s_PS1Hosts_%iarcsec.csv" % (dateStr, rad)
     fn_SN = 'transients_%s.csv' % dateStr

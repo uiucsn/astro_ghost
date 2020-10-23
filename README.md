@@ -75,6 +75,40 @@ getAllPostageStamps(hosts, 120, psPath, verbose) #get postage stamps of hosts
 getNEDSpectra(hosts, hSpecPath, verbose) #get spectra of hosts
 getTNSSpectra(transients, tSpecPath, verbose) #get spectra of transients (if on TNS)
 
+# Helper functions for querying the database
+supernovaCoord = [SkyCoord(344.5011708333333*u.deg, 6.0634388888888875*u.deg, frame='icrs')]
+galaxyCoord = [SkyCoord(344.50184181*u.deg, 6.06983149*u.deg, frame='icrs')]
+snName = ["PTF10llv"]
+table = fullData()
+
+# 1. Get the entry corresponding to a specific transient by its name (or coordinates)
+#    note: The coordinate/name is passed as a list, so multiple entries can be
+#          queried simultaneously
+#    This function returns the matches as a pandas dataframe (df) along with
+#    a list of the sources not found (by name or coordinate)
+df, notFound = getDBHostFromTransientCoords(supernovaCoord)
+df, notFound = getDBHostFromTransientName(snName)
+
+# 2. Print summary statistics about a particular host galaxy system or set of systems from a supernova
+getHostStatsFromTransientName(snName)
+getHostStatsFromTransientCoords(supernovaCoord)
+
+# 3. Get stats about the supernovae associated with a host galaxy
+galaxyName = ['UGC 12266']
+getTransientStatsFromHostName(galaxyName)
+getTransientStatsFromHostCoords(galaxyCoord)
+
+# 4. get an image of the field by coordinates
+tempSize = 400 #size in pixels
+band = ['grizy']
+getcolorim(galaxyCoord[0].ra.deg, galaxyCoord[0].dec.deg, size=tempSize, filters=band, format="png")
+
+# 5. get an image of the host galaxy system associated with a supernova (by supernova name)
+getHostImage(snName, save=0)
+
+# 6. Find all supernova-host galaxy matches within a certain search radius (in arcseconds)
+coneSearchPairs(supernovaCoord[0], 1.e3)
+
 ```
 
 The database of supernova-host galaxy matches can be found at http://ghost.ncsa.illinois.edu/static/GHOST.csv, and retrieved using the getGHOST() function. This database will need to be created before running the association pipeline. Helper functions can be found in ghostHelperFunctions.py for querying and getting quick stats about SNe within the database, and tutorial_databaseSearch.py provides example usages. The software to associate these supernovae with host galaxies is also provided, and tutorial.py provides examples for using this code.
