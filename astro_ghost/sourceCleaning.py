@@ -146,7 +146,8 @@ def removePS1Duplicates(df):
                 new_df.append(hostFrame)
         else:
             new_df.append(hostFrame)
-    df = pd.concat(new_df)
+    if len(new_df) > 0:
+        df = pd.concat(new_df)
     return df
 
 # TODO add description

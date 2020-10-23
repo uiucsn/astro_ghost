@@ -7,7 +7,7 @@ Welcome to GHOST, the database for supernovae and their host galaxies. This data
 # Installation
 1. Create a clean conda environment.
 
-2. Run the following code: 
+2. Run the following code:
 ```bash
 pip install astro_ghost
 ```
@@ -39,21 +39,19 @@ verbose = 1
 #note: real=False creates an empty database, which
 #allows you to use the association methods without
 #needing to download the full database first
-getGHOST(real=False, verbose=verbose)
+getGHOST(real=True, verbose=verbose)
 
-#create a list of the supernova names, their skycoords, and their classes (these three are from TNS)
+#create a list of the supernova names and their skycoords (these three are from TNS)
 snName = ['SN 2012dt', 'SN 1998bn', 'SN 1957B']
 
 snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
            SkyCoord(187.32867*u.deg, -23.16367*u.deg, frame='icrs'), \
            SkyCoord(186.26125*u.deg, +12.899444*u.deg, frame='icrs')]
 
-snClass = ['SN IIP', 'SN', 'SN Ia']
-
 # run the association algorithm!
 # this first checks the GHOST database for a SN by name, then by coordinates, and
 # if we have no match then it manually associates them.
-hosts = getTransientHosts(snName, snCoord, snClass, verbose=verbose, starcut='normal')
+hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal')
 
 #create directories to store the host spectra, the transient spectra, and the postage stamps
 hSpecPath = "./hostSpectra/"

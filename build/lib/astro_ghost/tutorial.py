@@ -3,7 +3,6 @@ import sys
 from astro_ghost.PS1QueryFunctions import getAllPostageStamps
 from astro_ghost.TNSQueryFunctions import getTNSSpectra
 from astro_ghost.NEDQueryFunctions import getNEDSpectra
-#from astro_ghost.ghostHelperFunctions import getTransientHosts, getGHOST
 from astro_ghost.ghostHelperFunctions import *
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -19,7 +18,7 @@ verbose = 1
 #needing to download the full database first
 getGHOST(real=True, verbose=verbose)
 
-#create a list of the supernova names, their skycoords, and their classes (these three are from TNS)
+#create a list of the supernova names and their skycoords (these three are from TNS)
 snName = ['SN 2012dt', 'SN 1998bn', 'SN 1957B']
 
 snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
