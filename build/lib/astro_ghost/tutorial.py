@@ -51,7 +51,6 @@ getAllPostageStamps(hosts, 120, psPath, verbose) #get postage stamps of hosts
 getNEDSpectra(hosts, hSpecPath, verbose) #get spectra of hosts
 getTNSSpectra(transients, tSpecPath, verbose) #get spectra of transients (if on TNS)
 
-
 # Helper functions for querying the database
 supernovaCoord = [SkyCoord(344.5011708333333*u.deg, 6.0634388888888875*u.deg, frame='icrs')]
 galaxyCoord = [SkyCoord(344.50184181*u.deg, 6.06983149*u.deg, frame='icrs')]
