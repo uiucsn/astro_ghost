@@ -23,7 +23,6 @@ try: # Python 3.x
 except ImportError:  # Python 2.x
     from urllib import pathname2url as urlencode
     from urllib import urlretrieve
-
 try: # Python 3.x
     import http.client as httplib
 except ImportError:  # Python 2.x
@@ -69,7 +68,6 @@ def preview_image(i, ra, dec, rad, band, save=1):
 def get_hosts(path, transient_fn, fn_Host, rad):
     transient_df = pd.read_csv(path+transient_fn)
     now = datetime.now()
-    dateStr = "%i%.02i%.02i" % (now.year,now.month,now.day)
     dict_fn = fn_Host.replace(".csv", "") + ".p"
     find_host_info_PS1(transient_df, fn_Host, dict_fn, path, rad)
     host_df = pd.read_csv(path+fn_Host)
