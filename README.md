@@ -26,7 +26,7 @@ import sys
 from astro_ghost.PS1QueryFunctions import getAllPostageStamps
 from astro_ghost.TNSQueryFunctions import getTNSSpectra
 from astro_ghost.NEDQueryFunctions import getNEDSpectra
-from astro_ghost.ghostHelperFunctions import getTransientHosts, getGHOST
+from astro_ghost.ghostHelperFunctions import *
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 import pandas as pd
