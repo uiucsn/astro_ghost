@@ -316,8 +316,9 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                             if (tempType == "G"):
                                 gal_hosts.append(key)
                         if len(gal_hosts) > 0:
-                            chosenHost = gal_hosts[0]
-                            print("Choosing the galaxy with the smallest DLR!", file=f)
+                            if gal_hosts[0] != chosenHost and R_dict[gal_hosts[0]] < 1.0:
+                                chosenHost = gal_hosts[0] #only change if we're within the light profile of the galaxy
+                                print("Choosing the galaxy with the smallest DLR - nearest source had DLR > 1!", file=f)
                     dict_mod[name] = chosenHost
                     hosts.loc[hosts['objID'] == chosenHost, 'dist/DLR'] = R_dict[chosenHost]
                     hosts.loc[hosts['objID'] == chosenHost, 'dist'] = dist_dict[chosenHost]

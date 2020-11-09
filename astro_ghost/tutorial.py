@@ -39,12 +39,7 @@ for tempPath in paths:
     if not os.path.exists(tempPath):
         os.makedirs(tempPath)
 
-now = datetime.now()
-dateStr = "%i%.02i%.02i" % (now.year,now.month,now.day)
-rad = 30 #arcsec
-fn_SN = 'transients_%s.csv' % dateStr
-transients = pd.read_csv("./transients_%s/tables/%s"%(dateStr,fn_SN))
-
+transients = pd.DataFrame({'Name':snName, 'RA':[x.ra.deg for x in snCoord], 'DEC':[x.dec.deg for x in snCoord]})
 #get postage stamps and spectra
 getAllPostageStamps(hosts, 120, psPath, verbose) #get postage stamps of hosts
 getNEDSpectra(hosts, hSpecPath, verbose) #get spectra of hosts

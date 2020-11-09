@@ -437,8 +437,8 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
             # m = -2.5*log10(F) + ZP
 
             gmag = -2.5*np.log10(obj_interp[0]) + g_ZP
-            rmag = -2.5*np.log10(obj_interp[0]) + r_ZP
-            imag = -2.5*np.log10(obj_interp[0]) + i_ZP
+            rmag = -2.5*np.log10(obj_interp[1]) + r_ZP
+            imag = -2.5*np.log10(obj_interp[2]) + i_ZP
 
             #now the mean can be taken
             mean_zp = (g_ZP + r_ZP + i_ZP)/3

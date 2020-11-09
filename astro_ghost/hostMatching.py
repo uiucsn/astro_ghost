@@ -42,7 +42,7 @@ def build_ML_df(dic, hostDF, transientDF):
                 idx = hostDF.index[-1]
             hostDF.loc[idx, "TransientClass"] = transientDF.loc[idx_transient, 'Obj. Type'].to_string(index=False).strip()
             hostDF.loc[idx, "TransientName"] = transientDF.loc[idx_transient, 'Name'].to_string(index=False).strip()
-            transCoord = SkyCoord(transientDF.loc[idx_transient, 'RA'], transientDF.loc[idx_transient, 'DEC'], unit=(u.hourangle, u.deg))
+            transCoord = SkyCoord(transientDF.loc[idx_transient, 'RA'], transientDF.loc[idx_transient, 'DEC'], unit=(u.deg, u.deg))
             if len(transCoord) > 1:
                 transCoord = transCoord[0]
             hostDF.loc[idx, "TransientRA"] = transCoord.ra.deg
