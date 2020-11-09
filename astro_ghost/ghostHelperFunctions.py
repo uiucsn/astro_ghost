@@ -550,7 +550,7 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle'):
         print("ERROR: Found no hosts in cone search during manual association!")
         return None
 
-    cuts = ["n", "quality", "coords", "primary", "best", "duplicate"]
+    cuts = ["n", "quality", "coords", "duplicate"]
 
     transient_dict = pickle.load(open(path+'/dictionaries/'+fn_Dict, "rb"))
     transient_dict = {k.replace(' ', ''): v for k, v in transient_dict.items()}
@@ -603,12 +603,13 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle'):
 
     #gradient ascent algorithm for the SNe that didn't pass this stage
     SN_toReassociate = np.concatenate([np.array(noHosts), np.array(GD_SN), np.array(list(lost))])
-    SN_toReassociate = np.array(SN_toReassociate)
+    #SN_toReassociate = np.concatenate([np.array(noHosts), np.array(list(lost))])
+    #SN_toReassociate = np.array(SN_toReassociate)
 
     if len(SN_toReassociate) > 0:
         if verbose:
             print("%i transients with no host found with DLR, %i transients with bad host data with DLR." %(len(noHosts), len(GD_SN)))
-            print("Running gradient ascent for %i remaining transients..."%len(SN_toReassociate))
+            print("Running gradient ascent for %i remaining transients."%len(SN_toReassociate))
             print("See GradientAscent.txt for more information.")
 
         fn_GD= path+'/GradientAscent.txt'
