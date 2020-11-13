@@ -612,7 +612,7 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
                     a = a.to_pandas()
 
                     a = a[a['nDetections'] > 1]
-                    a = a[a['nr'] > 1]
+                    #a = a[a['ng'] > 1]
                     #a = a[a['primaryDetection'] == 1]
                     smallType = ['AbLS', 'EmLS' , 'EmObj', 'G', 'GammaS', 'GClstr', 'GGroup', 'GPair', 'GTrpl', 'G_Lens', 'IrS', 'PofG', 'RadioS', 'UvES', 'UvS', 'XrayS', '', 'QSO', 'QGroup', 'Q_Lens']
                     medType = ['G', 'IrS', 'PofG', 'RadioS', 'GPair', 'GGroup', 'GClstr', 'EmLS', 'RadioS', 'UvS', 'UvES', '']
@@ -712,7 +712,7 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
         except:
              continue
 
-    with open(path+"/gals_postGD.p", 'wb') as fp:
+    with open(path+"/dictionaries/gals_postGD.p", 'wb') as fp:
         pickle.dump(SN_dict_postDLR, fp, protocol=pickle.HIGHEST_PROTOCOL)
     hostDF.to_csv(path+"/hostDF_postGD.tar.gz", index=False)
     f.close()
