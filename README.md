@@ -110,7 +110,17 @@ coneSearchPairs(supernovaCoord[0], 1.e3)
 #range_z is the value of z 
 #posterior is an estimate PDF of the probability of z
 #point estimate uses the mean to find a single value estimate
-#error is uses sampling from the posterior to estimate a STD
+#error is an array that uses sampling from the posterior to estimate a STD
+
+#relies upon the sfdmap package, (which is compatible with both unix and windows)
+#https://github.com/kbarbary/sfdmap
+
+#this requires downloading the dustmap fits files:
+#wget https://github.com/kbarbary/sfddata/archive/master.tar.gz
+#then extract and provide the path to the fits file directory to dust_PATH variable
+
+#'id' column in DF is the 0th ordered index of hosts. missing rows are therefore signalled
+#    by skipped numbers in index 
 
 from astro_ghost.photoz_helper import serial_objID_search,
 from astro_ghost.photoz_helper import get_common_constraints_columns
