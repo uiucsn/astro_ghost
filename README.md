@@ -103,6 +103,31 @@ getHostImage(snName, save=0)
 # 6. Find all supernova-host galaxy matches within a certain search radius (in arcseconds)
 coneSearchPairs(supernovaCoord[0], 1.e3)
 
+#7. Beta: find photometric redshift of host galaxies matches:
+
+#PhotoZ beta: not tested for missing objids.
+#photo-z uses a artificial neural network to estimate P(Z) in range Z = (0 - 1)
+#range_z is the value of z 
+#posterior is an estimate PDF of the probability of z
+#point estimate uses the mean to find a single value estimate
+#error is uses sampling from the posterior to estimate a STD
+
+from astro_ghost.photoz_helper import serial_objID_search,
+from astro_ghost.photoz_helper import get_common_constraints_columns
+from astro_ghost.photoz_helper import load_lupton_model
+from astro_ghost.photoz_helper import preprocess, evaluate
+
+objIDs = hosts['objID'].values.tolist()
+constraints, columns = get_common_constraints_columns()
+DFs = serial_objID_search(objIDs,columns=columns,**constraints)
+DF = pd.concat(DFs)
+
+dust_PATH = './astro_ghost/sfddata-master/'
+model_PATH = './astro_ghost/MLP_lupton.hdf5'
+
+mymodel, range_z = load_lupton_model(model_PATH)
+X = preprocess(DF,dust_PATH)
+posteriors, point_estimates, errors = evaluate(X,mymodel,range_z)
 ```
 
 The database of supernova-host galaxy matches can be found at http://ghost.ncsa.illinois.edu/static/GHOST.csv, and retrieved using the getGHOST() function. This database will need to be created before running the association pipeline. Helper functions can be found in ghostHelperFunctions.py for querying and getting quick stats about SNe within the database, and tutorial_databaseSearch.py provides example usages. The software to associate these supernovae with host galaxies is also provided, and tutorial.py provides examples for using this code.
