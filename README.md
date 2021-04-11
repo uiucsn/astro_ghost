@@ -119,6 +119,9 @@ coneSearchPairs(supernovaCoord[0], 1.e3)
 #wget https://github.com/kbarbary/sfddata/archive/master.tar.gz
 #then extract and provide the path to the fits file directory to dust_PATH variable
 
+#'id' column in DF is the 0th ordered index of hosts. missing rows are therefore signalled
+#    by skipped numbers in index 
+
 from astro_ghost.photoz_helper import serial_objID_search,
 from astro_ghost.photoz_helper import get_common_constraints_columns
 from astro_ghost.photoz_helper import load_lupton_model
