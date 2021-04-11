@@ -234,9 +234,8 @@ def post_url_serial(results,YSE_ID):
         values = [line.strip().split(',') for line in lines]
         DF = pd.DataFrame(values[1:-1],columns=values[0])
     else:
-        print('No Matches')
         DF = pd.DataFrame()
-    DF['YSE_id'] = np.ones(len(DF))*YSE_ID
+    DF['id'] = np.ones(len(DF))*YSE_ID
     return DF
 
 def serial_objID_search(objIDs,table='forced_mean',release='dr2',columns=None,verbose=False,**constraints):
@@ -256,9 +255,8 @@ def post_url_parallel(results,YSE_ID):
         values = [line.strip().split(',') for line in lines]
         DF = pd.DataFrame(values[1:-1],columns=values[0])
     else:
-        print('No Matches')
         DF = pd.DataFrame()
-    DF['YSE_id'] = np.ones(len(DF))*YSE_ID
+    DF['id'] = np.ones(len(DF))*YSE_ID
     return DF
 
 def get_common_constraints_columns():
