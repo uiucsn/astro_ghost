@@ -110,7 +110,7 @@ coneSearchPairs(supernovaCoord[0], 1.e3)
 #range_z is the value of z 
 #posterior is an estimate PDF of the probability of z
 #point estimate uses the mean to find a single value estimate
-#error is uses sampling from the posterior to estimate a STD
+#error is an array that uses sampling from the posterior to estimate a STD
 
 from astro_ghost.photoz_helper import serial_objID_search,
 from astro_ghost.photoz_helper import get_common_constraints_columns
