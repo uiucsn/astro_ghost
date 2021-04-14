@@ -1,3 +1,4 @@
+LICENSE
 README.md
 setup.py
 astro_ghost/DLR.py
@@ -10,6 +11,7 @@ astro_ghost/dimensionalityReduction.py
 astro_ghost/ghostHelperFunctions.py
 astro_ghost/gradientAscent.py
 astro_ghost/hostMatching.py
+astro_ghost/photoz_helper.py
 astro_ghost/sourceCleaning.py
 astro_ghost/starSeparation.py
 astro_ghost/stellarLocus.py

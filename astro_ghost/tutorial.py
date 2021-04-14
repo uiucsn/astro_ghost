@@ -78,3 +78,8 @@ getHostImage(snName, save=0)
 
 # 6. Find all supernova-host galaxy matches within a certain search radius (in arcseconds)
 coneSearchPairs(supernovaCoord[0], 1.e3)
+
+#7. Beta: find photometric redshift of host galaxies matches:
+from astro_ghost.photoz_helper import calc_photoz
+hosts = calc_photoz(hosts)
+print(hosts['photo_z'].values)
