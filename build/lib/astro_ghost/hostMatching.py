@@ -16,6 +16,7 @@ from collections import Counter
 
 def build_ML_df(dic, hostDF, transientDF):
     hostDF = hostDF.reset_index(drop=True)
+    hostDF = hostDF.drop_duplicates(subset=['objID'],ignore_index=True)
     hostDF["TransientClass"] = ""
     hostDF["TransientName"] = ""
     colNames = set(transientDF.columns.values)

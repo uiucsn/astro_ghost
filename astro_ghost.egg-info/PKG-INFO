@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: astro-ghost
-Version: 0.0.58
+Version: 0.0.96
 Summary: A package to associate transients with host galaxies, and a database of 16k SNe-host galaxies in PS1.
 Home-page: https://github.com/pypa/sampleproject
 Author: Alex Gagliano
@@ -110,6 +110,11 @@ Description: # GHOST
         
         # 6. Find all supernova-host galaxy matches within a certain search radius (in arcseconds)
         coneSearchPairs(supernovaCoord[0], 1.e3)
+        
+        #7. Beta: find photometric redshift of host galaxies matches:
+        from astro_ghost.photoz_helper import calc_photoz
+        hosts = calc_photoz(hosts)
+        print(hosts['photo_z'].values)
         
         ```
         
