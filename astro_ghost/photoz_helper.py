@@ -435,4 +435,5 @@ def calc_photoz(hosts):
     for i in np.arange(len(successIDs)):
         objID = int(successIDs[i])
         hosts.loc[hosts['objID']==objID, 'photo_z'] = point_estimates[i]
+        hosts.loc[hosts['objID']==objID, 'photo_z_err'] = errors[i]
     return hosts
