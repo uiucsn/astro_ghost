@@ -5,6 +5,7 @@ from astro_ghost.TNSQueryFunctions import getTNSSpectra
 from astro_ghost.NEDQueryFunctions import getNEDSpectra
 from astro_ghost.ghostHelperFunctions import *
 from astropy.coordinates import SkyCoord
+from astro_ghost.classifier import classify
 from astropy import units as u
 import pandas as pd
 from datetime import datetime
@@ -29,6 +30,9 @@ snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
 # this first checks the GHOST database for a SN by name, then by coordinates, and
 # if we have no match then it manually associates them.
 hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal')
+
+# classify transients
+predictions = classify(hosts)
 
 #create directories to store the host spectra, the transient spectra, and the postage stamps
 hSpecPath = "./hostSpectra/"
