@@ -460,6 +460,8 @@ def fullData():
 #         printout
 def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal'):
     hostDB = None
+    tempHost1 = tempHost2 = tempHost3 = None
+    found_by_name = found_by_coord = found_by_manual = 0
     if not isinstance(snCoord, list) and not isinstance(snCoord, np.ndarray):
         snCoord = [snCoord]
         snName = [snName]
@@ -472,6 +474,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
 
     tempHost1, notFoundNames = getDBHostFromTransientName(snName)
     found_by_name = len(snName) - len(notFoundNames)
+
     if tempHost1 is None or len(notFoundNames) > 0:
         if verbose:
             print("%i transients not found in GHOST by name, trying a coordinate search..."%len(notFoundNames))
