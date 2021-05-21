@@ -13,6 +13,7 @@ from astropy.coordinates import SkyCoord
 from astropy.coordinates import Angle
 #from astro_ghost import PS1QueryFunctions as ps1
 from astropy.utils.data import get_pkg_data_filename
+import pkg_resources
 from matplotlib import colors
 from imblearn.under_sampling import RandomUnderSampler
 from scipy import ndimage
@@ -33,6 +34,24 @@ from imblearn.over_sampling import SMOTE
 from sklearn import preprocessing
 from imblearn.pipeline import Pipeline
 from rfpimp import *
+
+def classify(dataML, verbose=True):
+    feature_list, dataML_preprocessed, labels_df2, names = preprocess_dataframe(dataML)
+    dataML_matrix_scaled = preprocessing.scale(dataML_preprocessed)
+    rf = loadClassifier()
+    class_predictions = rf.predict(dataML_matrix_scaled)
+    if verbose:
+        for i in np.arange(len(class_predictions)):
+            print("%s is predicted to be a %s." % (names[i], class_predictions[i]))
+    return class_predictions
+
+def loadClassifier(verbose=True):
+    modelName = "BinarySNClassifier.sav"
+    stream = pkg_resources.resource_stream(__name__, modelName)
+    if verbose:
+        print("Loading model %s."%modelName)
+    model = pickle.load(stream)
+    return model
 
 def plot_ROC_wCV_wMandel(foleySN_matrix_imputed, foleylabels, dataML_matrix_imputed, labels, save=1, balance=1):
     sns.set_context('paper')
@@ -322,17 +341,19 @@ def condense_labels(dataML, nclass):
 
         return dataML
 
-def preprocess_dataframe(dataML, nclass, PCA=False):
+def preprocess_dataframe(dataML, nclass=2):
     dataML.replace(-999, np.nan, inplace=True)
-    trueIDXs = dataML.dropna(subset=['TransientRedshift', 'NED_redshift']).index
-    naIDXs = set(dataML.index) - set(trueIDXs)
 
-    dataML_na = dataML.loc[naIDXs]
-    dataML_nona = dataML.loc[trueIDXs]
+    if 'TransientRedshift' in dataML.columns:
+        trueIDXs = dataML.dropna(subset=['TransientRedshift', 'NED_redshift']).index
+        naIDXs = set(dataML.index) - set(trueIDXs)
 
-    pdiff = np.abs(dataML_nona['TransientRedshift'] - dataML_nona['NED_redshift'])/dataML_nona['TransientRedshift']*100
-    dataML_nona = dataML_nona.loc[pdiff < 5]
-    dataML = pd.concat([dataML_na, dataML_nona], ignore_index=True)
+        dataML_na = dataML.loc[naIDXs]
+        dataML_nona = dataML.loc[trueIDXs]
+
+        pdiff = np.abs(dataML_nona['TransientRedshift'] - dataML_nona['NED_redshift'])/dataML_nona['TransientRedshift']*100
+        dataML_nona = dataML_nona.loc[pdiff < 5]
+        dataML = pd.concat([dataML_na, dataML_nona], ignore_index=True)
 
     #ADDING IN SNR IN TWO BANDS - I AND Z
     dataML["gSNR"] = 1/dataML["gApMagErr"]
@@ -375,33 +396,18 @@ def preprocess_dataframe(dataML, nclass, PCA=False):
     dataML = dataML.drop(['rpsfTheta', 'rsky', 'rskyErr', 'rpsfCore'], axis=1)
     dataML = dataML.drop(['gpsfLikelihood', 'rpsfLikelihood', 'ipsfLikelihood', 'zpsfLikelihood','ypsfLikelihood'], axis=1)
     dataML = dataML.drop(['rpsfQf'], axis=1)
-    dataML = dataML.drop(['host_logmass', 'host_logmass_min', 'host_logmass_max','Hubble Residual', 'Transient AltName'],axis=1)
+    #dataML = dataML.drop(['host_logmass', 'host_logmass_min', 'host_logmass_max','Hubble Residual', 'Transient AltName'],axis=1)
     dataML = dataML.drop(['rpsfQfPerfect'], axis=1)
     dataML = dataML.drop(['rApFillFac'], axis=1)
-    dataML = dataML.drop(['TransientRA', 'TransientDEC','NED_type', 'NED_name'], axis=1)
+    dataML = dataML.drop(['TransientRA', 'TransientDEC','NED_type', 'NED_name', 'class'], axis=1)
 
     #try dropping NED info now:
     dataML = dataML.drop(['NED_vel', 'NED_mag'], axis=1)
     dataML = dataML.drop(['NED_redshift'], axis=1)
-    dataML = dataML.drop(['TransientRedshift'], axis=1)
-    dataML.drop(['TransientDiscoveryDate',  'TransientDiscoveryMag', 'TransientDiscoveryYear'], axis=1, inplace=True)
+    #dataML = dataML.drop(['TransientRedshift'], axis=1)
+    #dataML.drop(['TransientDiscoveryDate',  'TransientDiscoveryMag', 'TransientDiscoveryYear'], axis=1, inplace=True)
     dataML = dataML.drop(['objID'],axis=1)
 
-    if PCA == True:
-        allCols = []
-        bands = ['g', 'r', 'i', 'z', 'y']
-        cols = ['KronMag', 'ApMag', 'PSFMag', 'PSFFlux', 'ApFlux', 'KronFlux', 'KronRad', 'momentR1', 'ApMag_KronMag', 'momentXX', 'momentYY', 'momentRH', 'ExtNSigma']
-        for band in bands:
-            for col in cols:
-                if col == 'ApMag_KronMag':
-                    allCols.append(band+ col.split("_")[0] + "_"+ band + col.split("_")[1])
-                else:
-                    allCols.append(band+col)
-        allCols.append("TransientClass")
-        allCols.append("TransientName")
-        dataML = dataML[allCols]
-    dataML = dataML.dropna()
-    print(dataML.shape)
     #dataML
 
     dataML = condense_labels(dataML, nclass=nclass)
@@ -410,6 +416,37 @@ def preprocess_dataframe(dataML, nclass, PCA=False):
     labels_df = dataML['TransientClass']# Remove the labels from the features
     labels = np.array(labels_df)
     classes = np.unique(labels)
+
+    #order in the same way the classifier training data was labeled
+    dataML = dataML[['gPSFMag', 'gPSFMagErr', 'gApMag', 'gApMagErr', 'gKronMag',
+       'gKronMagErr', 'gpsfMajorFWHM', 'gpsfMinorFWHM', 'gmomentXX',
+       'gmomentXY', 'gmomentYY', 'gmomentR1', 'gmomentRH', 'gPSFFlux',
+       'gPSFFluxErr', 'gApFlux', 'gApFluxErr', 'gApRadius', 'gKronFlux',
+       'gKronFluxErr', 'gKronRad', 'gExtNSigma', 'rPSFMag', 'rPSFMagErr',
+       'rApMag', 'rApMagErr', 'rKronMag', 'rKronMagErr', 'rpsfMajorFWHM',
+       'rpsfMinorFWHM', 'rmomentXX', 'rmomentXY', 'rmomentYY',
+       'rmomentR1', 'rmomentRH', 'rPSFFlux', 'rPSFFluxErr', 'rApFlux',
+       'rApFluxErr', 'rApRadius', 'rKronFlux', 'rKronFluxErr', 'rKronRad',
+       'rExtNSigma', 'iPSFMag', 'iPSFMagErr', 'iApMag', 'iApMagErr',
+       'iKronMag', 'iKronMagErr', 'ipsfMajorFWHM', 'ipsfMinorFWHM',
+       'imomentXX', 'imomentXY', 'imomentYY', 'imomentR1', 'imomentRH',
+       'iPSFFlux', 'iPSFFluxErr', 'iApFlux', 'iApFluxErr', 'iApRadius',
+       'iKronFlux', 'iKronFluxErr', 'iKronRad', 'iExtNSigma', 'zPSFMag',
+       'zPSFMagErr', 'zApMag', 'zApMagErr', 'zKronMag', 'zKronMagErr',
+       'zpsfMajorFWHM', 'zpsfMinorFWHM', 'zmomentXX', 'zmomentXY',
+       'zmomentYY', 'zmomentR1', 'zmomentRH', 'zPSFFlux', 'zPSFFluxErr',
+       'zApFlux', 'zApFluxErr', 'zApRadius', 'zKronFlux', 'zKronFluxErr',
+       'zKronRad', 'zExtNSigma', 'yPSFMag', 'yPSFMagErr', 'yApMag',
+       'yApMagErr', 'yKronMag', 'yKronMagErr', 'ypsfMajorFWHM',
+       'ypsfMinorFWHM', 'ymomentXX', 'ymomentXY', 'ymomentYY',
+       'ymomentR1', 'ymomentRH', 'yPSFFlux', 'yPSFFluxErr', 'yApFlux',
+       'yApFluxErr', 'yApRadius', 'yKronFlux', 'yKronFluxErr', 'yKronRad',
+       'yExtNSigma', 'i-z', 'g-r', 'r-i', 'g-i', 'z-y', 'g-rErr',
+       'r-iErr', 'i-zErr', 'z-yErr', 'gApMag_gKronMag', 'rApMag_rKronMag',
+       'iApMag_iKronMag', 'zApMag_zKronMag', 'yApMag_yKronMag', '7DCD',
+       'dist/DLR', 'dist', 'gSNR', 'rSNR', 'iSNR', 'zSNR', 'ySNR', 'TransientClass']]
+
+    dataML.dropna(axis=0, inplace=True)
 
     feature_list = list(dataML.columns) # Convert to numpy array
 
@@ -421,68 +458,7 @@ def preprocess_dataframe(dataML, nclass, PCA=False):
     return feature_list, dataML_noLabels, labels_df, names
 
 #feature_list, dataML_preprocessed2, labels_df2, names = preprocess_dataframe(dataML, nclass=2, PCA=False)
-#importances2class = get_importances(dataML_preprocessed2, labels_df2, nclass=2, save=0)
-##transform the data
 #dataML_matrix_scaled = preprocessing.scale(dataML_preprocessed2)
 #labels = labels_df2.values
 
-#labels_df2.reset_index(inplace=True, drop=True)
-#fig2 = plt.figure(figsize=(5.0, 4.0), dpi=300) #frameon=false
-#ax = fig2.gca()
 #acc, rf, all_confMatrices, accTot, wrong = plot_ROC_wCV(ax, dataML_matrix_scaled, labels.ravel(), names.values, save=0, balance=True)
-
-#fs.plot_feature_importances(threshold = 0.99, plot_n = 12)
-
-########################################################################################
-########################################################################################
-
-##
-##                   CODE BELOW FOR CALCULATING VARIABLE IMPORTANCES
-##
-
-
-########################################################################################
-#######################################################################################
-
-#importances2class['class'] = '2 class'
-#importances4class['class'] = '4 class'
-#importances7class['class'] = '7 class'
-
-#importances4class.sort_values(by=['normalized_importance'], ascending=False, inplace=True)
-#importances4class_topTen = importances4class[importances4class['feature'].isin(['g-r', 'dist', 'dist/DLR', 'g-i', 'r-i', 'gExtNSigma', 'i-z', '7DCD', 'z-y', 'iApMag_iKronMag'])]
-
-#importances2class.sort_values(by=['normalized_importance'], ascending=False, inplace=True)
-#print(importances2class['feature'].values)
-
-#importances2class_topTen = importances2class[importances2class['feature'].isin(['dist', 'dist/DLR', 'g-r', 'g-i', 'r-i', 'i-z', '7DCD','gExtNSigma', 'imomentXX', 'gmomentXX'])]
-
-#importances7class.sort_values(by=['normalized_importance'], ascending=False, inplace=True)
-#importances7class_topTen = importances7class[importances7class['feature'].isin(['g-r', 'dist', 'dist/DLR', 'g-i', 'r-i', 'gExtNSigma', 'i-z', '7DCD', 'z-y', 'iApMag_iKronMag'])]
-
-#importances = importances2class_topTen.append(importances4class_topTen, ignore_index=True)
-#importances_final = importances.append(importances7class_topTen, ignore_index=True)
-#importances_final = importances2class_topTen
-#importances_final.loc[importances_final['feature'] == 'dist', 'feature'] = r'$\theta$'
-#importances_final.loc[importances_final['feature'] == 'dist/DLR', 'feature'] = r'$\theta/d_{DLR}$'
-
-#importances_final.loc[importances_final['feature'] == 'g-r', 'feature'] = r'$g-r$'
-#importances_final.loc[importances_final['feature'] == 'r-i', 'feature'] = r'$r-i$'
-#importances_final.loc[importances_final['feature'] == 'g-i', 'feature'] = r'$g-i$'
-#importances_final.loc[importances_final['feature'] == '7DCD', 'feature'] = '4DCD'
-#importances_final.loc[importances_final['feature'] == 'i-z', 'feature'] = r'$i-z$'
-#importances_final.loc[importances_final['feature'] == 'z-y', 'feature'] = r'$z-y$'
-#importances_final.loc[importances_final['feature'] == 'iApMag_iKronMag', 'feature'] = r'$m_{\rm Ap, i} - m_{\rm Kron, i}$'
-#importances_final.loc[importances_final['feature'] == 'gExtNSigma', 'feature'] = r'ExtNSigma, $g$'
-#importances_final.loc[importances_final['feature'] == 'gmomentXX', 'feature'] = r'momentXX, $g$'
-#importances_final.loc[importances_final['feature'] == 'imomentXX', 'feature'] = r'momentXX, $i$'
-
-#importances_final['Importance'] = importances_final['normalized_importance']
-#importances_final['Feature'] = importances_final['feature']
-#importances_final['Model'] = importances_final['class']
-
-#sns.set_context("talk")
-#ax = sns.barplot(y="Feature", x="Importance", data=importances_final, palette="Blues_d")
-#plt.legend(fontsize=16)
-#ax.set_ylabel("Feature",fontsize=22)
-#ax.set_xlabel("Importance",fontsize=22)
-#plt.savefig("FeatureImportances_0715.png", dpi=300, bbox_inches='tight')

@@ -2,7 +2,7 @@
 "At the last dim horizon, we search among ghostly errors of observations for landmarks that are scarcely more substantial. The search will continue. The urge is older than history. It is not satisfied and it will not be oppressed."
 --Edwin Hubble
 
-Welcome to GHOST, the database for supernovae and their host galaxies. This database contains ~16k sources in PS1, which were used to predict supernova classes in Gagliano et al. (2020). Installation instructions for the analysis tools are below.
+Welcome to GHOST, the database for supernovae and their host galaxies. This database contains ~16k sources in PS1, which were used to predict supernova classes in Gagliano et al. (2021). Installation instructions for the analysis tools are below.
 
 # Installation
 1. Create a clean conda environment.
@@ -28,6 +28,7 @@ from astro_ghost.TNSQueryFunctions import getTNSSpectra
 from astro_ghost.NEDQueryFunctions import getNEDSpectra
 from astro_ghost.ghostHelperFunctions import *
 from astropy.coordinates import SkyCoord
+from astro_ghost.classifier import classify
 from astropy import units as u
 import pandas as pd
 from datetime import datetime
@@ -52,6 +53,9 @@ snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
 # this first checks the GHOST database for a SN by name, then by coordinates, and
 # if we have no match then it manually associates them.
 hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal')
+
+# classify transients
+predictions = classify(hosts)
 
 #create directories to store the host spectra, the transient spectra, and the postage stamps
 hSpecPath = "./hostSpectra/"
