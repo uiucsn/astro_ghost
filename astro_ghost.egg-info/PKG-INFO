@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: astro-ghost
-Version: 0.0.98
+Version: 0.1.1
 Summary: A package to associate transients with host galaxies, and a database of 16k SNe-host galaxies in PS1.
 Home-page: https://github.com/pypa/sampleproject
 Author: Alex Gagliano
@@ -10,7 +10,7 @@ Description: # GHOST
         "At the last dim horizon, we search among ghostly errors of observations for landmarks that are scarcely more substantial. The search will continue. The urge is older than history. It is not satisfied and it will not be oppressed."
         --Edwin Hubble
         
-        Welcome to GHOST, the database for supernovae and their host galaxies. This database contains ~16k sources in PS1, which were used to predict supernova classes in Gagliano et al. (2020). Installation instructions for the analysis tools are below.
+        Welcome to GHOST, the database for supernovae and their host galaxies. This database contains ~16k sources in PS1, which were used to predict supernova classes in Gagliano et al. (2021). Installation instructions for the analysis tools are below.
         
         # Installation
         1. Create a clean conda environment.
@@ -36,6 +36,7 @@ Description: # GHOST
         from astro_ghost.NEDQueryFunctions import getNEDSpectra
         from astro_ghost.ghostHelperFunctions import *
         from astropy.coordinates import SkyCoord
+        from astro_ghost.classifier import classify
         from astropy import units as u
         import pandas as pd
         from datetime import datetime
@@ -59,7 +60,10 @@ Description: # GHOST
         # run the association algorithm!
         # this first checks the GHOST database for a SN by name, then by coordinates, and
         # if we have no match then it manually associates them.
-        hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal')
+        hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True)
+        
+        # classify transients
+        predictions = classify(hosts)
         
         #create directories to store the host spectra, the transient spectra, and the postage stamps
         hSpecPath = "./hostSpectra/"

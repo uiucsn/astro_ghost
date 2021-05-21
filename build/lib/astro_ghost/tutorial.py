@@ -29,7 +29,7 @@ snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
 # run the association algorithm!
 # this first checks the GHOST database for a SN by name, then by coordinates, and
 # if we have no match then it manually associates them.
-hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal')
+hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True)
 
 # classify transients
 predictions = classify(hosts)
@@ -44,6 +44,7 @@ for tempPath in paths:
         os.makedirs(tempPath)
 
 transients = pd.DataFrame({'Name':snName, 'RA':[x.ra.deg for x in snCoord], 'DEC':[x.dec.deg for x in snCoord]})
+
 #get postage stamps and spectra
 getAllPostageStamps(hosts, 120, psPath, verbose) #get postage stamps of hosts
 getNEDSpectra(hosts, hSpecPath, verbose) #get spectra of hosts

@@ -458,7 +458,7 @@ def fullData():
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal'):
+def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False):
     hostDB = None
     tempHost1 = tempHost2 = tempHost3 = None
     found_by_name = found_by_coord = found_by_manual = 0
@@ -495,7 +495,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
             snCoord_remaining = df_transients_remaining['snCoord'].values
             snClass_remaining = df_transients_remaining['snClass'].values
 
-            tempHost3 = findNewHosts(snName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut)
+            tempHost3 = findNewHosts(snName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch)
             found_by_manual = len(tempHost3)
     hostDB = pd.concat([tempHost1, tempHost2, tempHost3], ignore_index=True)
     hostDB.replace(-999.0, np.nan, inplace=True)
@@ -511,7 +511,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle'):
+def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMatch=False):
     if isinstance(snName, str):
         snName = snName.replace(" ", "")
         snRA = snCoord.ra.degree
@@ -609,7 +609,7 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle'):
     #SN_toReassociate = np.concatenate([np.array(noHosts), np.array(list(lost))])
     #SN_toReassociate = np.array(SN_toReassociate)
 
-    if len(SN_toReassociate) > 0:
+    if (len(SN_toReassociate) > 0) and (ascentMatch):
         if verbose:
             print("%i transients with no host found with DLR, %i transients with bad host data with DLR." %(len(noHosts), len(GD_SN)))
             print("Running gradient ascent for %i remaining transients."%len(SN_toReassociate))
