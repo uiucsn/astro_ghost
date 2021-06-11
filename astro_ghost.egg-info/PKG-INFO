@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: astro-ghost
-Version: 0.1.2
+Version: 0.1.3
 Summary: A package to associate transients with host galaxies, and a database of 16k SNe-host galaxies in PS1.
 Home-page: https://github.com/pypa/sampleproject
 Author: Alex Gagliano
