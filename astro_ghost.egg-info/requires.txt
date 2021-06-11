@@ -4,7 +4,7 @@ numpy
 seaborn
 matplotlib
 joypy
-astropy>=4.0
+astropy==4.0
 photutils
 scipy
 datetime
