@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="astro_ghost",
-    version="0.1.01",
+    version="0.1.02",
     author="Alex Gagliano",
     author_email="gaglian2@illinois.edu",
     description="A package to associate transients with host galaxies, and a database of 16k SNe-host galaxies in PS1.",
