@@ -25,14 +25,18 @@ import pickle
 import os
 import glob
 from datetime import datetime
+import astro_ghost
 
 def getGHOST(real=False, verbose=False):
-    if not os.path.exists('./database'):
-        os.makedirs('./database')
+    install_path = astro_ghost.__file__
+    install_path = install_path.split("/")[:-1]
+    install_path = "/".join(install_path)
+    if not os.path.exists(install_path + '/database'):
+        os.makedirs(install_path + '/database')
     if real:
         url = 'http://ghost.ncsa.illinois.edu/static/database/GHOST.csv'
         r = requests.get(url)
-        fname = './database/GHOST.csv'
+        fname = install_path + '/database/GHOST.csv'
         open(fname , 'wb').write(r.content)
         if verbose:
             print("Successfully downloaded GHOST database from ghost.ncsa.illinois.edu.\n")
@@ -107,7 +111,7 @@ def getGHOST(real=False, verbose=False):
        'host_logmass', 'host_logmass_min', 'host_logmass_max',
        'Hubble Residual', 'TransientName']
         df = pd.DataFrame(columns = colnames)
-        df.to_csv("./database/GHOST.csv",index=False)
+        df.to_csv(install_path + "/database/GHOST.csv",index=False)
         if verbose:
             print("Successfully created dummy database.\n")
 
@@ -446,8 +450,10 @@ def coneSearchPairs(coord, radius):
 # inputs: none
 # outputs: the full GHOST database
 def fullData():
-    path = sys.path[0]
-    fullTable = pd.read_csv(path+"/database/GHOST.csv")
+    install_path = astro_ghost.__file__
+    install_path = install_path.split("/")[:-1]
+    install_path = "/".join(install_path)
+    fullTable = pd.read_csv(install_path+"/database/GHOST.csv")
     return fullTable
 
 # The wrapper function for the
