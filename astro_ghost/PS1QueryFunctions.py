@@ -479,6 +479,6 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad):
                 print("No potential hosts found for this object...")
             # Save host info
             if not os.path.exists(path+ '/dictionaries/'):
-            	os.makedirs(path+'/dictionaries/')
+                os.makedirs(path+'/dictionaries/')
             with open(path+"/dictionaries/" + dict_fn, 'wb') as fp:
                 pickle.dump(SN_Host_PS1, fp, protocol=pickle.HIGHEST_PROTOCOL)
