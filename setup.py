@@ -1,27 +1,24 @@
-import setuptools
+#!/usr/bin/env python
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+import os
 
-setuptools.setup(
-    name="astro_ghost",
-    version="0.1.03",
-    author="Alex Gagliano",
-    author_email="gaglian2@illinois.edu",
-    description="A package to associate transients with host galaxies, and a database of 16k SNe-host galaxies in PS1.",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject",
-    packages=setuptools.find_packages(),
-    package_data={
-    '': ['Star_Galaxy_RealisticModel.sav','Star_Galaxy_IdealModel.sav', 'Star_Galaxy_RealisticModel_GHOST_PS1ClassLabels.sav','tonry_ps1_locus.txt'],
-    },
-    install_requires=['pandas', 'scikit-learn>=0.23.0', 'numpy', 'seaborn', 'matplotlib', 'joypy','astropy==4.0', 'photutils', 'scipy', 'datetime', 'requests','imblearn','rfpimp','Pillow', 'pyvo', 'astroquery', 'certifi>=2020.06.20', 'sfdmap'],
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-    ],
-    python_requires='>=3.6',
-    include_package_data = True,
+from setuptools import setup
+
+
+VERSION_TEMPLATE = """
+# Note that we need to fall back to the hard-coded version if either
+# setuptools_scm can't be imported or setuptools_scm can't determine the
+# version, so we catch the generic 'Exception'.
+try:
+    from setuptools_scm import get_version
+    __version__ = get_version(root='..', relative_to=__file__)
+except Exception:
+    __version__ = '{version}'
+""".lstrip()
+
+setup(
+    use_scm_version={'write_to': os.path.join('astro_ghost', 'version.py'),
+                     'write_to_template': VERSION_TEMPLATE},
+
 )
