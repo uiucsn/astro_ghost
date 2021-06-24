@@ -580,7 +580,13 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
 
     host_DF = getNEDInfo(host_DF)
     host_DF = calc_7DCD(host_DF)
-    host_gals_DF, stars_DF = separateStars_STRM(host_DF, plot=0, verbose=verbose, starcut=starcut)
+    host_DF_north = host_DF[host_DF['decMean']>-30].reset_index()
+    host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index()
+    host_gals_DF_north, stars_DF_north = separateStars_STRM(host_DF_north, plot=0, verbose=verbose, starcut=starcut)
+    host_gals_DF_south, stars_DF_south = separateStars_South(host_DF_south, plot=0, verbose=verbose, starcut=starcut)
+    host_gals_DF = pd.concat([host_gals_DF_north, host_gals_DF_south],ignore_index=True)
+    stars_DF = pd.concat([stars_DF_north, stars_DF_south],ignore_index=True)
+
     if verbose:
         print("Removed %i stars. We now have %i candidate host galaxies."%(len(stars_DF), len(host_gals_DF)))
 

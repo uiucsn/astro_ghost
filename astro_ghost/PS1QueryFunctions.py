@@ -37,6 +37,13 @@ from astropy.visualization import make_lupton_rgb
 from astropy.coordinates import name_resolve
 from pyvo.dal import sia
 import pickle
+import requests
+from io import BytesIO
+
+from astropy.coordinates import SkyCoord
+from astroquery.vo_conesearch import ConeSearch
+from astroquery.vo_conesearch import vos_catalog
+vos_catalog.list_catalogs("conesearch_good")
 
 def getAllPostageStamps(df, tempSize, path=".", verbose=0):
     for i in np.arange(len(df["raMean"])):
@@ -66,13 +73,23 @@ def preview_image(i, ra, dec, rad, band, save=1):
         plt.savefig("PS1_%i_%s.png" % (i, band))
 
 def get_hosts(path, transient_fn, fn_Host, rad):
-    transient_df = pd.read_csv(path+transient_fn)
+    transient_df = pd.read_csv(path+"/"+transient_fn)
     now = datetime.now()
     dict_fn = fn_Host.replace(".csv", "") + ".p"
-    find_host_info_PS1(transient_df, fn_Host, dict_fn, path, rad)
-    host_df = pd.read_csv(path+fn_Host)
+
+    tempDEC = Angle(transient_df['DEC'], unit=u.deg)
+    tempDEC = tempDEC.deg
+    df_North = transient_df[(tempDEC > -30)]
+    df_South = transient_df[(tempDEC <= -30)]
+    append=0
+    if len(df_South) > 0:
+        find_host_info_SH(df_South, fn_Host, dict_fn, path, rad)
+        append=1
+    if len(df_North) > 0:
+        find_host_info_PS1(df_North, fn_Host, dict_fn, path, rad, append=append)
+    host_df = pd.read_csv(path+"/"+fn_Host)
     host_df = host_df.drop_duplicates()
-    host_df.to_csv(path+fn_Host[:-4]+"_cleaned.csv", index=False)
+    host_df.to_csv(path+"/"+fn_Host[:-4]+"_cleaned.csv", index=False)
     return host_df
 
 def find_all(name, path):
@@ -424,7 +441,7 @@ def query_ps1_name(name, rad):
 #        fn - the output data frame of all PS1 potential hosts
 #        dict_fn - the dictionary matching candidate hosts in PS1 and transients
 # Output: N/A
-def find_host_info_PS1(df, fn, dict_fn, path, rad):
+def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
     i = 0
     """Querying PS1 for all objects within rad arcsec of SNe"""
     #os.chdir()
@@ -440,15 +457,7 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad):
             else:
                 tempRA = Angle(row.RA, unit=u.deg)
             tempDEC = Angle(row.DEC, unit=u.deg)
-            tempName = row.HostName
-            a = ''
-            if(row.HostName == ''): # and (int(row.DEC[0:3]) > -30)):
-                a = query_ps1_noname(tempRA.degree,tempDEC.degree, rad)
-            else:
-            #    try:
-            #        a = query_ps1_name(tempName, rad)
-            #    except:
-                a = query_ps1_noname(tempRA.degree,tempDEC.degree, rad)
+            a = query_ps1_noname(tempRA.degree,tempDEC.degree, rad)
             if a:
                 a = ascii.read(a)
                 a = a.to_pandas()
@@ -469,16 +478,222 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad):
             if (len(PS1_queries) > 0):
                 PS1_hosts = pd.concat(PS1_queries)
                 PS1_hosts = PS1_hosts.drop_duplicates()
+                newCols = np.array(['SkyMapper_StarClass', 'gelong','g_a','g_b','g_pa',
+                'relong','r_a','r_b','r_pa',
+                'ielong','i_a','i_b','i_pa',
+                'zelong','z_a','z_b','z_pa'])
+                for col in newCols:
+                    PS1_hosts[col] = np.nan #match up rows to skymapper cols to join in one dataframe
                 PS1_queries = []
-                if i == 0:
+                if ~append:
                     PS1_hosts.to_csv(path+fn, header=True, index=False)
                     i = 1
                 else:
-                    PS1_hosts.to_csv(path+fn, mode='a+', header=False, index=False)
+                    PS1_hosts.to_csv(path+"/"+fn, mode='a+', header=False, index=False)
             else:
                 print("No potential hosts found for this object...")
             # Save host info
             if not os.path.exists(path+ '/dictionaries/'):
-                os.makedirs(path+'/dictionaries/')
+            	os.makedirs(path+'/dictionaries/')
             with open(path+"/dictionaries/" + dict_fn, 'wb') as fp:
                 pickle.dump(SN_Host_PS1, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+def find_host_info_SH(df, fn, dict_fn, path, rad):
+    i = 0
+    """VO Cone Search for all objects within rad arcsec of SNe (for Southern-Hemisphere (SH) objects)"""
+    SN_Host_SH = {}
+    SH_queries = []
+    for j, row in df.iterrows():
+            if ":" in str(row.RA):
+                tempRA = Angle(row.RA, unit=u.hourangle)
+            else:
+                tempRA = Angle(row.RA, unit=u.deg)
+            tempDEC = Angle(row.DEC, unit=u.deg)
+            a = pd.DataFrame({})
+            a = southernSearch(tempRA.degree,tempDEC.degree, rad)
+            if len(a)>0:
+                SH_queries.append(a)
+                SN_Host_SH[row.Name] = np.array(a['objID'])
+            else:
+                SN_Host_SH[row.Name] = np.array([])
+
+            # Print status messages every 10 lines
+            if j%10 == 0:
+                print("Processed {} of {} lines!".format(j, len(df.Name)))
+                #print(SN_Host_PS1)
+
+            # Print every query to a file Note: this was done in order
+            # to prevent the code crashing after processing 99% of the data
+            # frame and losing everything. This allows for duplicates though,
+            # so they should be removed before the file is used again
+            if (len(SH_queries) > 0):
+                SH_hosts = pd.concat(SH_queries)
+                SH_hosts = SH_hosts.drop_duplicates()
+                SH_queries = []
+                if i == 0:
+                    SH_hosts.to_csv(path+"/"+fn, header=True, index=False)
+                    i = 1
+                else:
+                    SH_hosts.to_csv(path+"/"+fn, mode='a+', header=False, index=False)
+            else:
+                print("No potential hosts found for this object...")
+            # Save host info
+            if not os.path.exists(path+ '/dictionaries/'):
+            	os.makedirs(path+'/dictionaries/')
+            with open(path+"/dictionaries/" + dict_fn, 'wb') as fp:
+                pickle.dump(SN_Host_SH, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+def southernSearch(ra, dec, rad):
+    searchCoord = SkyCoord(ra*u.deg, dec*u.deg, frame='icrs')
+    #response = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=100.1&DEC=-31.1&SR=0.00833&RESPONSEFORMAT=CSV")
+    responseMain = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=%.2f&DEC=%.2f&SR=%.2f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
+    responsePhot = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.photometry&RA=%.2f&DEC=%.2f&SR=%.2f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
+
+    dfMain = pd.read_csv(BytesIO(responseMain.content))
+    dfPhot = pd.read_csv(BytesIO(responsePhot.content))
+
+    filt_dfs = []
+    for filter in ['g', 'r', 'i', 'z']:
+        tempDF = dfPhot[dfPhot['filter']==filter]
+        if len(tempDF) <1:
+            tempDF.append(pd.Series(), ignore_index=True) #add dummy row for the sake of not crashing
+        for col in tempDF.columns.values:
+            if col != 'object_id':
+                tempDF[filter + col] = tempDF[col]
+                del tempDF[col]
+        filt_dfs.append(tempDF)
+
+    test = filt_dfs[0].merge(filt_dfs[1], on='object_id', how='outer')
+    test2 = test.merge(filt_dfs[2], on='object_id', how='outer')
+    test3 = test2.merge(filt_dfs[3], on='object_id', how='outer')
+    test3['object_id'] =  np.nan_to_num(test3['object_id'])
+    test3['object_id'] = test3['object_id'].astype(np.int64)
+    fullDF = test3.merge(dfMain, on='object_id', how='outer')
+    flag_mapping = {'objID':'object_id', 'raMean':'raj2000',
+        'decMean':'dej2000','gKronRad':'gradius_kron',
+        'rKronRad':'rradius_kron', 'iKronRad':'iradius_kron',
+        'zKronRad':'iradius_kron', 'yKronRad':np.nan,
+        'gPSFMag':'g_psf', 'rPSFMag':'r_psf','iPSFMag':'i_psf',
+        'zPSFMag':'z_psf','yPSFMag':np.nan,'gPSFMagErr':'e_g_psf',
+        'rPSFMagErr':'e_r_psf','iPSFMagErr':'e_i_psf','zPSFMagErr':'e_z_psf',
+        'yPSFMagErr':np.nan,'gKronMag':'g_petro', 'rKronMag':'r_petro',
+        'iKronMag':'i_petro', 'zKronMag':'z_petro', 'yKronMag':np.nan,
+        'gKronMagErr':'e_g_petro', 'rKronMagErr':'e_r_petro',
+        'iKronMagErr':'e_i_petro', 'zKronMagErr':'e_z_petro',
+        'yKronMagErr':np.nan, 'ng':'g_ngood', 'nr':'r_ngood', 'ni':'i_ngood',
+        'nz':'z_ngood', 'ny':np.nan, 'graErr':'e_raj2000', 'rraErr':'e_raj2000', 'iraErr':'e_raj2000',
+        'zraErr':'e_raj2000', 'gdecErr':'e_dej2000', 'rdecErr':'e_dej2000','idecErr':'e_dej2000',
+        'zdecErr':'e_dej2000','l':'glon', 'b':'glat', 'gra':'gra_img', 'rra':'rra_img', 'ira':'ira_img',
+        'zra':'zra_img', 'yra':'raj2000', 'gdec':'gdecl_img', 'rdec':'rdecl_img',
+        'idec':'idecl_img', 'zdec':'zdecl_img', 'ydec':'dej2000', 'gKronFlux':'gflux_kron',
+        'rKronFlux':'rflux_kron', 'iKronFlux':'iflux_kron', 'zKronFlux':'zflux_kron', 'yKronFlux':np.nan,
+        'gKronFluxErr':'ge_flux_kron', 'rKronFluxErr':'re_flux_kron', 'iKronFluxErr':'ie_flux_kron',
+        'zKronFluxErr':'ze_flux_kron', 'yKronFluxErr':np.nan,
+        'gPSFFlux':'gflux_psf',
+        'rPSFFlux':'rflux_psf', 'iKronFlux':'iflux_psf', 'zKronFlux':'zflux_psf', 'yKronFlux':np.nan,
+        'gPSFFluxErr':'ge_flux_psf', 'rKronFluxErr':'re_flux_psf', 'iKronFluxErr':'ie_flux_psf',
+        'zPSFFluxErr':'ze_flux_psf', 'yKronFluxErr':np.nan, 'gpsfChiSq':'gchi2_psf',
+        'rpsfChiSq':'rchi2_psf', 'ipsfChiSq':'ichi2_psf', 'zpsfChiSq':'zchi2_psf',
+        'ypsfChiSq':np.nan, 'nDetections':'ngood', 'SkyMapper_StarClass':'rclass_star',
+        'distance':'prox', 'objName':'object_id',
+        'g_elong':'gelong', 'g_a':'ga', 'g_b':'gb', 'g_pa':'gpa',
+        'r_elong':'relong', 'r_a':'ra', 'r_b':'rb', 'r_pa':'rpa',
+        'i_elong':'ielong', 'i_a':'ia', 'i_b':'ib', 'i_pa':'ipa',
+        'z_elong':'zelong', 'z_a':'za', 'z_b':'zb', 'z_pa':'zpa'} #'class_star' should be added
+
+    df_cols = np.array(list(flag_mapping.values()))
+    mapped_cols = np.array(list(flag_mapping.keys()))
+
+    PS1_cols = np.array(['objName', 'objAltName1', 'objAltName2', 'objAltName3', 'objID',
+           'uniquePspsOBid', 'ippObjID', 'surveyID', 'htmID', 'zoneID',
+           'tessID', 'projectionID', 'skyCellID', 'randomID', 'batchID',
+           'dvoRegionID', 'processingVersion', 'objInfoFlag', 'qualityFlag',
+           'raStack', 'decStack', 'raStackErr', 'decStackErr', 'raMean',
+           'decMean', 'raMeanErr', 'decMeanErr', 'epochMean', 'posMeanChisq',
+           'cx', 'cy', 'cz', 'lambda', 'beta', 'l', 'b', 'nStackObjectRows',
+           'nStackDetections', 'nDetections', 'ng', 'nr', 'ni', 'nz', 'ny',
+           'uniquePspsSTid', 'primaryDetection', 'bestDetection',
+           'gippDetectID', 'gstackDetectID', 'gstackImageID', 'gra', 'gdec',
+           'graErr', 'gdecErr', 'gEpoch', 'gPSFMag', 'gPSFMagErr', 'gApMag',
+           'gApMagErr', 'gKronMag', 'gKronMagErr', 'ginfoFlag', 'ginfoFlag2',
+           'ginfoFlag3', 'gnFrames', 'gxPos', 'gyPos', 'gxPosErr', 'gyPosErr',
+           'gpsfMajorFWHM', 'gpsfMinorFWHM', 'gpsfTheta', 'gpsfCore',
+           'gpsfLikelihood', 'gpsfQf', 'gpsfQfPerfect', 'gpsfChiSq',
+           'gmomentXX', 'gmomentXY', 'gmomentYY', 'gmomentR1', 'gmomentRH',
+           'gPSFFlux', 'gPSFFluxErr', 'gApFlux', 'gApFluxErr', 'gApFillFac',
+           'gApRadius', 'gKronFlux', 'gKronFluxErr', 'gKronRad', 'gexpTime',
+           'gExtNSigma', 'gsky', 'gskyErr', 'gzp', 'gPlateScale',
+           'rippDetectID', 'rstackDetectID', 'rstackImageID', 'rra', 'rdec',
+           'rraErr', 'rdecErr', 'rEpoch', 'rPSFMag', 'rPSFMagErr', 'rApMag',
+           'rApMagErr', 'rKronMag', 'rKronMagErr', 'rinfoFlag', 'rinfoFlag2',
+           'rinfoFlag3', 'rnFrames', 'rxPos', 'ryPos', 'rxPosErr', 'ryPosErr',
+           'rpsfMajorFWHM', 'rpsfMinorFWHM', 'rpsfTheta', 'rpsfCore',
+           'rpsfLikelihood', 'rpsfQf', 'rpsfQfPerfect', 'rpsfChiSq',
+           'rmomentXX', 'rmomentXY', 'rmomentYY', 'rmomentR1', 'rmomentRH',
+           'rPSFFlux', 'rPSFFluxErr', 'rApFlux', 'rApFluxErr', 'rApFillFac',
+           'rApRadius', 'rKronFlux', 'rKronFluxErr', 'rKronRad', 'rexpTime',
+           'rExtNSigma', 'rsky', 'rskyErr', 'rzp', 'rPlateScale',
+           'iippDetectID', 'istackDetectID', 'istackImageID', 'ira', 'idec',
+           'iraErr', 'idecErr', 'iEpoch', 'iPSFMag', 'iPSFMagErr', 'iApMag',
+           'iApMagErr', 'iKronMag', 'iKronMagErr', 'iinfoFlag', 'iinfoFlag2',
+           'iinfoFlag3', 'inFrames', 'ixPos', 'iyPos', 'ixPosErr', 'iyPosErr',
+           'ipsfMajorFWHM', 'ipsfMinorFWHM', 'ipsfTheta', 'ipsfCore',
+           'ipsfLikelihood', 'ipsfQf', 'ipsfQfPerfect', 'ipsfChiSq',
+           'imomentXX', 'imomentXY', 'imomentYY', 'imomentR1', 'imomentRH',
+           'iPSFFlux', 'iPSFFluxErr', 'iApFlux', 'iApFluxErr', 'iApFillFac',
+           'iApRadius', 'iKronFlux', 'iKronFluxErr', 'iKronRad', 'iexpTime',
+           'iExtNSigma', 'isky', 'iskyErr', 'izp', 'iPlateScale',
+           'zippDetectID', 'zstackDetectID', 'zstackImageID', 'zra', 'zdec',
+           'zraErr', 'zdecErr', 'zEpoch', 'zPSFMag', 'zPSFMagErr', 'zApMag',
+           'zApMagErr', 'zKronMag', 'zKronMagErr', 'zinfoFlag', 'zinfoFlag2',
+           'zinfoFlag3', 'znFrames', 'zxPos', 'zyPos', 'zxPosErr', 'zyPosErr',
+           'zpsfMajorFWHM', 'zpsfMinorFWHM', 'zpsfTheta', 'zpsfCore',
+           'zpsfLikelihood', 'zpsfQf', 'zpsfQfPerfect', 'zpsfChiSq',
+           'zmomentXX', 'zmomentXY', 'zmomentYY', 'zmomentR1', 'zmomentRH',
+           'zPSFFlux', 'zPSFFluxErr', 'zApFlux', 'zApFluxErr', 'zApFillFac',
+           'zApRadius', 'zKronFlux', 'zKronFluxErr', 'zKronRad', 'zexpTime',
+           'zExtNSigma', 'zsky', 'zskyErr', 'zzp', 'zPlateScale',
+           'yippDetectID', 'ystackDetectID', 'ystackImageID', 'yra', 'ydec',
+           'yraErr', 'ydecErr', 'yEpoch', 'yPSFMag', 'yPSFMagErr', 'yApMag',
+           'yApMagErr', 'yKronMag', 'yKronMagErr', 'yinfoFlag', 'yinfoFlag2',
+           'yinfoFlag3', 'ynFrames', 'yxPos', 'yyPos', 'yxPosErr', 'yyPosErr',
+           'ypsfMajorFWHM', 'ypsfMinorFWHM', 'ypsfTheta', 'ypsfCore',
+           'ypsfLikelihood', 'ypsfQf', 'ypsfQfPerfect', 'ypsfChiSq',
+           'ymomentXX', 'ymomentXY', 'ymomentYY', 'ymomentR1', 'ymomentRH',
+           'yPSFFlux', 'yPSFFluxErr', 'yApFlux', 'yApFluxErr', 'yApFillFac',
+           'yApRadius', 'yKronFlux', 'yKronFluxErr', 'yKronRad', 'yexpTime',
+           'yExtNSigma', 'ysky', 'yskyErr', 'yzp', 'yPlateScale', 'distance', 'SkyMapper_StarClass',
+           'g_elong','g_a','g_b','g_pa',
+           'r_elong','r_a','r_b','r_pa',
+           'i_elong','i_a','i_b','i_pa',
+           'z_elong','z_a','z_b','z_pa'])
+
+    for i in np.arange(len(df_cols)):
+        if df_cols[i] == 'nan':
+            fullDF[mapped_cols[i]] = np.nan
+        else:
+            fullDF[mapped_cols[i]] = fullDF[df_cols[i]]
+
+    for j in np.arange(len(np.unique(df_cols))):
+        if np.unique(df_cols)[j] != 'nan':
+            del fullDF[np.unique(df_cols)[j]]
+
+    fullDF['gPlateScale'] = 0.50 #''/px
+    fullDF['rPlateScale'] = 0.50 #''/px
+    fullDF['iPlateScale'] = 0.50 #''/px
+    fullDF['zPlateScale'] = 0.50 #''/px #plate scale of skymapper
+    fullDF['yPlateScale'] = 0.50
+    fullDF['primaryDetection'] = 1
+    fullDF['bestDetection'] = 1
+
+    colSet = np.concatenate([list(flag_mapping.keys()), ['gPlateScale', 'rPlateScale',
+        'iPlateScale', 'zPlateScale', 'yPlateScale', 'primaryDetection', 'bestDetection']])
+
+    fullDF = fullDF[colSet]
+
+    leftover = set(PS1_cols) - set(fullDF.columns.values)
+    for col in leftover:
+        fullDF[col] = np.nan
+    fullDF = fullDF[PS1_cols] #arrange correctly
+    fullDF.drop_duplicates(subset=['objID'], inplace=True)
+    return fullDF
