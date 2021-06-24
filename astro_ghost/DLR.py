@@ -43,6 +43,7 @@ def choose_band_SNR(host_df):
         #if we have issues getting the band with the highest SNR, just use 'r'-band
         i = 1
     return bands[i]
+
 #Plot the DLR on each of these, as vectors in direction of SNe (SNe as star)
 def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     # EVERYTHING IS IN ARCSECONDS
@@ -73,6 +74,7 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     Q = np.float(source[XX]) - np.float(source[YY])
     if Q == 0:
         return dist, badR
+
     phi = 0.5*np.arctan(U/Q)
     kappa = Q**2 + U**2
     a_over_b = (1 + kappa + 2*np.sqrt(kappa))/(1 - kappa)
@@ -81,6 +83,40 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     theta = phi - gam
 
     DLR = r_a/np.sqrt(((a_over_b)*np.sin(theta))**2 + (np.cos(theta))**2)
+
+    R = float(dist/DLR)
+
+    if (R != R):
+        return dist, badR
+
+    return dist, R
+
+
+#calculate the DLR method but for Skymapper sources, that don't have xx and yy moments
+def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_band):
+    # EVERYTHING IS IN ARCSECONDS
+
+    ## taken from "Understanding Type Ia Supernovae Through Their Host Galaxies..." by Gupta
+    #https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1916&context=edissertations
+    xr = np.abs(ra_SN.deg - float(ra_host))*3600
+    yr = np.abs(dec_SN.deg - float(dec_host))*3600
+
+    SNcoord = SkyCoord(ra_SN, dec_SN, frame='icrs')
+    hostCoord = SkyCoord(ra_host*u.deg, dec_host*u.deg, frame='icrs')
+    sep = SNcoord.separation(hostCoord)
+    dist = sep.arcsecond
+    badR = 10000000000.0 # if we don't have spatial information, get rid of it #this
+    # is good in that it gets rid of lots of artifacts without radius information
+    #dist = float(np.sqrt(xr**2 + yr**2))
+
+    if (np.float(r_a) != np.float(r_a) | (np.float(elong) != np.float(elong)):
+        return dist, badR
+
+    gam = np.arctan(yr/xr)
+    theta = phi - gam
+
+    #elong == a/b, which allows us to substitute here
+    DLR = r_a/np.sqrt(((elong)*np.sin(theta))**2 + (np.cos(theta))**2)
 
     R = float(dist/DLR)
 
@@ -280,7 +316,11 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                                 dec_SN = dec_SN[0]
                             #print(tempHost)
                             #print(name)
-                            dist, R = calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
+                            dec_SN < -30:
+                                #ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_band
+                                dist, R = calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
+                            else:
+                                dist, R = calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
                             R_dict[tempHost] = R
                             ra_dict[tempHost] = r_a
                             dist_dict[tempHost] = dist

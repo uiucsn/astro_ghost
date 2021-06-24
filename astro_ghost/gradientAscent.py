@@ -1,5 +1,5 @@
 import os
-from astro_ghost.PS1QueryFunctions import find_all, get_PS1_Pic, get_PS1_type, get_PS1_mask, query_ps1_noname
+from astro_ghost.PS1QueryFunctions import *
 from astro_ghost.NEDQueryFunctions import getNEDInfo
 from datetime import datetime
 from astropy import units as u
@@ -80,8 +80,6 @@ def plot_DLR_vectors_GD(size, path, transient, transient_df, host_dict_candidate
     tempDEC = Angle(row.DEC, unit=u.degree)
     transientRA = tempRA.degree[0]
     transientDEC = tempDEC.degree[0]
-    print(transientRA)
-    print(transientDEC)
     searchRA = transientRA
     searchDEC = transientDEC
 
@@ -257,54 +255,87 @@ def denoise(img, weight=0.1, eps=1e-3, num_iter_max=200):
 
 def get_clean_img(ra, dec, px, band):
     #first, mask the data
-    a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.25), band), '.')
-    if not a:
-        get_PS1_Pic(0, ra, dec, px, band)
+    if dec > -30:
         a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.25), band), '.')
-    b = find_all("PS1_ra={}_dec={}_{}arcsec_{}_mask.fits".format(ra, dec, int(px*0.25), band), '.')
-    if not b:
-        get_PS1_mask(ra, dec, px, band)
+        if not a:
+            get_PS1_Pic(0, ra, dec, px, band)
+            a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.25), band), '.')
         b = find_all("PS1_ra={}_dec={}_{}arcsec_{}_mask.fits".format(ra, dec, int(px*0.25), band), '.')
-    c = find_all("PS1_ra={}_dec={}_{}arcsec_{}_stack.num.fits".format(ra, dec, int(px*0.25), band), '.')
-    if not c:
-        get_PS1_type(ra, dec, px, band, 'stack.num')
+        if not b:
+            get_PS1_mask(ra, dec, px, band)
+            b = find_all("PS1_ra={}_dec={}_{}arcsec_{}_mask.fits".format(ra, dec, int(px*0.25), band), '.')
         c = find_all("PS1_ra={}_dec={}_{}arcsec_{}_stack.num.fits".format(ra, dec, int(px*0.25), band), '.')
-    #d = find_all("PS1_ra={}_dec={}_{}arcsec_{}_wt.fits".format(ra, dec, int(px*0.25), band), '.')
-    #if not d:
-    #    get_PS1_wt(ra, dec, px, band)
-    #    d = find_all("PS1_ra={}_dec={}_{}arcsec_{}_wt.fits".format(ra, dec, int(px*0.25), band), '.')
-    image_data_mask = fits.open(b[0])[0].data
-    image_data_num = fits.open(c[0])[0].data
-    #image_data_wt = fits.open(d[0])[0].data
-    image_data = fits.open(a[0])[0].data
+        if not c:
+            get_PS1_type(ra, dec, px, band, 'stack.num')
+            c = find_all("PS1_ra={}_dec={}_{}arcsec_{}_stack.num.fits".format(ra, dec, int(px*0.25), band), '.')
+        #d = find_all("PS1_ra={}_dec={}_{}arcsec_{}_wt.fits".format(ra, dec, int(px*0.25), band), '.')
+        #if not d:
+        #    get_PS1_wt(ra, dec, px, band)
+        #    d = find_all("PS1_ra={}_dec={}_{}arcsec_{}_wt.fits".format(ra, dec, int(px*0.25), band), '.')
+        image_data_mask = fits.open(b[0])[0].data
+        image_data_num = fits.open(c[0])[0].data
+        #image_data_wt = fits.open(d[0])[0].data
+        image_data = fits.open(a[0])[0].data
 
-    hdu = fits.open(a[0])[0]
-    wcs = WCS(hdu.header)
+        hdu = fits.open(a[0])[0]
+        wcs = WCS(hdu.header)
 
-    bit = image_data_mask
-    mask = image_data_mask
-    for i in np.arange(np.shape(bit)[0]):
-        for j in np.arange(np.shape(bit)[1]):
-            if image_data_mask[i][j] == image_data_mask[i][j]:
-                bit[i][j] = "{0:016b}".format(int(image_data_mask[i][j]))
-                tempBit = str(bit[i][j])[:-2]
-                if len(str(int(bit[i][j]))) > 12:
-                    if (tempBit[-6] == 1) or (tempBit[-13] == 1):
-                        mask[i][j] = np.nan
-                elif len(str(int(bit[i][j]))) > 5:
-                    if (tempBit[-6] == 1):
-                        mask[i][j] = np.nan
+        bit = image_data_mask
+        mask = image_data_mask
+        for i in np.arange(np.shape(bit)[0]):
+            for j in np.arange(np.shape(bit)[1]):
+                if image_data_mask[i][j] == image_data_mask[i][j]:
+                    bit[i][j] = "{0:016b}".format(int(image_data_mask[i][j]))
+                    tempBit = str(bit[i][j])[:-2]
+                    if len(str(int(bit[i][j]))) > 12:
+                        if (tempBit[-6] == 1) or (tempBit[-13] == 1):
+                            mask[i][j] = np.nan
+                    elif len(str(int(bit[i][j]))) > 5:
+                        if (tempBit[-6] == 1):
+                            mask[i][j] = np.nan
 
-    mask = ~np.isnan(image_data_mask)
-    mask_num = image_data_num
-    #weighted
-    #image_data *= image_data_wt
-    image_masked = ma.masked_array(image_data, mask=mask)
-    image_masked_num = ma.masked_array(image_masked, mask=mask_num)
+        mask = ~np.isnan(image_data_mask)
+        mask_num = image_data_num
+        #weighted
+        #image_data *= image_data_wt
+        image_masked = ma.masked_array(image_data, mask=mask)
+        image_masked_num = ma.masked_array(image_masked, mask=mask_num)
 
+    else:
+        a = find_all("SkyMapper_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.5), band), '.')
+        if not a:
+            get_SkyMapper_Pic(0, ra, dec, px, band)
+            a = find_all("SkyMapper_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.5), band), '.')
+        b = find_all("SkyMapper_ra={}_dec={}_{}arcsec_{}_mask.fits".format(ra, dec, int(px*0.5), band), '.')
+        if not b:
+            get_SkyMapper_mask(ra, dec, px, band)
+            b = find_all("SkyMapper_ra={}_dec={}_{}arcsec_{}_mask.fits".format(ra, dec, int(px*0.5), band), '.')
+        image_data_mask = fits.open(b[0])[0].data
+        image_data = fits.open(a[0])[0].data
+
+        hdu = fits.open(a[0])[0]
+        wcs = WCS(hdu.header)
+
+        bit = image_data_mask
+        mask = image_data_mask
+        for i in np.arange(np.shape(bit)[0]):
+            for j in np.arange(np.shape(bit)[1]):
+                if image_data_mask[i][j] == image_data_mask[i][j]:
+                    bit[i][j] = "{0:016b}".format(int(image_data_mask[i][j]))
+                    tempBit = str(bit[i][j])[:-2]
+                    if len(str(int(bit[i][j]))) > 12:
+                        if (tempBit[-6] == 1) or (tempBit[-13] == 1):
+                            mask[i][j] = np.nan
+                    elif len(str(int(bit[i][j]))) > 5:
+                        if (tempBit[-6] == 1):
+                            mask[i][j] = np.nan
+        mask = ~np.isnan(image_data_mask)
+        #weighted
+        #image_data *= image_data_wt
+        image_masked = ma.masked_array(image_data, mask=mask)
     #edited to PASS BACK THE MASKED ARRAY!!
     #then return the data
-    return np.array(image_masked_num), wcs, hdu
+    return np.array(image_masked), wcs, hdu
 
 def getSteps(SN_dict, SN_names, hostDF):
     steps = []
