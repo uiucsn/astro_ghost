@@ -79,13 +79,18 @@ def get_hosts(path, transient_fn, fn_Host, rad):
 
     tempDEC = Angle(transient_df['DEC'], unit=u.deg)
     tempDEC = tempDEC.deg
-    df_North = transient_df[(tempDEC > -30)]
-    df_South = transient_df[(tempDEC <= -30)]
+
+    df_North = transient_df[(tempDEC > -30)].reset_index()
+    df_South = transient_df[(tempDEC <= -30)].reset_index()
+    #print("Number of southern sources = %i.\n" % len(df_South))
     append=0
     if len(df_South) > 0:
+        print("Finding southern sources with SkyMapper...")
         find_host_info_SH(df_South, fn_Host, dict_fn, path, rad)
         append=1
+    #print("Number of northern sources = %i.\n" % len(df_North))
     if len(df_North) > 0:
+        print("Finding northern sources with Pan-starrs...")
         find_host_info_PS1(df_North, fn_Host, dict_fn, path, rad, append=append)
     host_df = pd.read_csv(path+"/"+fn_Host)
     host_df = host_df.drop_duplicates()
@@ -485,7 +490,7 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
                 for col in newCols:
                     PS1_hosts[col] = np.nan #match up rows to skymapper cols to join in one dataframe
                 PS1_queries = []
-                if ~append:
+                if not append:
                     PS1_hosts.to_csv(path+fn, header=True, index=False)
                     i = 1
                 else:
@@ -546,8 +551,8 @@ def find_host_info_SH(df, fn, dict_fn, path, rad):
 def southernSearch(ra, dec, rad):
     searchCoord = SkyCoord(ra*u.deg, dec*u.deg, frame='icrs')
     #response = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=100.1&DEC=-31.1&SR=0.00833&RESPONSEFORMAT=CSV")
-    responseMain = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=%.2f&DEC=%.2f&SR=%.2f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
-    responsePhot = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.photometry&RA=%.2f&DEC=%.2f&SR=%.2f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
+    responseMain = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
+    responsePhot = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.photometry&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
 
     dfMain = pd.read_csv(BytesIO(responseMain.content))
     dfPhot = pd.read_csv(BytesIO(responsePhot.content))
@@ -581,7 +586,7 @@ def southernSearch(ra, dec, rad):
         'gKronMagErr':'e_g_petro', 'rKronMagErr':'e_r_petro',
         'iKronMagErr':'e_i_petro', 'zKronMagErr':'e_z_petro',
         'yKronMagErr':np.nan, 'ng':'g_ngood', 'nr':'r_ngood', 'ni':'i_ngood',
-        'nz':'z_ngood', 'ny':np.nan, 'graErr':'e_raj2000', 'rraErr':'e_raj2000', 'iraErr':'e_raj2000',
+        'nz':'z_ngood', 'graErr':'e_raj2000', 'rraErr':'e_raj2000', 'iraErr':'e_raj2000',
         'zraErr':'e_raj2000', 'gdecErr':'e_dej2000', 'rdecErr':'e_dej2000','idecErr':'e_dej2000',
         'zdecErr':'e_dej2000','l':'glon', 'b':'glat', 'gra':'gra_img', 'rra':'rra_img', 'ira':'ira_img',
         'zra':'zra_img', 'yra':'raj2000', 'gdec':'gdecl_img', 'rdec':'rdecl_img',
@@ -595,7 +600,7 @@ def southernSearch(ra, dec, rad):
         'zPSFFluxErr':'ze_flux_psf', 'yKronFluxErr':np.nan, 'gpsfChiSq':'gchi2_psf',
         'rpsfChiSq':'rchi2_psf', 'ipsfChiSq':'ichi2_psf', 'zpsfChiSq':'zchi2_psf',
         'ypsfChiSq':np.nan, 'nDetections':'ngood', 'SkyMapper_StarClass':'rclass_star',
-        'distance':'prox', 'objName':'object_id',
+        'distance':'r_cntr', 'objName':'object_id',
         'g_elong':'gelong', 'g_a':'ga', 'g_b':'gb', 'g_pa':'gpa',
         'r_elong':'relong', 'r_a':'ra', 'r_b':'rb', 'r_pa':'rpa',
         'i_elong':'ielong', 'i_a':'ia', 'i_b':'ib', 'i_pa':'ipa',
@@ -685,9 +690,11 @@ def southernSearch(ra, dec, rad):
     fullDF['yPlateScale'] = 0.50
     fullDF['primaryDetection'] = 1
     fullDF['bestDetection'] = 1
+    fullDF['qualityFlag'] = 0 #dummy variable set so that no sources get cut by qualityFlag in PS1 (which isn't in SkyMapper)
+    fullDF['ny'] = 1 #dummy variable
 
     colSet = np.concatenate([list(flag_mapping.keys()), ['gPlateScale', 'rPlateScale',
-        'iPlateScale', 'zPlateScale', 'yPlateScale', 'primaryDetection', 'bestDetection']])
+        'iPlateScale', 'zPlateScale', 'yPlateScale', 'primaryDetection', 'bestDetection', 'qualityFlag', 'ny']])
 
     fullDF = fullDF[colSet]
 

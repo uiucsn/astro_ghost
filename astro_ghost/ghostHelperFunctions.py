@@ -16,7 +16,7 @@ from astro_ghost.PS1QueryFunctions import getcolorim, get_hosts
 from astro_ghost.hostMatching import build_ML_df
 from astro_ghost.NEDQueryFunctions import getNEDInfo
 from astro_ghost.gradientAscent import gradientAscent
-from astro_ghost.starSeparation import separateStars_STRM
+from astro_ghost.starSeparation import separateStars_STRM, separateStars_South
 from astro_ghost.sourceCleaning import clean_dict, removePS1Duplicates, getColors, makeCuts
 from astro_ghost.stellarLocus import calc_7DCD
 from astro_ghost.DLR import chooseByDLR
@@ -559,13 +559,21 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
         print("ERROR: Found no hosts in cone search during manual association!")
         return None
 
+    #turn off all cuts now for debugging
     cuts = ["n", "quality", "coords", "duplicate"]
+    #cuts = []
 
     transient_dict = pickle.load(open(path+'/dictionaries/'+fn_Dict, "rb"))
     transient_dict = {k.replace(' ', ''): v for k, v in transient_dict.items()}
     # check how many supernovae we have potential hosts for - should be nearly all of em
 
-    host_DF = makeCuts(host_DF, cuts, transient_dict)
+    host_DF_north = host_DF[host_DF['decMean']>-30].reset_index()
+    host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index()
+
+    host_DF_north = makeCuts(host_DF_north, cuts, transient_dict)
+
+    host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
+
     cut_dict = clean_dict(transient_dict, host_DF, [])
     hostFrac = fracWithHosts(cut_dict)*100
     if verbose:
@@ -575,13 +583,16 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     lost = np.array([k for k, v in cut_dict.items() if len(v) <1])
     #lost = set(snName_arr) - set(cut_dict.keys())
 
-    host_DF = getColors(host_DF)
-    host_DF = removePS1Duplicates(host_DF)
+    host_DF_north = getColors(host_DF_north)
+    host_DF_north = removePS1Duplicates(host_DF_north)
+    host_DF_north = calc_7DCD(host_DF_north)
 
+    host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
     host_DF = getNEDInfo(host_DF)
-    host_DF = calc_7DCD(host_DF)
+
     host_DF_north = host_DF[host_DF['decMean']>-30].reset_index()
     host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index()
+
     host_gals_DF_north, stars_DF_north = separateStars_STRM(host_DF_north, plot=0, verbose=verbose, starcut=starcut)
     host_gals_DF_south, stars_DF_south = separateStars_South(host_DF_south, plot=0, verbose=verbose, starcut=starcut)
     host_gals_DF = pd.concat([host_gals_DF_north, host_gals_DF_south],ignore_index=True)
@@ -601,7 +612,8 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     fn = "DLR.txt"
     transients = pd.read_csv(path+fn_SN)
 #    clean_dict(host_dict_nospace, host_gals_DF, [])
-#    fracWithHosts(host_dict_nospace)
+#    fracWithHosts(host_dict_nospace) 
+#    print(len(host_gals_DF[host_gals_DF['decMean'] < -30]))
 
     with open(path+"/dictionaries/checkpoint_preDLR.p", 'wb') as fp:
            pickle.dump(host_dict_nospace, fp, protocol=pickle.HIGHEST_PROTOCOL)

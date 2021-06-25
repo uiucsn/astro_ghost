@@ -209,7 +209,7 @@ def separateStars_RF(df, model_path='.', plot=0, verbose=0):
     #df_gals.to_csv('TNS_PS1_gals_109_NEDCuts.tar.gz')
     return df_gals, df_stars#
 
-def separateStars_South(df, plot=0, verbose=0, starcut='gentle':
+def separateStars_South(df, plot=0, verbose=0, starcut='gentle'):
     df_dropped = df[df['SkyMapper_StarClass']>0]
     only_na = df[~df.index.isin(df_dropped.index)]
     if starcut is 'normal':
@@ -220,12 +220,11 @@ def separateStars_South(df, plot=0, verbose=0, starcut='gentle':
         df_stars = df_dropped[df_dropped['SkyMapper_StarClass']>=0.8]
     df_class_gals = df_dropped[~df_dropped.index.isin(df_stars.index)]
     df_stars.reset_index(inplace=True, drop=True)
-    df_gals.reset_index(inplace=True, drop=True)
-    df_gals = pd.concat([df_gals, only_na], ignore_index=True).drop_duplicates()
+    df_class_gals.reset_index(inplace=True, drop=True)
+    df_gals = pd.concat([df_class_gals, only_na], ignore_index=True).drop_duplicates()
     #df_stars.to_csv('OSC_061019_PS1_stars_109_NEDCuts.tar.gz')
     #df_gals.to_csv('TNS_PS1_gals_109_NEDCuts.tar.gz')
-    return df_gals, df_stars#
-
+    return df_gals, df_stars
 
 def separateStars(df, plot=0):
     df_dropped = df.dropna(subset=['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag'])
