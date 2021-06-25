@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 def find_nearest(array, value):
     array = np.asarray(array)
-    idx = (np.abs(array - value)).argmin()
+    idx = (np.abs(array - value)).nanargmin()
     return idx, array[idx]
 
 #Taken from https://www.eso.org/~ohainaut/ccd/sn.html
@@ -38,7 +38,7 @@ def choose_band_SNR(host_df):
         ySNR = float(1/host_df["yPSFMagErr"])
 
         SNR = np.array([gSNR, rSNR, iSNR, zSNR, ySNR])
-        i = np.argmax(SNR)
+        i = np.nanargmax(SNR)
     except:
         #if we have issues getting the band with the highest SNR, just use 'r'-band
         i = 1
@@ -109,7 +109,8 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
     # is good in that it gets rid of lots of artifacts without radius information
     #dist = float(np.sqrt(xr**2 + yr**2))
 
-    if (np.float(r_a) != np.float(r_a) | (np.float(elong) != np.float(elong)):
+    if (np.float(r_a) != np.float(r_a)) | (np.float(elong) != np.float(elong)):
+        #print("Bad DLR for SH source.")
         return dist, badR
 
     gam = np.arctan(yr/xr)
@@ -275,6 +276,7 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
     GDflag = 0
     GD_SN = []
     for name, host in orig_dict.items():
+        #print(name)
         if (type(host) is not np.int64 and type(host) is not float):
              if (len(host.shape) > 0) and (host.shape[0] > 0):
                 R_dict = {}
@@ -316,9 +318,16 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                                 dec_SN = dec_SN[0]
                             #print(tempHost)
                             #print(name)
-                            dec_SN < -30:
+                            if (dec_SN.deg < -30):
+                                elong = host_df[band + "_elong"]
+                                phi = np.radians(host_df[band + "_pa"])
+                                #print("elong")
+                                #print(elong)
+                                #print("phi")
+                                #print(phi)
                                 #ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_band
-                                dist, R = calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
+                                dist, R = calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, host_df, band)
+                                #print("dist = %.2f, R = %.2f" %( dist, R))
                             else:
                                 dist, R = calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
                             R_dict[tempHost] = R
