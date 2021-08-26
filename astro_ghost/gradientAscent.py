@@ -387,7 +387,7 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
 
             ra = transientDF.loc[transientDF['Name'] == transient_name, 'RA'].values[0]
             dec = transientDF.loc[transientDF['Name'] == transient_name, 'DEC'].values[0]
-            px = 800
+            px = 64 #switching from 800 to 64 to speed up computation time a ton (this will fail for local bright hosts)
             g_img, wcs, g_hdu  = get_clean_img(ra, dec, px, 'g')
             g_mask = np.ma.masked_invalid(g_img).mask
             r_img, wcs, r_hdu  = get_clean_img(ra, dec, px, 'r')

@@ -35,7 +35,17 @@ from sklearn import preprocessing
 from imblearn.pipeline import Pipeline
 from rfpimp import *
 
+def downloadClassifier(fname='./BinarySNClassifier.sav'):
+    url = 'http://ghost.ncsa.illinois.edu/static/BinarySNClassifier.sav'
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(fname, 'wb') as f:
+            f.write(response.raw.read())
+    print("Binary classification model downloaded.")
+    return
+
 def classify(dataML, verbose=True):
+	downloadClassifier()
     feature_list, dataML_preprocessed, labels_df2, names = preprocess_dataframe(dataML)
     dataML_matrix_scaled = preprocessing.scale(dataML_preprocessed)
     rf = loadClassifier()
