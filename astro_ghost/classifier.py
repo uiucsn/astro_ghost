@@ -45,7 +45,7 @@ def downloadClassifier(fname='./BinarySNClassifier.sav'):
     return
 
 def classify(dataML, verbose=True):
-	downloadClassifier()
+    downloadClassifier()
     feature_list, dataML_preprocessed, labels_df2, names = preprocess_dataframe(dataML)
     dataML_matrix_scaled = preprocessing.scale(dataML_preprocessed)
     rf = loadClassifier()
