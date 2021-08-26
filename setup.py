@@ -5,6 +5,7 @@ import os
 
 from setuptools import setup
 
+vs = "0.1.8"
 
 VERSION_TEMPLATE = """
 # Note that we need to fall back to the hard-coded version if either
@@ -22,7 +23,7 @@ VERSION_TEMPLATE = """
 #                     'write_to_template': VERSION_TEMPLATE},
 #
 #)
-#__version__ = '0.1.4'
+__version__ = vs
 import setuptools
 
 with open("README.rst", "r") as fh:
@@ -30,7 +31,7 @@ with open("README.rst", "r") as fh:
 
 setuptools.setup(
     name="astro_ghost",
-    version="0.1.4",
+    version=vs,
     author="Alex Gagliano",
     author_email="gaglian2@illinois.edu",
     description="A package to associate transients with host galaxies, and a database of 16k SNe-host galaxies in PS1.",
