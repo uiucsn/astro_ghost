@@ -418,14 +418,7 @@ def preprocess_dataframe(dataML, nclass=2):
     #dataML.drop(['TransientDiscoveryDate',  'TransientDiscoveryMag', 'TransientDiscoveryYear'], axis=1, inplace=True)
     dataML = dataML.drop(['objID'],axis=1)
 
-    #dataML
-
     dataML = condense_labels(dataML, nclass=nclass)
-    names = dataML['TransientName']
-    dataML = dataML.drop(['TransientName'], axis=1)
-    labels_df = dataML['TransientClass']# Remove the labels from the features
-    labels = np.array(labels_df)
-    classes = np.unique(labels)
 
     #order in the same way the classifier training data was labeled
     dataML = dataML[['gPSFMag', 'gPSFMagErr', 'gApMag', 'gApMagErr', 'gKronMag',
@@ -454,9 +447,15 @@ def preprocess_dataframe(dataML, nclass=2):
        'yExtNSigma', 'i-z', 'g-r', 'r-i', 'g-i', 'z-y', 'g-rErr',
        'r-iErr', 'i-zErr', 'z-yErr', 'gApMag_gKronMag', 'rApMag_rKronMag',
        'iApMag_iKronMag', 'zApMag_zKronMag', 'yApMag_yKronMag', '7DCD',
-       'dist/DLR', 'dist', 'gSNR', 'rSNR', 'iSNR', 'zSNR', 'ySNR', 'TransientClass']]
+       'dist/DLR', 'dist', 'gSNR', 'rSNR', 'iSNR', 'zSNR', 'ySNR', 'TransientClass', 'TransientName]]
 
     dataML.dropna(axis=0, inplace=True)
+
+    names = dataML['TransientName']
+    dataML = dataML.drop(['TransientName'], axis=1)
+    labels_df = dataML['TransientClass']# Remove the labels from the features
+    labels = np.array(labels_df)
+    classes = np.unique(labels)
 
     feature_list = list(dataML.columns) # Convert to numpy array
 
