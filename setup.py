@@ -5,25 +5,22 @@ import os
 
 from setuptools import setup
 
-vs = "0.1.8"
+version = "0.1.15"
 
 VERSION_TEMPLATE = """
-# Note that we need to fall back to the hard-coded version if either
-# setuptools_scm can't be imported or setuptools_scm can't determine the
-# version, so we catch the generic 'Exception'.
-#try:
-#    from setuptools_scm import get_version
-#    __version__ = get_version(root='..', relative_to=__file__)
-#except Exception:
-#    __version__ = '{version}'
-#""".lstrip()
-#
+ Note that we need to fall back to the hard-coded version if either
+ setuptools_scm can't be imported or setuptools_scm can't determine the
+ version, so we catch the generic 'Exception'.
+__version__ = '{version}'
+""".lstrip()
+
 #setup(
 #    use_scm_version={'write_to': os.path.join('astro_ghost', 'version.py'),
 #                     'write_to_template': VERSION_TEMPLATE},
-#
+
 #)
-__version__ = vs
+#__version__ = vs
+
 import setuptools
 
 with open("README.rst", "r") as fh:
@@ -31,7 +28,7 @@ with open("README.rst", "r") as fh:
 
 setuptools.setup(
     name="astro_ghost",
-    version=vs,
+    version=version,
     author="Alex Gagliano",
     author_email="gaglian2@illinois.edu",
     description="A package to associate transients with host galaxies, and a database of 16k SNe-host galaxies in PS1.",
@@ -49,4 +46,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
+#    use_scm_version={'write_to': os.path.join('astro_ghost', 'version.py'),
+#                     'write_to_template': VERSION_TEMPLATE},
 )
