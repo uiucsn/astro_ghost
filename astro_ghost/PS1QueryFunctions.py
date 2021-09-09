@@ -493,6 +493,7 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
                 if not append:
                     PS1_hosts.to_csv(path+fn, header=True, index=False)
                     i = 1
+					append = True
                 else:
                     PS1_hosts.to_csv(path+"/"+fn, mode='a+', header=False, index=False)
             else:
