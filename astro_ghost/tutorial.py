@@ -32,7 +32,7 @@ snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
 hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True)
 
 # classify transients
-predictions = classify(hosts)
+hosts_wPredictions = classify(hosts)
 
 #create directories to store the host spectra, the transient spectra, and the postage stamps
 hSpecPath = "./hostSpectra/"

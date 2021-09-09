@@ -11,8 +11,8 @@ import requests
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astropy.coordinates import Angle
-#from astro_ghost import PS1QueryFunctions as ps1
 from astropy.utils.data import get_pkg_data_filename
+import astro_ghost
 import pkg_resources
 from matplotlib import colors
 from imblearn.under_sampling import RandomUnderSampler
@@ -28,18 +28,20 @@ from sklearn.model_selection import StratifiedKFold
 from scipy import interp
 import seaborn as sns
 from collections import Counter
-from imblearn.datasets import make_imbalance
 import random
-from imblearn.over_sampling import SMOTE
 from sklearn import preprocessing
-from imblearn.pipeline import Pipeline
-from rfpimp import *
 
-def downloadClassifier(fname='./BinarySNClassifier.sav'):
+def downloadClassifier(fname='BinarySNClassifier.sav'):
     url = 'http://ghost.ncsa.illinois.edu/static/BinarySNClassifier.sav'
     response = requests.get(url, stream=True)
+
+    install_path = astro_ghost.__file__
+    install_path = install_path.split("/")[:-1]
+    install_path = "/".join(install_path)
+    fullPath = install_path + "/" + fname
+
     if response.status_code == 200:
-        with open(fname, 'wb') as f:
+        with open(fullPath, 'wb') as f:
             f.write(response.raw.read())
     print("Binary classification model downloaded.")
     return
@@ -50,10 +52,12 @@ def classify(dataML, verbose=True):
     dataML_matrix_scaled = preprocessing.scale(dataML_preprocessed)
     rf = loadClassifier()
     class_predictions = rf.predict(dataML_matrix_scaled)
-    if verbose:
-        for i in np.arange(len(class_predictions)):
+    dataML['predictedClass'] = ''
+    for i in np.arange(len(class_predictions)):
+        if verbose:
             print("%s is predicted to be a %s." % (names[i], class_predictions[i]))
-    return class_predictions
+        dataML.loc[dataML['TransientName'] == names[i], 'predictedClass'] = class_predictions[i]
+    return dataML
 
 def loadClassifier(verbose=True):
     modelName = "BinarySNClassifier.sav"
@@ -62,116 +66,6 @@ def loadClassifier(verbose=True):
         print("Loading model %s."%modelName)
     model = pickle.load(stream)
     return model
-
-def plot_ROC_wCV_wMandel(foleySN_matrix_imputed, foleylabels, dataML_matrix_imputed, labels, save=1, balance=1):
-    sns.set_context('paper')
-    fig = plt.figure(figsize=(10,10), frameon=False)
-    ax = plt.gca()
-    accuracyF = plot_ROC_wCV(ax, foleySN_matrix_imputed, foleylabels, save=1, balance=balance)
-    accuracyM = plot_ROC_wCV(ax, dataML_matrix_imputed, labels, save=0, balance=balance)
-    plt.xlabel("False Positive Rate", fontsize=16);
-    plt.ylabel("True Positive Rate", fontsize=16);
-    plt.legend(loc=4, fontsize=20)
-
-    if save:
-        plt.savefig("Combined_MeanROC_Curve_%i_Classes_dataML.png" % len(classes))
-    else:
-        plt.show()
-
-def plot_ROC_wCV(ax, X, y, names, save=True, balance=True):
-    sns.set_context("paper")
-    nsplit = 5
-    cv = StratifiedKFold(n_splits=nsplit)
-    classes = np.unique(y)
-    colors = plt.cm.Dark2(np.linspace(0, 1, len(classes)))
-    rf = RandomForestClassifier(n_estimators=1400, min_samples_split=2, min_samples_leaf=1, max_features='sqrt', max_depth=90, bootstrap=False)
-    tprs = []
-    allAcc = []
-    aucs = []
-    all_confMatrices = []
-    mean_fpr = np.linspace(0, 1, 100)
-    accuracy_tot = 0
-    nclass = len(classes)
-    wrong = []
-    for j in range(nclass):
-        i = 0
-        for train, test in cv.split(X, y):
-            names_test = names[test]
-            if nclass == 3:
-                sampling1={'SN Ia': Counter(y[train])['SN Ia'], 'Core Collapse': Counter(y[train])['Core Collapse'], 'SLSN': 1000}
-                sampling2={'SN Ia': 1000, 'SLSN': 1000, 'Core Collapse': 1000}
-            elif nclass == 4:
-                sampling1={'SN Ia':Counter(y[train])['SN Ia'], 'Core Collapse':Counter(y[train])['Core Collapse'] , 'SN Ia Pec': 500, 'SLSN': 500}
-                sampling2={'SN Ia': 1000, 'Core Collapse': 1000, 'SN Ia Pec': 500, 'SLSN': 500}
-            elif nclass == 2:
-                sampling1={'SN Ia': Counter(y[train])['SN Ia'], 'Core Collapse': 3500}
-                sampling2={'SN Ia': 3500, 'Core Collapse': 3500}
-            if balance:
-                over = SMOTE(sampling_strategy=sampling1)
-                under = RandomUnderSampler(sampling_strategy=sampling2)
-                steps = [('o', over), ('u', under)]
-                pipeline = Pipeline(steps=steps)
-                Xtrain_resampled, ytrain_resampled = pipeline.fit_resample(X[train], y[train])
-            else:
-                Xtrain_resampled = X[train]
-                ytrain_resampled = y[train]
-            print('Distribution after imbalancing: {}'.format(Counter(ytrain_resampled)))
-            print('Distribution of test set: {}'.format(Counter(y[test])))
-
-            probas_ = rf.fit(Xtrain_resampled, ytrain_resampled).predict_proba(X[test])
-            predictions = rf.predict(X[test])
-            # Compute ROC curve and area the curve
-            fpr, tpr, thresholds = roc_curve(y[test], probas_[:, j], pos_label=classes[j])
-            tprs.append(interp(mean_fpr, fpr, tpr))
-            tprs[-1][0] = 0.0
-            roc_auc = auc(fpr, tpr)
-            aucs.append(roc_auc)
-            i += 1
-            tempAccuracy =  np.sum(predictions == y[test])/len(y[test])*100
-            wrong.append(names_test[y[test] != predictions])
-            print(tempAccuracy)
-            allAcc.append(tempAccuracy)
-            matr = sklearn.metrics.confusion_matrix(y[test], predictions, normalize='true')
-            all_confMatrices.append(matr)
-            print(matr)
-            accuracy_tot += tempAccuracy
-        mean_tpr = np.mean(tprs, axis=0)
-        mean_tpr[-1] = 1.0
-        mean_auc = auc(mean_fpr, mean_tpr)
-        std_auc = np.std(aucs)
-        accuracy = accuracy_tot / (nsplit*len(classes))
-        if True:
-            if classes[j] == 'Core Collapse':
-                ax.plot(mean_fpr, mean_tpr, color=colors[j],
-                         label=r'CC (%0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
-                         lw=2, alpha=.8)
-            elif classes[j] == 'SLSN':
-                ax.plot(mean_fpr, mean_tpr, color=colors[j],
-                         label=r'%s (%0.2f $\pm$ %0.2f)' % (classes[j], mean_auc, std_auc),
-                         lw=2, alpha=.8)
-            else:
-                ax.plot(mean_fpr, mean_tpr, color=colors[j],
-                         label=r'%s (%0.2f $\pm$ %0.2f)' % (classes[j].strip("SN "), mean_auc, std_auc),
-                         lw=2, alpha=.8)
-        std_tpr = np.std(tprs, axis=0)
-        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
-        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
-        ax.fill_between(mean_fpr, tprs_lower, tprs_upper, color=colors[j], alpha=.05)
-
-    ax.plot([0, 1], [0, 1], linestyle='--', lw=2, color='k',alpha=.8)
-    #if ~foley:
-    ax.set_xlabel("False Positive Rate", fontsize=16);
-    ax.set_ylabel("True Positive Rate", fontsize=16);
-        #plt.title("ROC Curve, %i Classes" % (len(classes)), fontsize=26)
-    ax.legend(loc=4,fontsize=12)
-    #    plt.text(0.1, 0.9, r'$N_{tot} = %i$'%len(y),fontsize=12)
-    plt.text(0.1, 0.9, r'$N_{train} = 7000$')
-    plt.text(0.1, 0.82, r'$N_{test} = 2226$')
-    ax.set_xlim([-0.05, 1.05])
-    ax.set_ylim([-0.05, 1.05])
-        #plt.savefig("Combined_MeanROC_Curve_%i_Classes_dataML_noOverlapCuts.png" % len(classes))
-    return accuracy, rf, all_confMatrices, allAcc, wrong
-
 
 def plot_ROC(train_features, test_features, train_labels, test_labels, save):
     rf = RandomForestClassifier(n_estimators = 1000, bootstrap = True, max_features = 'sqrt')
@@ -447,9 +341,10 @@ def preprocess_dataframe(dataML, nclass=2):
        'yExtNSigma', 'i-z', 'g-r', 'r-i', 'g-i', 'z-y', 'g-rErr',
        'r-iErr', 'i-zErr', 'z-yErr', 'gApMag_gKronMag', 'rApMag_rKronMag',
        'iApMag_iKronMag', 'zApMag_zKronMag', 'yApMag_yKronMag', '7DCD',
-       'dist/DLR', 'dist', 'gSNR', 'rSNR', 'iSNR', 'zSNR', 'ySNR', 'TransientClass', 'TransientName]]
+       'dist/DLR', 'dist', 'gSNR', 'rSNR', 'iSNR', 'zSNR', 'ySNR', 'TransientClass', 'TransientName']]
 
     dataML.dropna(axis=0, inplace=True)
+    dataML.reset_index(inplace=True, drop=True)
 
     names = dataML['TransientName']
     dataML = dataML.drop(['TransientName'], axis=1)
