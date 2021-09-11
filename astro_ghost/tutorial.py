@@ -29,7 +29,7 @@ snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
 # run the association algorithm!
 # this first checks the GHOST database for a SN by name, then by coordinates, and
 # if we have no match then it manually associates them.
-hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True)
+hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True, px=64)
 
 # classify transients
 hosts_wPredictions = classify(hosts)

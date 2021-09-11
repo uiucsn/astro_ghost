@@ -464,7 +464,7 @@ def fullData():
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False):
+def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=px):
     hostDB = None
     tempHost1 = tempHost2 = tempHost3 = None
     found_by_name = found_by_coord = found_by_manual = 0
@@ -501,7 +501,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
             snCoord_remaining = df_transients_remaining['snCoord'].values
             snClass_remaining = df_transients_remaining['snClass'].values
 
-            tempHost3 = findNewHosts(snName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch)
+            tempHost3 = findNewHosts(snName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px)
             found_by_manual = len(tempHost3)
     hostDB = pd.concat([tempHost1, tempHost2, tempHost3], ignore_index=True)
     hostDB.replace(-999.0, np.nan, inplace=True)
@@ -517,7 +517,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMatch=False):
+def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMatch=False, px=px):
     if isinstance(snName, str):
         snName = snName.replace(" ", "")
         snRA = snCoord.ra.degree
@@ -641,7 +641,7 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
 
         fn_GD= path+'/GradientAscent.txt'
 
-        host_dict_nospace_postDLR_GD, host_DF, unchanged = gradientAscent(path, transient_dict,  host_dict_nospace_postDLR, SN_toReassociate, host_DF, transients, fn_GD, plot=verbose)
+        host_dict_nospace_postDLR_GD, host_DF, unchanged = gradientAscent(path, transient_dict,  host_dict_nospace_postDLR, SN_toReassociate, host_DF, transients, fn_GD, plot=verbose, px)
 
         with open(path+"/dictionaries/gals_postGD.p", 'wb') as fp:
             pickle.dump(host_dict_nospace_postDLR_GD, fp, protocol=pickle.HIGHEST_PROTOCOL)
