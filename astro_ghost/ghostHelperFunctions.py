@@ -641,7 +641,7 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
 
         fn_GD= path+'/GradientAscent.txt'
 
-        host_dict_nospace_postDLR_GD, host_DF, unchanged = gradientAscent(path, transient_dict,  host_dict_nospace_postDLR, SN_toReassociate, host_DF, transients, fn_GD, plot=verbose, px)
+        host_dict_nospace_postDLR_GD, host_DF, unchanged = gradientAscent(path, transient_dict,  host_dict_nospace_postDLR, SN_toReassociate, host_DF, transients, fn_GD, plot=verbose, px=px)
 
         with open(path+"/dictionaries/gals_postGD.p", 'wb') as fp:
             pickle.dump(host_dict_nospace_postDLR_GD, fp, protocol=pickle.HIGHEST_PROTOCOL)
