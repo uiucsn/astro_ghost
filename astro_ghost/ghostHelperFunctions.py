@@ -517,7 +517,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMatch=False, px=px):
+def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMatch=False, px=800):
     if isinstance(snName, str):
         snName = snName.replace(" ", "")
         snRA = snCoord.ra.degree
