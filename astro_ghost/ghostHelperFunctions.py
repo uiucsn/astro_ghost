@@ -15,6 +15,7 @@ import re
 from astro_ghost.PS1QueryFunctions import getcolorim, get_hosts
 from astro_ghost.hostMatching import build_ML_df
 from astro_ghost.NEDQueryFunctions import getNEDInfo
+from astro_ghost.SimbadQueryFunctions import getSimbadInfo
 from astro_ghost.gradientAscent import gradientAscent
 from astro_ghost.starSeparation import separateStars_STRM, separateStars_South
 from astro_ghost.sourceCleaning import clean_dict, removePS1Duplicates, getColors, makeCuts
@@ -26,6 +27,7 @@ import os
 import glob
 from datetime import datetime
 import astro_ghost
+from joblib import dump, load
 
 def getGHOST(real=False, verbose=False):
     install_path = astro_ghost.__file__
@@ -34,7 +36,8 @@ def getGHOST(real=False, verbose=False):
     if not os.path.exists(install_path + '/database'):
         os.makedirs(install_path + '/database')
     if real:
-        url = 'http://ghost.ncsa.illinois.edu/static/database/GHOST.csv'
+        #url = 'http://ghost.ncsa.illinois.edu/static/database/GHOST.csv'
+        url = 'https://www.dropbox.com/s/fpm5x3otf2nfy4n/GHOST.csv?dl=1'
         r = requests.get(url)
         fname = install_path + '/database/GHOST.csv'
         open(fname , 'wb').write(r.content)
@@ -283,7 +286,6 @@ def getHostFromHostCoords(hostCoords):
 #           discovery year and discovery mag
 #           for all transients associated
 #           with a host at that coordinates
-
 def getTransientStatsFromHostCoords(hostCoord):
     host = getHostFromHostCoords(hostCoord)
     i = 0
@@ -464,7 +466,7 @@ def fullData():
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=800):
+def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=800, savepath='./'):
     hostDB = None
     tempHost1 = tempHost2 = tempHost3 = None
     found_by_name = found_by_coord = found_by_manual = 0
@@ -501,7 +503,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
             snCoord_remaining = df_transients_remaining['snCoord'].values
             snClass_remaining = df_transients_remaining['snClass'].values
 
-            tempHost3 = findNewHosts(snName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px)
+            tempHost3 = findNewHosts(snName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath)
             found_by_manual = len(tempHost3)
     hostDB = pd.concat([tempHost1, tempHost2, tempHost3], ignore_index=True)
     hostDB.replace(-999.0, np.nan, inplace=True)
@@ -517,7 +519,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMatch=False, px=800):
+def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMatch=False, px=800, savepath='./'):
     if isinstance(snName, str):
         snName = snName.replace(" ", "")
         snRA = snCoord.ra.degree
@@ -539,14 +541,14 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     #dateStr = "%i%.02i%.02i" % (now.year,now.month,now.day)
     dateStr = str(datetime.today()).replace("-", '').replace(".", '').replace(":", "").replace(" ", '')
 
-    rad = 30 #arcsec
+    rad = 60 #arcsec
     fn_Host = "SNe_TNS_%s_PS1Hosts_%iarcsec.csv" % (dateStr, rad)
     fn_SN = 'transients_%s.csv' % dateStr
     fn_Dict = fn_Host[:-4] + ".p"
     dir_name = fn_SN[:-4]
-    if not os.path.exists('./' + dir_name):
-        os.makedirs('./' + dir_name)
-    path = './'+dir_name+'/'
+    if not os.path.exists(savepath + dir_name):
+        os.makedirs(savepath + dir_name)
+    path = savepath+dir_name+'/'
     #create temp dataframe with RA and DEC corresponding to the transient
 
     snDF = pd.DataFrame({'Name':snName_arr, 'RA':snRA_arr, 'DEC':snDEC_arr, 'HostName':['']*len(snDEC_arr), 'Obj. Type':snClass_arr})
@@ -563,9 +565,20 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     cuts = ["n", "quality", "coords", "duplicate"]
     #cuts = []
 
-    transient_dict = pickle.load(open(path+'/dictionaries/'+fn_Dict, "rb"))
-    transient_dict = {k.replace(' ', ''): v for k, v in transient_dict.items()}
-    # check how many supernovae we have potential hosts for - should be nearly all of em
+    transient_dict =[]
+    # this bit of trickery is required to combine northern-hemisphere and
+    # southern-hemisphere source dictionaries
+    f = open(path+'/dictionaries/'+fn_Dict, "rb")
+    try:
+        while True:
+            transient_dict.append(pickle.load(f))
+    except EOFError:
+        pass
+    temp = transient_dict[0]
+    if len(transient_dict) > 1:
+        for i in np.arange(len(transient_dict)-1):
+            temp.update(transient_dict[i+1])
+    transient_dict = {k.replace(' ', ''): v for k, v in temp.items()}
 
     host_DF_north = host_DF[host_DF['decMean']>-30].reset_index()
     host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index()
@@ -589,6 +602,8 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
 
     host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
     host_DF = getNEDInfo(host_DF)
+    host_DF = getSimbadInfo(host_DF)
+    host_DF.to_csv(path+"/candidateHosts_NEDSimbad.csv", index=False)
 
     host_DF_north = host_DF[host_DF['decMean']>-30].reset_index()
     host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index()
@@ -612,21 +627,24 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     fn = "DLR.txt"
     transients = pd.read_csv(path+fn_SN)
 #    clean_dict(host_dict_nospace, host_gals_DF, [])
-#    fracWithHosts(host_dict_nospace) 
+#    fracWithHosts(host_dict_nospace)
 #    print(len(host_gals_DF[host_gals_DF['decMean'] < -30]))
 
     with open(path+"/dictionaries/checkpoint_preDLR.p", 'wb') as fp:
-           pickle.dump(host_dict_nospace, fp, protocol=pickle.HIGHEST_PROTOCOL)
+           #pickle.dump(host_dict_nospace, fp, protocol=pickle.HIGHEST_PROTOCOL)
+           dump(host_dict_nospace, fp)
 
     host_DF, host_dict_nospace_postDLR, noHosts, GD_SN = chooseByDLR(path, host_gals_DF, transients, fn, host_dict_nospace, host_dict_nospace, todo="r")
 
     if len(noHosts) > 0:
-        with open(path+"/noHosts_fromDLR_griCut.txt", 'wb') as fp:
-            pickle.dump(noHosts, fp)
+        with open(path+"/dictionaries/noHosts_fromDLR.p", 'wb') as fp:
+            #pickle.dump(noHosts, fp)
+            dump(noHosts, fp)
 
     if len(GD_SN) > 0:
-        with open(path+"/badInfo_fromDLR_griCut.txt", 'wb') as fp:
-            pickle.dump(GD_SN, fp)
+        with open(path+"/dictionaries/badInfo_fromDLR.p", 'wb') as fp:
+            #pickle.dump(GD_SN, fp)
+             dump(GD_SN, fp)
 
     #gradient ascent algorithm for the SNe that didn't pass this stage
     SN_toReassociate = np.concatenate([np.array(noHosts), np.array(GD_SN), np.array(list(lost))])
@@ -644,13 +662,15 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
         host_dict_nospace_postDLR_GD, host_DF, unchanged = gradientAscent(path, transient_dict,  host_dict_nospace_postDLR, SN_toReassociate, host_DF, transients, fn_GD, plot=verbose, px=px)
 
         with open(path+"/dictionaries/gals_postGD.p", 'wb') as fp:
-            pickle.dump(host_dict_nospace_postDLR_GD, fp, protocol=pickle.HIGHEST_PROTOCOL)
+            #pickle.dump(host_dict_nospace_postDLR_GD, fp, protocol=pickle.HIGHEST_PROTOCOL)
+            dump(host_dict_nospace_postDLR_GD, fp)
 
         if verbose:
             print("Hosts not found for %i transients in gradient ascent. Storing names in GD_unchanged.txt" %(len(unchanged)))
 
         with open(path+"/GD_unchanged.txt", 'wb') as fp:
-            pickle.dump(unchanged, fp)
+            #pickle.dump(unchanged, fp)
+            dump(unchanged, fp)
 
         hostFrac = fracWithHosts(host_dict_nospace_postDLR_GD)*100
 
@@ -665,7 +685,8 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     host_DF = build_ML_df(final_dict, host_DF, transients)
 
     with open(path+"/dictionaries/" + "Final_Dictionary.p", 'wb') as fp:
-           pickle.dump(final_dict, fp, protocol=pickle.HIGHEST_PROTOCOL)
+           #pickle.dump(final_dict, fp, protocol=pickle.HIGHEST_PROTOCOL)
+           dump(final_dict, fp)
 
     #a few final cleaning steps
     host_DF.drop_duplicates(subset=['TransientName'], inplace=True)

@@ -38,7 +38,8 @@ import os
 import tarfile
 
 def build_sfd_dir(fname='./sfddata-master.tar.gz'):
-    url = 'http://ghost.ncsa.illinois.edu/static/sfddata-master.tar.gz'
+    #url = 'http://ghost.ncsa.illinois.edu/static/sfddata-master.tar.gz'
+    url = 'https://github.com/kbarbary/sfddata/archive/master.tar.gz'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
         with open(fname, 'wb') as f:
@@ -51,7 +52,8 @@ def build_sfd_dir(fname='./sfddata-master.tar.gz'):
     return
 
 def get_photoz_weights(fname='./MLP_lupton.hdf5'):
-    url = 'http://ghost.ncsa.illinois.edu/static/MLP_lupton.hdf5'
+    #url = 'http://ghost.ncsa.illinois.edu/static/MLP_lupton.hdf5'
+    url = 'https://www.dropbox.com/s/7bim5sssnw9w6pg/MLP_lupton.hdf5?dl=1'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
         with open(fname, 'wb') as f:
@@ -431,8 +433,10 @@ def calc_photoz(hosts):
     X = preprocess(DF,dust_PATH)
     posteriors, point_estimates, errors = evaluate(X,mymodel,range_z)
     successIDs = DF['objID'].values
-
+    
+    posterior_dict = {}
     for i in np.arange(len(successIDs)):
         objID = int(successIDs[i])
         hosts.loc[hosts['objID']==objID, 'photo_z'] = point_estimates[i]
-    return hosts
+        posterior_dict[objID] = posteriors[i]
+    return posterior_dict, hosts
