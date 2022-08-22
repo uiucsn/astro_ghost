@@ -5,7 +5,7 @@ import os
 
 from setuptools import setup
 
-version = "0.1.34"
+version = "0.1.35"
 
 VERSION_TEMPLATE = """
  Note that we need to fall back to the hard-coded version if either

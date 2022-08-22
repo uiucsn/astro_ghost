@@ -38,8 +38,7 @@ import os
 import tarfile
 
 def build_sfd_dir(fname='./sfddata-master.tar.gz'):
-    #url = 'http://ghost.ncsa.illinois.edu/static/sfddata-master.tar.gz'
-    url = 'https://github.com/kbarbary/sfddata/archive/master.tar.gz'
+    url = 'http://ghost.ncsa.illinois.edu/static/sfddata-master.tar.gz'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
         with open(fname, 'wb') as f:
@@ -52,8 +51,7 @@ def build_sfd_dir(fname='./sfddata-master.tar.gz'):
     return
 
 def get_photoz_weights(fname='./MLP_lupton.hdf5'):
-    #url = 'http://ghost.ncsa.illinois.edu/static/MLP_lupton.hdf5'
-    url = 'https://www.dropbox.com/s/7bim5sssnw9w6pg/MLP_lupton.hdf5?dl=1'
+    url = 'http://ghost.ncsa.illinois.edu/static/MLP_lupton.hdf5'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
         with open(fname, 'wb') as f:
@@ -307,6 +305,8 @@ def get_common_constraints_columns():
 def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
     if ebv:
         m = sfdmap.SFDMap(PATH)
+        assert ('raMean' in DF.columns()) and ('decMean' in DF.columns()), 'DustMap query failed because the expected coordinates didnt'\
+                                                                            'exist in DF, likely the match of any Hosts into PanStarrs failed'
         EBV = m.ebv(DF['raMean'].values.astype(np.float32),DF['decMean'].values.astype(np.float32))
 
         DF['ebv'] = EBV
@@ -424,19 +424,47 @@ def calc_photoz(hosts):
     DFs = serial_objID_search(objIDs,columns=columns,**constraints)
     DF = pd.concat(DFs)
 
-    #The function load_lupton_model downloads the necessary dust models and
-    #weights from the ghost server.
-    dust_PATH = './sfddata-master'
-    model_PATH = './MLP_lupton.hdf5'
-
-    mymodel, range_z = load_lupton_model(model_PATH)
-    X = preprocess(DF,dust_PATH)
-    posteriors, point_estimates, errors = evaluate(X,mymodel,range_z)
+    posteriors, point_estimates, errors = get_photoz(DF)
     successIDs = DF['objID'].values
-    
-    posterior_dict = {}
+
     for i in np.arange(len(successIDs)):
         objID = int(successIDs[i])
         hosts.loc[hosts['objID']==objID, 'photo_z'] = point_estimates[i]
-        posterior_dict[objID] = posteriors[i]
-    return posterior_dict, hosts
+        hosts.loc[hosts['objID']==objID, 'photo_z_err'] = errors[i]
+    return hosts
+
+
+def get_photoz(df):
+    """Evaluate photo-z model for Pan-STARRS forced photometry
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Pan-STARRS forced mean photometry data, you can get it using
+        `ps1objIDsearch` from this module, Pan-STARRS web-portal or via
+        astroquery:
+        `astroquery.mast.Catalogs.query_{criteria,region}(
+            ...,
+            catalog='Panstarrs',
+            table='forced_mean'
+        )`
+
+    Returns
+    -------
+    posteriors : ndarray shape of (df.shape[0], n)
+        Posterior distributions for the grid of redshifts defined as
+        `np.linspace(0, 1, n)`
+    point_estimates : ndarray shape of (df.shape[0],)
+        Means
+    errors : ndarray shape of (df.shape[0],)
+        Standard deviations
+    """
+
+    # The function load_lupton_model downloads the necessary dust models and
+    # weights from the ghost server.
+    dust_path = './sfddata-master'
+    model_path = './MLP_lupton.hdf5'
+
+    model, range_z = load_lupton_model(model_path)
+    X = preprocess(df, dust_path)
+    return evaluate(X, model, range_z)
