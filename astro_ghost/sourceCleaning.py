@@ -188,16 +188,15 @@ def getColors(df):
     df.loc[df['iApMag'] < -100, 'iApMag'] = np.nan
     return df
 
-# TODO Add description
 def makeCuts(df,cuts=[],dict=""):
     for cut in cuts:
         if cut == "n":
             df = df[df['nDetections'] >= 1]
-            df = df[df['ng'] >= 1]
-            df = df[df['nr'] >= 1]
-            df = df[df['ni'] >= 1]
-            #df = df[df['nz'] >= 1]
-            #df = df[df['ny'] >= 1]
+#            df = df[df['ng'] >= 1]
+#            df = df[df['nr'] >= 1]
+#            df = df[df['ni'] >= 1]
+#            df = df[df['nz'] >= 1]
+#            df = df[df['ny'] >= 1]
         elif cut == "quality":
             df = df[df["qualityFlag"] < 128]
         elif cut == "coords":

@@ -321,10 +321,6 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                             if (dec_SN.deg < -30):
                                 elong = host_df[band + "_elong"]
                                 phi = np.radians(host_df[band + "_pa"])
-                                #print("elong")
-                                #print(elong)
-                                #print("phi")
-                                #print(phi)
                                 #ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_band
                                 dist, R = calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, host_df, band)
                                 #print("dist = %.2f, R = %.2f" %( dist, R))
@@ -343,31 +339,44 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                 print("ra_dict = \\", file=f)
                 print(ra_dict, file=f)
 
-                #subset so that we're less than 5 in DLR units
+                #subset so that we're less than 4 in DLR units
                 chosenHost = min(R_dict, key=R_dict.get)
-                if R_dict[chosenHost] > 5.0:
+                if R_dict[chosenHost] > 4.0:
                     #If we can't find a host, say that this galaxy has no host
                     dict_mod[name] = np.nan
                     noHosts.append(name)
-                    print("No host chosen! r/DLR > 5.0.", file=f)
+                    print("No host chosen! r/DLR > 4.0.", file=f)
                     continue
                 else:
-                    R_dict_sub = dict((k, v) for k, v in R_dict.items() if v <= 5.0)
+                    R_dict_sub = dict((k, v) for k, v in R_dict.items() if v <= 4.0)
                     #Sort from lowest to highest DLR value
                     R_dict_sub = {k: v for k, v in sorted(R_dict_sub.items(), key=lambda item: item[1])}
-                    N = min(3, len(R_dict_sub.keys()))
-                    R_dict_sub = dict(list(R_dict_sub.items())[:N])
+
+                    # 08/22/22 -- Bugfix; DON'T take the first 3 only, as this could exclude the true host in crowded fields
+                    #N = min(3, len(R_dict_sub.keys()))
+                    #R_dict_sub = dict(list(R_dict_sub.items())[:N])
+                    print(R_dict_sub)
                     if len(R_dict_sub.keys()) > 1:
                         gal_hosts = []
+                        Simbad_hosts = []
                         for key in R_dict_sub:
-                            #print(hosts[hosts['objID'] == key]['NED_type'])
                             tempType = hosts[hosts['objID'] == key]['NED_type'].values[0]
+                            hasSimbad = hosts[hosts['objID'] == key]['hasSimbad'].values[0]
                             if (tempType == "G"):
                                 gal_hosts.append(key)
+                            if (hasSimbad):
+                                print("Has Simbad:")
+                                print(key)
+                                Simbad_hosts.append(key)
                         if len(gal_hosts) > 0:
-                            if gal_hosts[0] != chosenHost and R_dict[gal_hosts[0]] < 1.0:
+                            if gal_hosts[0] != chosenHost and R_dict[gal_hosts[0]] < 4.0:
                                 chosenHost = gal_hosts[0] #only change if we're within the light profile of the galaxy
                                 print("Choosing the galaxy with the smallest DLR - nearest source had DLR > 1!", file=f)
+                        if len(Simbad_hosts) > 0:
+                            print("Chosen SIMBAD host!", file=f)
+                            if Simbad_hosts[0] != chosenHost and R_dict[Simbad_hosts[0]] < 4.0:
+                                chosenHost = Simbad_hosts[0] #only change if we're within the light profile of the galaxy
+                                print("Choosing the simbad source with the smallest DLR!", file=f)
                     dict_mod[name] = chosenHost
                     hosts.loc[hosts['objID'] == chosenHost, 'dist/DLR'] = R_dict[chosenHost]
                     hosts.loc[hosts['objID'] == chosenHost, 'dist'] = dist_dict[chosenHost]

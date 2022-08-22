@@ -19,6 +19,8 @@ from astropy.utils.data import get_pkg_data_filename
 #from astro_ghost import DLR as dlr
 from photutils import Background2D
 import numpy.ma as ma
+import cv2
+import time
 from astropy.io import fits
 import warnings
 from astropy.utils.exceptions import AstropyUserWarning
@@ -34,6 +36,8 @@ from astropy.visualization import SqrtStretch
 from photutils import DAOStarFinder
 from photutils import MedianBackground, MeanBackground
 from astropy.stats import SigmaClip
+import gc
+from joblib import dump, load
 
 ############# functions ####################################
 def updateStep(px, gradx, grady, step, point, size):
@@ -268,13 +272,9 @@ def get_clean_img(ra, dec, px, band):
         if not c:
             get_PS1_type(ra, dec, px, band, 'stack.num')
             c = find_all("PS1_ra={}_dec={}_{}arcsec_{}_stack.num.fits".format(ra, dec, int(px*0.25), band), '.')
-        #d = find_all("PS1_ra={}_dec={}_{}arcsec_{}_wt.fits".format(ra, dec, int(px*0.25), band), '.')
-        #if not d:
-        #    get_PS1_wt(ra, dec, px, band)
-        #    d = find_all("PS1_ra={}_dec={}_{}arcsec_{}_wt.fits".format(ra, dec, int(px*0.25), band), '.')
+
         image_data_mask = fits.open(b[0])[0].data
         image_data_num = fits.open(c[0])[0].data
-        #image_data_wt = fits.open(d[0])[0].data
         image_data = fits.open(a[0])[0].data
 
         hdu = fits.open(a[0])[0]
@@ -296,8 +296,6 @@ def get_clean_img(ra, dec, px, band):
 
         mask = ~np.isnan(image_data_mask)
         mask_num = image_data_num
-        #weighted
-        #image_data *= image_data_wt
         image_masked = ma.masked_array(image_data, mask=mask)
         image_masked_num = ma.masked_array(image_masked, mask=mask_num)
 
@@ -330,8 +328,6 @@ def get_clean_img(ra, dec, px, band):
                         if (tempBit[-6] == 1):
                             mask[i][j] = np.nan
         mask = ~np.isnan(image_data_mask)
-        #weighted
-        #image_data *= image_data_wt
         image_masked = ma.masked_array(image_data, mask=mask)
     #edited to PASS BACK THE MASKED ARRAY!!
     #then return the data
@@ -350,8 +346,6 @@ def getSteps(SN_dict, SN_names, hostDF):
             hostRadii = hostDF.loc[hostDF['objID'].isin(hostList), 'rKronRad'].values
             mean = np.nanmean(hostRadii)
             if mean == mean:
-#                print(mean)
-#                mean /= 2
                 mean = np.max([mean,2])
                 step = np.min([mean, 50])
                 steps.append(step) #find some proper scaling factor between the mean and the step size
@@ -362,38 +356,45 @@ def getSteps(SN_dict, SN_names, hostDF):
     return steps
 
 ############# end functions ####################################
-
 def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF, fn, plot=1, px=800):
-    #os.chdir(path)
     warnings.filterwarnings('ignore', category=AstropyUserWarning)
     warnings.filterwarnings('ignore', category=AstropyWarning)
-    #warnings.filterwarnings("ignore", category=AstropyUserWarning)
-    #debugging purposes
     step_sizes = getSteps(SN_dict, SN_names, hostDF)
     unchanged = []
-    #r = 0 #counter for occasionally saving to file
     N_associated = 0
+    totalDTime = 0.
+    totalGATime = 0.
+    startGATime = time.time()
     f = open(fn, 'w')
     print("Starting size of data frame: %i" % len(hostDF), file=f)
-    try:
-        os.makedirs('quiverMaps')
-    except:
-        print("Already have the folder quiverMaps!")
-    for i in np.arange(len(step_sizes)):
+    if plot:
         try:
-    #    if True:
+            os.makedirs('quiverMaps')
+        except:
+            print("Already have the folder quiverMaps!")
+    for i in np.arange(len(step_sizes)):
+        #try:
+        if True:
+            #clear buffer memory
+            gc.collect()
+
             transient_name = SN_names[i]
             print("Transient: %s"% transient_name, file=f)
 
             ra = transientDF.loc[transientDF['Name'] == transient_name, 'RA'].values[0]
             dec = transientDF.loc[transientDF['Name'] == transient_name, 'DEC'].values[0]
             #px = 64 #switching from 800 to 64 to speed up computation time a ton (this will fail for local bright hosts)
+            startTime = time.time()
             g_img, wcs, g_hdu  = get_clean_img(ra, dec, px, 'g')
             g_mask = np.ma.masked_invalid(g_img).mask
             r_img, wcs, r_hdu  = get_clean_img(ra, dec, px, 'r')
             r_mask = np.ma.masked_invalid(r_img).mask
             i_img, wcs, i_hdu  = get_clean_img(ra, dec, px, 'i')
             i_mask = np.ma.masked_invalid(i_img).mask
+            endTime = time.time()
+            dTime = endTime - startTime
+            print("Download time: %.2f\n"%dTime, file=f)
+            totalDTime+=dTime
 
             #cleanup - remove the fits files when we're done using them
             for band in ['g', 'r', 'i']:
@@ -407,33 +408,30 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
             #os.chdir("./quiverMaps")
             nancount = 0
             obj_interp = []
+            print("Commencing DAOStarFinder:\n", file=f)
             for obj in [g_img, r_img, i_img]:
                 data = obj
-                mean, median, std = sigma_clipped_stats(data, sigma=20.0)
-                daofind = DAOStarFinder(fwhm=3.0, threshold=20.*std)
+                mean, median, std = sigma_clipped_stats(data, sigma=15.0)
+                daofind = DAOStarFinder(fwhm=3.0, threshold=15.*std)
                 sources = daofind(data - median)
                 try:
                     xvals = np.array(sources['xcentroid'])
                     yvals = np.array(sources['ycentroid'])
-#                    for col in sources.colnames:
-#                        sources[col].info.format = '%.8g'  # for consistent table output
                     for k in np.arange(len(xvals)):
                         tempx = xvals[k]
                         tempy = yvals[k]
-                        yleft = np.max([int(tempy) - 7, 0])
-                        yright = np.min([int(tempy) + 7, np.shape(data)[1]-1])
-                        xleft = np.max([int(tempx) - 7, 0])
-                        xright = np.min([int(tempx) + 7, np.shape(data)[1]-1])
+                        yleft = np.max([int(tempy) - 10, 0])
+                        yright = np.min([int(tempy) + 10, np.shape(data)[1]-1])
+                        xleft = np.max([int(tempx) - 10, 0])
+                        xright = np.min([int(tempx) + 10, np.shape(data)[1]-1])
 
                         for r in np.arange(yleft,yright+1):
                             for j in np.arange(xleft, xright+1):
-                                if dist([xvals[k], yvals[k]], [j, r]) < 5:
+                                if dist([xvals[k], yvals[k]], [j, r]) < 7:
                                     data[r, j] = np.nan
                     nancount += np.sum(np.isnan(data))
                     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
-                    apertures = CircularAperture(positions, r=5.)
-                    norm = ImageNormalize(stretch=SqrtStretch())
-
+                    apertures = CircularAperture(positions, r=7.)
                     if plot:
                         fig = plt.figure(figsize=(10,10))
                         ax = fig.gca()
@@ -445,27 +443,30 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
                 except:
                     print("No stars here!", file=f)
 
-                backx = np.arange(0,data.shape[1])
-                backy = np.arange(0, data.shape[0])
-                backxx, backyy = np.meshgrid(backx, backy)
+                #old way of interpolating the data
+                #backx = np.arange(0,data.shape[1])
+                #backy = np.arange(0, data.shape[0])
+                #backxx, backyy = np.meshgrid(backx, backy)
                 #mask invalid values
-                array = np.ma.masked_invalid(data)
-                x1 = backxx[~array.mask]
-                y1 = backyy[~array.mask]
-                newarr = array[~array.mask]
-                data = interpolate.griddata((x1, y1), newarr.ravel(), (backxx, backyy), method='cubic')
+                #array = np.ma.masked_invalid(data)
+                #x1 = backxx[~array.mask]
+                #y1 = backyy[~array.mask]
+                #newarr = array[~array.mask]
+                #data = interpolate.griddata((x1, y1), newarr.ravel(), (backxx, backyy), method='cubic')
+                #print(np.nanmin(data))
+                #print(np.nanmax(data))
+
+                #new way of interpolating the data
+                mask = np.isnan(data).astype(np.uint8)
+                data = cv2.inpaint(data.astype(np.float32), mask, 3, cv2.INPAINT_TELEA)
+
                 obj_interp.append(data)
 
-            #gvar = np.var(obj_interp[0])
-            #gmean = np.nanmedian(obj_interp[0])
             gMax = np.nanmax(obj_interp[0])
 
             g_ZP = g_hdu.header['ZPT_0001']
             r_ZP = r_hdu.header['ZPT_0001']
             i_ZP = i_hdu.header['ZPT_0001']
-
-            #combining into a mean img -
-            # m = -2.5*log10(F) + ZP
 
             gmag = -2.5*np.log10(obj_interp[0]) + g_ZP
             rmag = -2.5*np.log10(obj_interp[1]) + r_ZP
@@ -476,14 +477,17 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
             meanMag = (gmag + rmag + imag)/3
             meanImg = 10**((mean_zp-meanMag)/2.5) #convert back to flux
 
-            #meanImg = (obj_interp[0] + obj_interp[0] + obj_interp[0])/3
             print("NanCount = %i"%nancount,file=f)
-            #mean_center = np.nanmean([g_img[int(px/2),int(px/2)], i_img[int(px/2),int(px/2)], i_img[int(px/2),int(px/2)]])
-            #if mean_center != mean_center:
-            #    mean_center = 1.e-30
             mean_center = meanImg[int(px/2),int(px/2)]
             print("Mean_center = %f" % mean_center,file=f)
-            #mean, median, std = sigma_clipped_stats(meanImg, sigma=10.0)
+
+            if plot:
+                plt.figure(figsize=(10,7))
+                plt.hist(meanImg.flatten(), bins=np.logspace(0, 6))
+                plt.xscale("log")
+                plt.savefig("quiverMaps/countsHistogram_%s.png" % transient_name, bbox_inches='tight')
+                plt.close()
+
             meanImg[meanImg != meanImg] = 1.e-30
             mean, median, std = sigma_clipped_stats(meanImg, sigma=10.0)
             print("mean image = %e"% mean, file=f)
@@ -496,9 +500,9 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
             aboveFrac = aboveCount/totalPx
             print("aboveFrac= %f" % aboveFrac, file=f)
             print("aboveFrac2 = %f "% aboveFrac2, file=f)
-            #meanImg[meanImg < 1.e-5] = 0
+
             if ((median <15) and (np.round(aboveFrac2, 2) < 0.70)) or ((mean_center > 1.e3) and (np.round(aboveFrac,2) < 0.60) and (np.round(aboveFrac2,2) < 0.75)):
-                bs = 15
+                bs = 10
                 fs = 1
                 if aboveFrac2 < 0.7:
                     step_sizes[int(i)] = 2.
@@ -512,29 +516,15 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
                 print("Large filter", file=f)
                 step_sizes[int(i)] = np.max([step_sizes[int(i)], 50])
                 size = 'large'
-                #if step_sizes[int(i)] == 5:
-                #    step_sizes[int(i)] *= 5
-                #    step_sizes[int(i)] = np.min([step_sizes[int(i)], 50])
-                #if mean_center < 200: #far from the center with a large host
-                #    fs = 5
-                #elif mean_center < 5000:
-                #    step_sizes[int(i)] = np.max([step_sizes[int(i)], 50])
-                #size = 'large'
             else:
                 bs = 40 #everything in between
                 fs = 3
                 print("Medium filter", file=f)
-                #if step_sizes[int(i)] == 5:
-                #    step_sizes[int(i)] *= 3
-        #        step_sizes[int(i)] = np.max([step_sizes[int(i)], 25])
                 step_sizes[int(i)] = np.max([step_sizes[int(i)], 15])
                 size = 'medium'
-            #    step_sizes[int(i)] *= 3
 
-            #if (median)
             sigma_clip = SigmaClip(sigma=15.)
             bkg_estimator = MeanBackground()
-            #bkg_estimator = BiweightLocationBackground()
             bkg3_g = Background2D(g_img, box_size=bs, filter_size=fs,
              sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
             bkg3_r = Background2D(r_img, box_size=bs, filter_size=fs,
@@ -542,7 +532,7 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
             bkg3_i = Background2D(i_img, box_size=bs, filter_size=fs,
              sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
 
-            #pretend the background is in counts too (I think it is, right?) and average in mags
+            #Bkg is in counts so average in mags
             bkg3_g.background[bkg3_g.background < 0] = 1.e-30
             bkg3_r.background[bkg3_r.background < 0] = 1.e-30
             bkg3_i.background[bkg3_i.background < 0] = 1.e-30
@@ -587,7 +577,7 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
 
             if nancount > 1.e5:
                 imgWeight = 0
-            elif (mean_center > 1.e4): #and (size is not 'large'):
+            elif (mean_center > 1.e4):
                 imgWeight = 0.75
             elif size == 'medium':
                 imgWeight = 0.33
@@ -595,7 +585,6 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
                 imgWeight = 0.10
             print("imgWeight= %f"%imgWeight, file=f)
             fullbackground = ((1-imgWeight)*background/np.nanmax(background) + imgWeight*meanImg/np.nanmax(meanImg))*np.nanmax(background)
-#            background  = (0.66*background/np.max(background) +  imgWeight*meanImg/np.nanmax(meanImg))*np.max(background)
 
             n = px
             X, Y = np.mgrid[0:n, 0:n]
@@ -610,7 +599,6 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
             start = [[int(px/2),int(px/2)]] #the center of the grid
 
             if True:
-            #if background[int(px/2),int(px/2)] > 0: #if we have some background flux (greater than 3 stdevs away from the median background), follow the gradient
                 start.append(updateStep(px, dx, dy, step_sizes[int(i)], start[-1], size))
                 for j in np.arange(1.e3):
                     start.append(updateStep(px, dx, dy, step_sizes[int(i)], start[-1], size))
@@ -641,34 +629,28 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
                     print("Found a host here!", file=f)
                     a = ascii.read(a)
                     a = a.to_pandas()
+                    a.sort_values(by=['distance'], inplace=True)
 
                     a = a[a['nDetections'] > 1]
-                    #a = a[a['ng'] > 1]
-                    #a = a[a['primaryDetection'] == 1]
                     smallType = ['AbLS', 'EmLS' , 'EmObj', 'G', 'GammaS', 'GClstr', 'GGroup', 'GPair', 'GTrpl', 'G_Lens', 'IrS', 'PofG', 'RadioS', 'UvES', 'UvS', 'XrayS', '', 'QSO', 'QGroup', 'Q_Lens']
                     medType = ['G', 'IrS', 'PofG', 'RadioS', 'GPair', 'GGroup', 'GClstr', 'EmLS', 'RadioS', 'UvS', 'UvES', '']
                     largeType = ['G', 'PofG', 'GPair', 'GGroup', 'GClstr']
                     if len(a) > 0:
                         a = getNEDInfo(a)
-                        if (size == 'large'):# and (np.nanmax(a['rKronRad'].values) > 5)):
-                        #    print("L: picking the largest >5 kronRad host within 10 arcsec", file=f)
+                        if (size == 'large'):
                             print("L: picking the closest NED galaxy within 20 arcsec", file=f)
-                            #a = a[a['rKronRad'] == np.nanmax(a['rKronRad'].values)]
+
                             tempA = a[a['NED_type'].isin(largeType)]
                             if len(tempA) > 0:
                                 a = tempA
                             tempA = a[a['NED_type'] == 'G']
                             if len(tempA) > 0:
                                 a = tempA
-                            #tempA = a[a['NED_mag'] == np.nanmin(a['NED_mag'])]
-                            #if len(tempA) > 0:
-                            #    a = tempA
+
                             if len(a) > 1:
                                 a = a.iloc[[0]]
                         elif (size == 'medium'):
-                            #print("M: Picking the largest host within 5 arcsec", file=f)
                             print("M: Picking the closest NED galaxy within 5 arcsec", file=f)
-                            #a = a[a['rKronRad'] == np.nanmax(a['rKronRad'].values)]
                             tempA = a[a['NED_type'].isin(medType)]
                             if len(tempA) > 0:
                                 a = tempA
@@ -680,26 +662,6 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
                                 a = tempA
                             a = a.iloc[[0]]
                             print("S: Picking the closest non-stellar source within 5 arcsec", file=f)
-                        #else:
-                        #    f.flush()
-                        #    continue
-                        #threshold = [1, 1, 0, 0, 0, 0]
-                        #flag = ['nDetections', 'nr', 'rPlateScale', 'primaryDetection', 'rKronRad', 'rKronFlux']
-                        #j = 0
-                        #while len(a) > 1:
-                        #    if np.sum(a[flag[int(j)]] > threshold[int(j)]) > 0:
-                        #        tempA = a[a[flag[int(j)]] > threshold[int(j)]]
-                        #        j += 1
-                        #        a = tempA
-                        #        if (j == 6):
-                        #            break
-                        #    else:
-                        #        break
-                        #if len(a) > 1:
-                        #    if len(~a['rKronRad'].isnull()) > 0:
-                        #        a = a[a['rKronRad'] == np.nanmax(a['rKronRad'].values)]
-                        #    else:
-                        #        a = a.iloc[0]
                         print("Nice! Host association chosen.", file=f)
                         print("NED type: %s" % a['NED_type'].values[0], file=f)
                         print(a['objID'].values[0], file=f)
@@ -737,14 +699,21 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, SN_names, hostDF, transientDF
             if N_associated%10 == 0:
                 print("N_associated = %i"%N_associated,file=f)
                 print("Size of table = %i"%len(hostDF),file=f)
+                print("Saving the modified way!")
                 with open(path+"/dictionaries/gals_postGD.p", 'wb') as fp:
-                    pickle.dump(SN_dict_postDLR, fp, protocol=pickle.HIGHEST_PROTOCOL)
+                    #pickle.dump(SN_dict_postDLR, fp, protocol=pickle.HIGHEST_PROTOCOL)
+                    dump(SN_dict_postDLR, fp)
                 hostDF.to_csv(path+"/hostDF_postGD.tar.gz", index=False)
-        except:
-             continue
+        #except:
+        #     continue
 
     with open(path+"/dictionaries/gals_postGD.p", 'wb') as fp:
-        pickle.dump(SN_dict_postDLR, fp, protocol=pickle.HIGHEST_PROTOCOL)
+        #pickle.dump(SN_dict_postDLR, fp, protocol=pickle.HIGHEST_PROTOCOL)
+        dump(SN_dict_postDLR, fp)
     hostDF.to_csv(path+"/hostDF_postGD.tar.gz", index=False)
+    print("Total Download time: %.2f\n"%totalDTime, file=f)
+    endGATime = time.time()
+    totalGATime = endGATime - startGATime
+    print("Total Gradient Ascent time:%.2f\n"%totalGATime, file=f)
     f.close()
     return  SN_dict_postDLR, hostDF, unchanged
