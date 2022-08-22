@@ -3,6 +3,8 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astroquery.ned import Ned
 from astroquery.simbad import Simbad
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 import re
 import os
 import pandas as pd
