@@ -305,6 +305,8 @@ def get_common_constraints_columns():
 def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
     if ebv:
         m = sfdmap.SFDMap(PATH)
+        assert ('raMean' in DF.columns()) and ('decMean' in DF.columns()), 'DustMap query failed because the expected coordinates didnt'\
+                                                                            'exist in DF, likely the match of any Hosts into PanStarrs failed'
         EBV = m.ebv(DF['raMean'].values.astype(np.float32),DF['decMean'].values.astype(np.float32))
 
         DF['ebv'] = EBV
