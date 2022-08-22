@@ -467,6 +467,13 @@ def fullData():
 #         with stats provided at
 #         printout
 def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=800, savepath='./'):
+ 
+    #if no names were passed in, add placeholder names for each transient in the search 
+    if snName == ['']:
+        snName = []
+        print("No transient names listed, adding placeholder names...")
+        for i in np.arange(len(snCoord)):
+            snName.append("Transient_%i" % (i+1))
     hostDB = None
     tempHost1 = tempHost2 = tempHost3 = None
     found_by_name = found_by_coord = found_by_manual = 0

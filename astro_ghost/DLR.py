@@ -355,7 +355,7 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                     # 08/22/22 -- Bugfix; DON'T take the first 3 only, as this could exclude the true host in crowded fields
                     #N = min(3, len(R_dict_sub.keys()))
                     #R_dict_sub = dict(list(R_dict_sub.items())[:N])
-                    print(R_dict_sub)
+                    #print(R_dict_sub)
                     if len(R_dict_sub.keys()) > 1:
                         gal_hosts = []
                         Simbad_hosts = []
@@ -365,8 +365,6 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                             if (tempType == "G"):
                                 gal_hosts.append(key)
                             if (hasSimbad):
-                                print("Has Simbad:")
-                                print(key)
                                 Simbad_hosts.append(key)
                         if len(gal_hosts) > 0:
                             if gal_hosts[0] != chosenHost and R_dict[gal_hosts[0]] < 4.0:

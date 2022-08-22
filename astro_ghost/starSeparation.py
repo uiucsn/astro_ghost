@@ -37,7 +37,7 @@ def separateStars_STRM(df, model_path='.', plot=0, verbose=0, starcut='gentle'):
         if verbose:
             print("No sources in field with feature values, skipping star/galaxy separation...")
         return df, unsure
-    test_X = np.matrix(unsure[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
+    test_X = np.asarray(unsure[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
     if starcut is 'normal':
         test_y = model.predict(test_X)
     elif starcut is 'aggressive':
@@ -143,7 +143,7 @@ def separateStars_RF(df, model_path='.', plot=0, verbose=0):
         plt.savefig("TNS_NED_Stars_vs_Gals_v7DCD.pdf")
 
     NED_unsure = NED_unsure.dropna(subset=['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag'])
-    NED_test_X = np.matrix(NED_unsure[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
+    NED_test_X = np.asarray(NED_unsure[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
 
     if verbose:
         print("Running star-galaxy separator on %s sources...."%len(NED_unsure))
@@ -288,12 +288,12 @@ def separateStars(df, plot=0):
         NED_training = pd.concat([stars_OSC,gals_OSC])
 
     NED_training = NED_training.dropna(subset=['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag'])
-    NED_training_X = np.matrix(NED_training[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
+    NED_training_X = np.asarray(NED_training[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
     NED_training_y = np.array(NED_training['class'])
     clf.fit(NED_training_X, NED_training_y)
 
     NED_unsure = NED_unsure.dropna(subset=['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag'])
-    NED_test_X = np.matrix(NED_unsure[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
+    NED_test_X = np.asarray(NED_unsure[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
     NED_test_y = clf.predict(NED_test_X)
     NED_unsure['class'] = NED_test_y
     NED_test_stars = NED_unsure[NED_unsure['class'] == 1]
