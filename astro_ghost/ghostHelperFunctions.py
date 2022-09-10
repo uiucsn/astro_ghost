@@ -36,7 +36,7 @@ def getGHOST(real=False, verbose=False):
     if not os.path.exists(install_path + '/database'):
         os.makedirs(install_path + '/database')
     if real:
-        url = 'https://www.dropbox.com/s/00p8crku56dusjc/GHOST.csv?dl=1'
+        url = 'https://www.dropbox.com/s/a0fufc3827pfril/GHOST.csv?dl=1'
         r = requests.get(url)
         fname = install_path + '/database/GHOST.csv'
         open(fname , 'wb').write(r.content)
