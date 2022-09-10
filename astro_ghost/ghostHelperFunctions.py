@@ -36,13 +36,12 @@ def getGHOST(real=False, verbose=False):
     if not os.path.exists(install_path + '/database'):
         os.makedirs(install_path + '/database')
     if real:
-        #url = 'http://ghost.ncsa.illinois.edu/static/database/GHOST.csv'
-        url = 'https://www.dropbox.com/s/fpm5x3otf2nfy4n/GHOST.csv?dl=1'
+        url = 'https://www.dropbox.com/s/00p8crku56dusjc/GHOST.csv?dl=1'
         r = requests.get(url)
         fname = install_path + '/database/GHOST.csv'
         open(fname , 'wb').write(r.content)
         if verbose:
-            print("Successfully downloaded GHOST database from ghost.ncsa.illinois.edu.\n")
+            print("Successfully downloaded GHOST database.\n")
     else:
         #create dummy database
         colnames = ['objName', 'objAltName1', 'objAltName2', 'objAltName3', 'objID',

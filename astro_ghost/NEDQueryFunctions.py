@@ -45,6 +45,7 @@ def getNEDInfo(df):
     df["NED_vel"] = np.nan
     df["NED_redshift"] = np.nan
     df["NED_mag"] = np.nan
+    df["NED_redshift_flag"] = ""
 
     ra = df["raMean"]
     dec = df["decMean"]
@@ -104,6 +105,7 @@ def getNEDInfo(df):
                     tempType =  tempNED[4].strip().strip("b").strip("''")
                     tempVel = tempNED[5].strip()
                     tempRed = tempNED[6].strip()
+                    tempRedFlag = tempNED[7].strip().replace("'", "")
                     tempMag = tempNED[8].strip().strip("b").strip("''").strip(">").strip("<")
                     if tempName:
                         df.loc[index, 'NED_name'] = tempName
@@ -115,7 +117,9 @@ def getNEDInfo(df):
                         df.loc[index, 'NED_redshift'] = float(tempRed)
                     if tempMag:
                         tempMag = re.findall(r"[-+]?\d*\.\d+|\d+", tempMag)[0]
-                        df.loc[index, 'NED_mag'] = float(tempMag)
+                        df.loc[index, 'NED_mag'] = float(tempMag) 
+                    if tempRedFlag:
+                        df.loc[index, 'NED_redshift_flag'] = str(tempRedFlag)
         if missingCounter > 5000:
             print("Locked out of NED, will have to try again later...")
             return df
