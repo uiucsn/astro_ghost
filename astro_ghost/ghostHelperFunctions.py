@@ -30,11 +30,14 @@ import astro_ghost
 from joblib import dump, load
 
 def getGHOST(real=False, verbose=False):
-    install_path = astro_ghost.__file__
-    install_path = install_path.split("/")[:-1]
-    install_path = "/".join(install_path)
-    if not os.path.exists(install_path + '/database'):
-        os.makedirs(install_path + '/database')
+    install_path = os.getenv('GHOST_PATH')
+    if not install_path:
+    	install_path = astro_ghost.__file__
+    	install_path = install_path.split("/")[:-1]
+   	install_path = "/".join(install_path)
+  	if not os.path.exists(install_path + '/database'):
+       		os.makedirs(install_path + '/database')
+        os.environ['GHOST_PATH'] = install_path
     if real:
         url = 'https://www.dropbox.com/s/a0fufc3827pfril/GHOST.csv?dl=1'
         r = requests.get(url)
@@ -451,9 +454,11 @@ def coneSearchPairs(coord, radius):
 # inputs: none
 # outputs: the full GHOST database
 def fullData():
-    install_path = astro_ghost.__file__
-    install_path = install_path.split("/")[:-1]
-    install_path = "/".join(install_path)
+    install_path = os.getenv('GHOST_PATH')
+    if not install_path:
+    	install_path = astro_ghost.__file__
+    	install_path = install_path.split("/")[:-1]
+    	install_path = "/".join(install_path)
     fullTable = pd.read_csv(install_path+"/database/GHOST.csv")
     return fullTable
 
