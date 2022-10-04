@@ -19,7 +19,7 @@ verbose = 1
 #note: real=False creates an empty database, which
 #allows you to use the association methods without
 #needing to download the full database first
-getGHOST(real=True, verbose=verbose)
+getGHOST(real=True, verbose=verbose, install_path='/where/to/install/GHOSTdb?/')
 
 #create a list of the supernova names and their skycoords (these three are from TNS)
 snName = ['SN 2012dt', 'SN 1998bn', 'SN 1957B']
@@ -31,7 +31,7 @@ snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
 # run the association algorithm!
 # this first checks the GHOST database for a SN by name, then by coordinates, and
 # if we have no match then it manually associates them.
-hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True, px=64, savepath='/Users/agagliano/Downloads/testGHOSTPath/')
+hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True, px=64, savepath='/path/to/savedir/', install_path='/where/did/you/install/GHOSTdb?/')
 
 # classify transients
 hosts_wPredictions = classify(hosts)
@@ -85,27 +85,6 @@ getHostImage(snName, save=0)
 
 # 6. Find all supernova-host galaxy matches within a certain search radius (in arcseconds)
 coneSearchPairs(supernovaCoord[0], 1.e3)
-
-#GHOST = pd.read_csv("/Users/agagliano/Documents/Research/GHOST/Data/database/GHOST.tar.gz")
-GHOST.to_csv("/Users/agagliano/Documents/Research/GHOST/Data/database/GHOST.csv",index=False)
-
-THEx_hosts_PS1 = pd.DataFrame(np.load("/Users/agagliano/Documents/Teaching/Holly/THEx-v8.0-release-NumPy-export/THEx-v8.0-release-assembled-PS1v2.npy"))
-THEx_hosts_index = pd.DataFrame(np.load("/Users/agagliano/Documents/Teaching/Holly/THEx-v8.0-release-NumPy-export/THEx-v8.0-release-assembled-index.npy"))
-
-THEx_hosts_PS1 = THEx_hosts_index.merge(THEx_hosts_PS1)
-THEx_hosts_PS1.rename(columns={'event_dec':'TransientRA', 'event_ra':'TransientRA', 'event_name':'TransientName'}, inplace=True)
-
-THEx_hosts_PS1.rename(columns={'event_z':'photo_z'},inplace=True)
-THEx_hosts_PS1.to_csv("/Users/agagliano/Documents/Teaching/Holly/THEx-v8.0-release-NumPy-export/THEx_PS1.tar.gz",index=False)
-
-url = 'https://www.dropbox.com/s/7bim5sssnw9w6pg/MLP_lupton.hdf5?dl=1'
-fname = 'MLP_lupton.hdf5'
-response = requests.get(url, stream=True)
-if response.status_code == 200:
-    with open(fname, 'wb') as f:
-        f.write(response.raw.read())
-    print("Done getting photo-z weights.")
-
 
 #7. Beta: find photometric redshift of host galaxies matches:
 from astro_ghost.photoz_helper import calc_photoz

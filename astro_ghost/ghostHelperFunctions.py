@@ -30,14 +30,16 @@ import astro_ghost
 from joblib import dump, load
 
 def getGHOST(real=False, verbose=False, install_path=''):
-    #install_path = os.getenv('GHOST_PATH')
     if not install_path:
-        install_path = astro_ghost.__file__
-        install_path = install_path.split("/")[:-1]
-        install_path = "/".join(install_path)
+        try:
+            install_path = os.environ['GHOST_PATH']
+        except:
+            print("Couldn't find where you want to save GHOST. Saving in package path...")
+            install_path = astro_ghost.__file__
+            install_path = install_path.split("/")[:-1]
+            install_path = "/".join(install_path)
     if not os.path.exists(install_path + '/database'):
-        os.makedirs(install_path + '/database')
-    os.environ['GHOST_PATH'] = install_path
+        os.mkdir(install_path + '/database')
     if real:
         url = 'https://www.dropbox.com/s/a0fufc3827pfril/GHOST.csv?dl=1'
         r = requests.get(url)
@@ -180,8 +182,8 @@ def remove_prefix(text, prefix):
 #          If the supernova is currently in the
 #          database, return the database object.
 #          If not found, return None
-def getDBHostFromTransientCoords(transientCoords):
-    fullTable = fullData()
+def getDBHostFromTransientCoords(transientCoords, install_path=''):
+    fullTable = fullData(install_path)
     notFound = []
     host_DF = None
     hostList = []
@@ -216,8 +218,8 @@ def getDBHostFromTransientCoords(transientCoords):
 #          If the supernova is currently in the
 #          database, return the database object.
 #          If no host is found, return None
-def getDBHostFromTransientName(SNNames):
-    fullTable = fullData()
+def getDBHostFromTransientName(SNNames, install_path=''):
+    fullTable = fullData(install_path)
     allHosts = []
     notFound = []
     host_DF = None
@@ -249,8 +251,8 @@ def getDBHostFromTransientName(SNNames):
 #          If the supernova is currently in the
 #          database, return the database object.
 #          If no host is found, return None
-def getHostFromHostName(hostNames):
-    fullTable = fullData()
+def getHostFromHostName(hostNames, install_path=''):
+    fullTable = fullData(install_path)
     possibleNames = []
 
     for name in hostNames:
@@ -264,8 +266,8 @@ def getHostFromHostName(hostNames):
         print("Sorry, no hosts were found in our database!\n")
     return host
 
-def getHostFromHostCoords(hostCoords):
-    fullTable = fullData()
+def getHostFromHostCoords(hostCoords, install_path=''):
+    fullTable = fullData(install_path)
     c2 = SkyCoord(fullTable['raMean']*u.deg, fullTable['decMean']*u.deg, frame='icrs')
     host = []
     for hostCoord in hostCoords:
@@ -322,8 +324,8 @@ def getTransientStatsFromHostName(hostName):
 # host of a previously identified transient, using
 # the pipeline outlined above.
 # inputs - the coordinates of the transient to search
-def getHostStatsFromTransientCoords(transientCoordsList):
-    fullTable = fullData()
+def getHostStatsFromTransientCoords(transientCoordsList, install_path=''):
+    fullTable = fullData(install_path)
     names = []
     for transientCoords in transientCoordsList:
         c2 = SkyCoord(fullTable['TransientRA']*u.deg, fullTable['TransientDEC']*u.deg, frame='icrs')
@@ -339,10 +341,10 @@ def getHostStatsFromTransientCoords(transientCoordsList):
 # host of a previously identified transient, using
 # the pipeline outlined above.
 # inputs - the coordinates of the transient to search
-def getHostStatsFromTransientName(SNName):
+def getHostStatsFromTransientName(SNName, install_path=''):
     SNName = np.array(SNName)
-    fullTable = fullData()
-    host, notFound = getDBHostFromTransientName(SNName)
+    fullTable = fullData(install_path)
+    host, notFound = getDBHostFromTransientName(SNName, install_path)
     if host is not None:
         for idx, row in host.iterrows():
             if np.unique(row['NED_name']) != "":
@@ -375,12 +377,12 @@ def getHostStatsFromTransientName(SNName):
 # fits file with radius rad, and plots the image.
 # inputs
 # outputs
-def getHostImage(transientName='', band="grizy", rad=60, save=0):
+def getHostImage(transientName='', band="grizy", rad=60, save=0, install_path=''):
     if transientName == '':
         print("Error! Please enter a supernova!\n")
         return
-    fullTable = fullData()
-    host, notFound = getDBHostFromTransientName(transientName)
+    fullTable = fullData(install_path)
+    host, notFound = getDBHostFromTransientName(transientName, install_path)
     if host is not None:
         host.reset_index(drop=True, inplace=True)
         tempSize = int(4*float(rad))
@@ -439,8 +441,8 @@ def getHostSpectra(SNname, path):#
 # within a certain radius, returned as a pandas dataframe
 # inputs location, in astropy coordinates, and radius in arcsec
 # outputs the data frame of all nearby pairs
-def coneSearchPairs(coord, radius):
-    fullTable = fullData()
+def coneSearchPairs(coord, radius, install_path=''):
+    fullTable = fullData(install_path)
     c2 = SkyCoord(fullTable['TransientRA']*u.deg, fullTable['TransientDEC']*u.deg, frame='icrs')
     sep = np.array(coord.separation(c2).arcsec)
     hosts = None
@@ -453,12 +455,17 @@ def coneSearchPairs(coord, radius):
 # Returns the full table of data
 # inputs: none
 # outputs: the full GHOST database
-def fullData():
-    install_path = os.getenv('GHOST_PATH')
-#    if not install_path:
-#    	install_path = astro_ghost.__file__
-#    	install_path = install_path.split("/")[:-1]
-#    	install_path = "/".join(install_path)
+def fullData(install_path=''):
+    if not install_path:
+        install_path = os.getenv('GHOST_PATH')
+        if not install_path:
+            try:
+                install_path = astro_ghost.__file__
+                install_path = install_path.split("/")[:-1]
+                install_path = "/".join(install_path)
+            except:
+                print("Error! I don't know where you installed GHOST -- set GHOST_PATH as an environmental variable or pass in the install_path parameter.")
+    print(install_path)
     fullTable = pd.read_csv(install_path+"/database/GHOST.csv")
     return fullTable
 
@@ -470,7 +477,7 @@ def fullData():
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=800, savepath='./'):
+def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=800, savepath='./', install_path=''):
 
     #if no names were passed in, add placeholder names for each transient in the search
     if snName == ['']:
@@ -491,7 +498,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
     snName = [x.replace(" ", "") for x in snName]
     df_transients = pd.DataFrame({'Name':np.array(snName), 'snCoord':np.array(snCoord), 'snClass':np.array(snClass)})
 
-    tempHost1, notFoundNames = getDBHostFromTransientName(snName)
+    tempHost1, notFoundNames = getDBHostFromTransientName(snName, install_path)
     found_by_name = len(snName) - len(notFoundNames)
 
     if tempHost1 is None or len(notFoundNames) > 0:
@@ -502,7 +509,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
 
         snCoord_remaining =  df_transients_remaining['snCoord'].values
 
-        tempHost2, notFoundCoords = getDBHostFromTransientCoords(snCoord_remaining);
+        tempHost2, notFoundCoords = getDBHostFromTransientCoords(snCoord_remaining, install_path);
         found_by_coord = len(snName) - len(notFoundCoords) - found_by_name
         if tempHost2 is None or len(notFoundCoords) > 0:
             if verbose:
@@ -557,8 +564,10 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     fn_SN = 'transients_%s.csv' % dateStr
     fn_Dict = fn_Host[:-4] + ".p"
     dir_name = fn_SN[:-4]
-    if not os.path.exists(savepath + dir_name):
-        os.makedirs(savepath + dir_name)
+    if not os.path.exists(savepath):
+        os.mkdir(savepath)
+        os.chmod(savepath, 0o777)
+    os.makedirs(savepath + dir_name)
     path = savepath+dir_name+'/'
     #create temp dataframe with RA and DEC corresponding to the transient
 
@@ -723,7 +732,7 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
 
     for tempPath in paths:
         if not os.path.exists(tempPath):
-            os.makedirs(tempPath)
+            os.mkdir(tempPath)
 
     #move tables to the tables directory, and printouts to the printouts directory
     printouts = glob.glob(path+'/*.txt')
