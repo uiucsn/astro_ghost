@@ -29,21 +29,21 @@ from datetime import datetime
 import astro_ghost
 from joblib import dump, load
 
-def getGHOST(real=False, verbose=False, install_path=''):
-    if not install_path:
+def getGHOST(real=False, verbose=False, installpath=''):
+    if not installpath:
         try:
-            install_path = os.environ['GHOST_PATH']
+            installpath = os.environ['GHOST_PATH']
         except:
             print("Couldn't find where you want to save GHOST. Saving in package path...")
-            install_path = astro_ghost.__file__
-            install_path = install_path.split("/")[:-1]
-            install_path = "/".join(install_path)
-    if not os.path.exists(install_path + '/database'):
-        os.mkdir(install_path + '/database')
+            installpath = astro_ghost.__file__
+            installpath = installpath.split("/")[:-1]
+            installpath = "/".join(installpath)
+    if not os.path.exists(installpath + '/database'):
+        os.mkdir(installpath + '/database')
     if real:
         url = 'https://www.dropbox.com/s/a0fufc3827pfril/GHOST.csv?dl=1'
         r = requests.get(url)
-        fname = install_path + '/database/GHOST.csv'
+        fname = installpath + '/database/GHOST.csv'
         open(fname , 'wb').write(r.content)
         if verbose:
             print("Successfully downloaded GHOST database.\n")
@@ -118,7 +118,7 @@ def getGHOST(real=False, verbose=False, install_path=''):
             'host_logmass', 'host_logmass_min', 'host_logmass_max',
             'Hubble Residual', 'TransientName']
         df = pd.DataFrame(columns = colnames)
-        df.to_csv(install_path + "/database/GHOST.csv",index=False)
+        df.to_csv(installpath + "/database/GHOST.csv",index=False)
         if verbose:
             print("Successfully created dummy database.\n")
 
@@ -182,8 +182,8 @@ def remove_prefix(text, prefix):
 #          If the supernova is currently in the
 #          database, return the database object.
 #          If not found, return None
-def getDBHostFromTransientCoords(transientCoords, install_path=''):
-    fullTable = fullData(install_path)
+def getDBHostFromTransientCoords(transientCoords, GHOSTpath=''):
+    fullTable = fullData(GHOSTpath)
     notFound = []
     host_DF = None
     hostList = []
@@ -218,8 +218,8 @@ def getDBHostFromTransientCoords(transientCoords, install_path=''):
 #          If the supernova is currently in the
 #          database, return the database object.
 #          If no host is found, return None
-def getDBHostFromTransientName(SNNames, install_path=''):
-    fullTable = fullData(install_path)
+def getDBHostFromTransientName(SNNames, GHOSTpath=''):
+    fullTable = fullData(GHOSTpath)
     allHosts = []
     notFound = []
     host_DF = None
@@ -251,8 +251,8 @@ def getDBHostFromTransientName(SNNames, install_path=''):
 #          If the supernova is currently in the
 #          database, return the database object.
 #          If no host is found, return None
-def getHostFromHostName(hostNames, install_path=''):
-    fullTable = fullData(install_path)
+def getHostFromHostName(hostNames, GHOSTpath=''):
+    fullTable = fullData(GHOSTpath)
     possibleNames = []
 
     for name in hostNames:
@@ -266,8 +266,8 @@ def getHostFromHostName(hostNames, install_path=''):
         print("Sorry, no hosts were found in our database!\n")
     return host
 
-def getHostFromHostCoords(hostCoords, install_path=''):
-    fullTable = fullData(install_path)
+def getHostFromHostCoords(hostCoords, GHOSTpath=''):
+    fullTable = fullData(GHOSTpath)
     c2 = SkyCoord(fullTable['raMean']*u.deg, fullTable['decMean']*u.deg, frame='icrs')
     host = []
     for hostCoord in hostCoords:
@@ -324,8 +324,8 @@ def getTransientStatsFromHostName(hostName):
 # host of a previously identified transient, using
 # the pipeline outlined above.
 # inputs - the coordinates of the transient to search
-def getHostStatsFromTransientCoords(transientCoordsList, install_path=''):
-    fullTable = fullData(install_path)
+def getHostStatsFromTransientCoords(transientCoordsList, GHOSTpath=''):
+    fullTable = fullData(GHOSTpath)
     names = []
     for transientCoords in transientCoordsList:
         c2 = SkyCoord(fullTable['TransientRA']*u.deg, fullTable['TransientDEC']*u.deg, frame='icrs')
@@ -341,10 +341,10 @@ def getHostStatsFromTransientCoords(transientCoordsList, install_path=''):
 # host of a previously identified transient, using
 # the pipeline outlined above.
 # inputs - the coordinates of the transient to search
-def getHostStatsFromTransientName(SNName, install_path=''):
+def getHostStatsFromTransientName(SNName, GHOSTpath=''):
     SNName = np.array(SNName)
-    fullTable = fullData(install_path)
-    host, notFound = getDBHostFromTransientName(SNName, install_path)
+    fullTable = fullData(GHOSTpath)
+    host, notFound = getDBHostFromTransientName(SNName, GHOSTpath)
     if host is not None:
         for idx, row in host.iterrows():
             if np.unique(row['NED_name']) != "":
@@ -357,10 +357,6 @@ def getHostStatsFromTransientName(SNName, install_path=''):
             print("PS1 rMag: %.2f"%row['rApMag'])
             print("g-r          r-i          i-z")
             print("%.2f+/-%.3f   %.2f+/-%.3f   %.2f+/-%.3f"%(row['g-r'],row['g-rErr'], row['r-i'], row['r-iErr'], row['i-z'], row['i-zErr']))
-        #    print("g-r: %.2f."%host['g-r'].values[0])
-        #    print("r-i: %.2f."%host['r-i'].values[0])
-        #    print("i-z: %.2f."%host['i-z'].values[0])
-            #print("There are %i supernovae associated with this object.\n"%len(host))
             print("Associated supernovae: ")
             if np.unique(row['NED_name']) != "":
                 tempHost = fullTable[fullTable['NED_name'] == row['NED_name']]
@@ -377,12 +373,12 @@ def getHostStatsFromTransientName(SNName, install_path=''):
 # fits file with radius rad, and plots the image.
 # inputs
 # outputs
-def getHostImage(transientName='', band="grizy", rad=60, save=0, install_path=''):
+def getHostImage(transientName='', band="grizy", rad=60, save=0, GHOSTpath=''):
     if transientName == '':
         print("Error! Please enter a supernova!\n")
         return
-    fullTable = fullData(install_path)
-    host, notFound = getDBHostFromTransientName(transientName, install_path)
+    fullTable = fullData(GHOSTpath)
+    host, notFound = getDBHostFromTransientName(transientName, GHOSTpath)
     if host is not None:
         host.reset_index(drop=True, inplace=True)
         tempSize = int(4*float(rad))
@@ -441,8 +437,8 @@ def getHostSpectra(SNname, path):#
 # within a certain radius, returned as a pandas dataframe
 # inputs location, in astropy coordinates, and radius in arcsec
 # outputs the data frame of all nearby pairs
-def coneSearchPairs(coord, radius, install_path=''):
-    fullTable = fullData(install_path)
+def coneSearchPairs(coord, radius, GHOSTpath=''):
+    fullTable = fullData(GHOSTpath)
     c2 = SkyCoord(fullTable['TransientRA']*u.deg, fullTable['TransientDEC']*u.deg, frame='icrs')
     sep = np.array(coord.separation(c2).arcsec)
     hosts = None
@@ -455,18 +451,17 @@ def coneSearchPairs(coord, radius, install_path=''):
 # Returns the full table of data
 # inputs: none
 # outputs: the full GHOST database
-def fullData(install_path=''):
-    if not install_path:
-        install_path = os.getenv('GHOST_PATH')
-        if not install_path:
+def fullData(GHOSTpath=''):
+    if not GHOSTpath:
+        GHOSTpath = os.getenv('GHOST_PATH')
+        if not GHOSTpath:
             try:
-                install_path = astro_ghost.__file__
-                install_path = install_path.split("/")[:-1]
-                install_path = "/".join(install_path)
+                GHOSTpath = astro_ghost.__file__
+                GHOSTpath = GHOSTpath.split("/")[:-1]
+                GHOSTpath = "/".join(GHOSTpath)
             except:
-                print("Error! I don't know where you installed GHOST -- set GHOST_PATH as an environmental variable or pass in the install_path parameter.")
-    print(install_path)
-    fullTable = pd.read_csv(install_path+"/database/GHOST.csv")
+                print("Error! I don't know where you installed GHOST -- set GHOST_PATH as an environmental variable or pass in the GHOSTpath parameter.")
+    fullTable = pd.read_csv(GHOSTpath+"/database/GHOST.csv")
     return fullTable
 
 # The wrapper function for the
@@ -477,7 +472,7 @@ def fullData(install_path=''):
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=800, savepath='./', install_path=''):
+def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=800, savepath='./', GHOSTpath=''):
 
     #if no names were passed in, add placeholder names for each transient in the search
     if snName == ['']:
@@ -498,7 +493,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
     snName = [x.replace(" ", "") for x in snName]
     df_transients = pd.DataFrame({'Name':np.array(snName), 'snCoord':np.array(snCoord), 'snClass':np.array(snClass)})
 
-    tempHost1, notFoundNames = getDBHostFromTransientName(snName, install_path)
+    tempHost1, notFoundNames = getDBHostFromTransientName(snName, GHOSTpath)
     found_by_name = len(snName) - len(notFoundNames)
 
     if tempHost1 is None or len(notFoundNames) > 0:
@@ -509,7 +504,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
 
         snCoord_remaining =  df_transients_remaining['snCoord'].values
 
-        tempHost2, notFoundCoords = getDBHostFromTransientCoords(snCoord_remaining, install_path);
+        tempHost2, notFoundCoords = getDBHostFromTransientCoords(snCoord_remaining, GHOSTpath);
         found_by_coord = len(snName) - len(notFoundCoords) - found_by_name
         if tempHost2 is None or len(notFoundCoords) > 0:
             if verbose:

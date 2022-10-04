@@ -19,7 +19,7 @@ verbose = 1
 #note: real=False creates an empty database, which
 #allows you to use the association methods without
 #needing to download the full database first
-getGHOST(real=True, verbose=verbose, install_path='/where/to/install/GHOSTdb?/')
+getGHOST(real=True, verbose=verbose, installpath='/where/to/install/GHOSTdb?/')
 
 #create a list of the supernova names and their skycoords (these three are from TNS)
 snName = ['SN 2012dt', 'SN 1998bn', 'SN 1957B']
@@ -31,7 +31,8 @@ snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
 # run the association algorithm!
 # this first checks the GHOST database for a SN by name, then by coordinates, and
 # if we have no match then it manually associates them.
-hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True, px=64, savepath='/path/to/savedir/', install_path='/where/did/you/install/GHOSTdb?/')
+hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True, px=64, savepath='/path/to/savedir/', GHOSTpath='/where/did/you/install/GHOSTdb?/')
+
 
 # classify transients
 hosts_wPredictions = classify(hosts)
