@@ -38,7 +38,7 @@ import os
 import tarfile
 
 def build_sfd_dir(fname='./sfddata-master.tar.gz'):
-    url = 'http://ghost.ncsa.illinois.edu/static/sfddata-master.tar.gz'
+    url = 'https://github.com/kbarbary/sfddata/archive/master.tar.gz'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
         with open(fname, 'wb') as f:
@@ -51,7 +51,7 @@ def build_sfd_dir(fname='./sfddata-master.tar.gz'):
     return
 
 def get_photoz_weights(fname='./MLP_lupton.hdf5'):
-    url = 'http://ghost.ncsa.illinois.edu/static/MLP_lupton.hdf5'
+    url = 'https://uofi.box.com/shared/static/n1yiy818mv5b5riy2h3dg5yk2by3swos.hdf5'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
         with open(fname, 'wb') as f:
@@ -305,7 +305,7 @@ def get_common_constraints_columns():
 def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
     if ebv:
         m = sfdmap.SFDMap(PATH)
-        assert ('raMean' in DF.columns()) and ('decMean' in DF.columns()), 'DustMap query failed because the expected coordinates didnt'\
+        assert ('raMean' in DF.columns.values) and ('decMean' in DF.columns.values), 'DustMap query failed because the expected coordinates didnt'\
                                                                             'exist in DF, likely the match of any Hosts into PanStarrs failed'
         EBV = m.ebv(DF['raMean'].values.astype(np.float32),DF['decMean'].values.astype(np.float32))
 
