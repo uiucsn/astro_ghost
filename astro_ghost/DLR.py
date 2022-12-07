@@ -364,7 +364,7 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                             hasSimbad = hosts[hosts['objID'] == key]['hasSimbad'].values[0]
                             if (tempType == "G"):
                                 gal_hosts.append(key)
-                            if (hasSimbad):
+                            if (hasSimbad) & (tempType != '*'):
                                 Simbad_hosts.append(key)
                         if len(gal_hosts) > 0:
                             if gal_hosts[0] != chosenHost and R_dict[gal_hosts[0]] < 4.0:

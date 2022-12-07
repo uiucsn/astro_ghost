@@ -40,6 +40,10 @@ def getGHOST(real=False, verbose=False, installpath=''):
             installpath = "/".join(installpath)
     if not os.path.exists(installpath + '/database'):
         os.mkdir(installpath + '/database')
+    else:
+        if os.path.exists(installpath + 'database/GHOST.csv'):      
+            print("GHOST database already exists in the install path!")
+            return
     if real:
         url = 'https://www.dropbox.com/s/a0fufc3827pfril/GHOST.csv?dl=1'
         r = requests.get(url)
