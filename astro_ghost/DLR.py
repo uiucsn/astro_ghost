@@ -66,12 +66,12 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     YY = best_band + 'momentYY'
     XY = best_band + 'momentXY'
 
-    if (np.float(source[XX]) != np.float(source[XX])) | (np.float(source[XY]) != np.float(source[XY])) | \
-        (np.float(source[YY]) != np.float(source[YY])):
+    if (float(source[XX]) != float(source[XX])) | (float(source[XY]) != float(source[XY])) | \
+        (float(source[YY]) != float(source[YY])):
         return dist, badR
 
-    U = np.float(source[XY])
-    Q = np.float(source[XX]) - np.float(source[YY])
+    U = float(source[XY])
+    Q = float(source[XX]) - float(source[YY])
     if Q == 0:
         return dist, badR
 
@@ -109,7 +109,7 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
     # is good in that it gets rid of lots of artifacts without radius information
     #dist = float(np.sqrt(xr**2 + yr**2))
 
-    if (np.float(r_a) != np.float(r_a)) | (np.float(elong) != np.float(elong)):
+    if (float(r_a) != float(r_a)) | (float(elong) != float(elong)):
         #print("Bad DLR for SH source.")
         return dist, badR
 
@@ -198,8 +198,8 @@ def plot_DLR_vectors(path, transient, transient_df, host_dict_candidates, host_d
         XX = hostDF[band + 'momentXX'].values[0]
         YY = hostDF[band + 'momentYY'].values[0]
         XY = hostDF[band + 'momentXY'].values[0]
-        U = np.float(XY)
-        Q = np.float(XX) - np.float(YY)
+        U = float(XY)
+        Q = float(XX) - float(YY)
         if (Q == 0):
             r_a = 1.e-5
         else:
@@ -292,8 +292,8 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                         band = choose_band_SNR(host_df)
                         dist = 1.e10
                         R = 1.e10
-                        if np.float64(host_df[band + 'KronRad']) > 0.0:
-                            r_a = r_b = np.float64(host_df[band + 'KronRad'])
+                        if float(host_df[band + 'KronRad']) > 0.0:
+                            r_a = r_b = float(host_df[band + 'KronRad'])
                         else:
                             noGood = 1
                         if noGood:
