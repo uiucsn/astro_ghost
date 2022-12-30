@@ -29,19 +29,19 @@ from datetime import datetime
 import astro_ghost
 from joblib import dump, load
 
-def getGHOST(real=False, verbose=False, installpath=''):
+def getGHOST(real=False, verbose=False, installpath='', clobber=False):
     if not installpath:
         try:
             installpath = os.environ['GHOST_PATH']
         except:
-            print("Couldn't find where you want to save GHOST. Saving in package path...")
+            print("Couldn't find where you want to save GHOST. Setting location to package path...")
             installpath = astro_ghost.__file__
             installpath = installpath.split("/")[:-1]
             installpath = "/".join(installpath)
     if not os.path.exists(installpath + '/database'):
         os.mkdir(installpath + '/database')
     else:
-        if os.path.exists(installpath + 'database/GHOST.csv'):      
+        if os.path.exists(installpath + '/database/GHOST.csv') & (clobber == False):      
             print("GHOST database already exists in the install path!")
             return
     if real:
