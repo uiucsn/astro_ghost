@@ -5,7 +5,7 @@ import os
 
 from setuptools import setup
 
-version = "0.1.54"
+version = "0.2.3"
 
 VERSION_TEMPLATE = """
  Note that we need to fall back to the hard-coded version if either
@@ -39,7 +39,7 @@ setuptools.setup(
     package_data={
     'astro_ghost': ['Star_Galaxy_RealisticModel.sav','Star_Galaxy_IdealModel.sav', 'Star_Galaxy_RealisticModel_GHOST_PS1ClassLabels.sav','tonry_ps1_locus.txt'],
     },
-    install_requires=['pandas', 'sklearn', 'numpy', 'seaborn', 'matplotlib', 'joypy','astropy', 'photutils', 'scipy', 'datetime', 'requests','imblearn','rfpimp','Pillow', 'pyvo', 'astroquery'],
+    install_requires=['pandas', 'sklearn', 'numpy', 'seaborn', 'matplotlib', 'joypy','astropy', 'photutils', 'scipy', 'datetime', 'requests','imblearn','rfpimp','Pillow', 'pyvo', 'astroquery', 'mastcasjobs'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

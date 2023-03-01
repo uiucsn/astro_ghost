@@ -191,7 +191,7 @@ def getColors(df):
 def makeCuts(df,cuts=[],dict=""):
     for cut in cuts:
         if cut == "n":
-            df = df[df['nDetections'] >= 1]
+            df = df[df['nDetections'] >= 10]
 #            df = df[df['ng'] >= 1]
 #            df = df[df['nr'] >= 1]
 #            df = df[df['ni'] >= 1]

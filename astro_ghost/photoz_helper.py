@@ -419,6 +419,10 @@ def evaluate(X,mymodel,range_z):
 #'id' column in DF is the 0th ordered index of hosts. missing rows are therefore signalled
 #    by skipped numbers in index
 def calc_photoz(hosts):
+    if np.nansum(hosts['decMean'] < -30) > 0:
+        print("ERROR! Photo-z estimator has not yet been implemented for southern-hemisphere sources."\
+        "Please remove sources below dec=-30d and try again.")
+        return hosts
     objIDs = hosts['objID'].values.tolist()
     constraints, columns = get_common_constraints_columns()
     DFs = serial_objID_search(objIDs,columns=columns,**constraints)

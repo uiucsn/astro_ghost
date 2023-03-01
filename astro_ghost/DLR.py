@@ -29,7 +29,7 @@ def find_nearest(array, value):
 # with the highest SNR for the rest of our measurements
 # host_df - the dataframe of hosts we're considering
 def choose_band_SNR(host_df):
-    bands = ['g', 'r', 'i', 'z', 'y']
+    bands = 'grizy'
     try:
         gSNR = float(1/host_df["gPSFMagErr"])
         rSNR = float(1/host_df["rPSFMagErr"])
@@ -276,7 +276,6 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
     GDflag = 0
     GD_SN = []
     for name, host in orig_dict.items():
-        #print(name)
         if (type(host) is not np.int64 and type(host) is not float):
              if (len(host.shape) > 0) and (host.shape[0] > 0):
                 R_dict = {}
@@ -285,52 +284,61 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                 host = np.array(host)
                 if len(host)>0:
                     for tempHost in host:
-                        noGood = 0
+                        #noGood = 0
                         theta = 0
                         host_df = hosts[hosts["objID"] == tempHost]
                         transient_df = transients[transients["Name"] == str(name)]
-                        band = choose_band_SNR(host_df)
-                        dist = 1.e10
-                        R = 1.e10
-                        if float(host_df[band + 'KronRad']) > 0.0:
-                            r_a = r_b = float(host_df[band + 'KronRad'])
+
+                        # If no good, we want to artificially inflate the distance to the SN so that
+                        # we don't incorrectly pick this as our host
+                        # (but the radius goes into plotting, so ra is artificially shrunk)
+                        R =  dist = 1.e10
+                        r_a = 0.05
+                        GDflag = 1
+
+                        if ":" in str(transient_df["RA"].values):
+                            ra_SN = Angle(transient_df["RA"].values, unit=u.hourangle)
                         else:
-                            noGood = 1
-                        if noGood:
-                            # If no good, we want to artificially inflate the distance to the SN so that
-                            # we don't incorrectly pick this as our host
-                            # (but the radius goes into plotting, so ra is artificially shrunk)
-                            R = 1.e10
-                            R_dict[tempHost] = R
-                            noGood = 0
-                            ra_dict[tempHost] = 0.05
-                            GDflag = 1
+                            ra_SN = Angle(transient_df["RA"].values, unit=u.deg)
+                        dec_SN = Angle(transient_df["DEC"].values, unit=u.degree)
+                        ra_host = host_df['raMean']
+                        dec_host = host_df['decMean']
+                        if len(np.array(ra_SN)) > 1:
+                            ra_SN = ra_SN[0]
+                            dec_SN = dec_SN[0]
+                        if (dec_SN.deg > -30):
+                            #switching from kron radius to half-light radius (more robust!)
+                            for band in 'gri':
+                                #temp_r_a = float(host_df[band + 'HalfLightRad'].values[0])
+                                try:
+                                    temp_r_a = float(host_df[band + 'petR90'].values[0])
+                                except:
+                                    temp_r_a = np.nan
+                                if (temp_r_a == temp_r_a) & (temp_r_a > 0):
+                                    #r_a = r_b = float(host_df[band + 'HalfLightRad'].values[0])
+                                    r_a = r_b = float(host_df[band + 'petR90'].values[0])
+                                    dist, R = calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
+                                    break
                         else:
-                            if ":" in str(transient_df["RA"].values):
-                                ra_SN = Angle(transient_df["RA"].values, unit=u.hourangle)
-                            else:
-                                ra_SN = Angle(transient_df["RA"].values, unit=u.deg)
-                            dec_SN = Angle(transient_df["DEC"].values, unit=u.degree)
-                            ra_host = host_df['raMean']
-                            dec_host = host_df['decMean']
-                            if len(np.array(ra_SN)) > 1:
-                                ra_SN = ra_SN[0]
-                                dec_SN = dec_SN[0]
-                            #print(tempHost)
-                            #print(name)
-                            if (dec_SN.deg < -30):
-                                elong = host_df[band + "_elong"]
-                                phi = np.radians(host_df[band + "_pa"])
-                                #ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_band
+                            band = choose_band_SNR(host_df)
+                            r_a = float(host_df['%sradius_frac90'%band].values[0])
+                            if r_a == r_a:
+                                elong = host_df[band + "_elong"].values[0]
+                                phi = np.radians(host_df[band + "_pa"].values[0])
+                                r_a = host_df[band + 'radius_frac90'].values[0]*0.5 #plate scale
+
+                                # in arcsec, the radius containing 90% of the galaxy light.
+                                # This empirically has improved association performance
+                                # for southern-hemisphere sources.
                                 dist, R = calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, host_df, band)
-                                #print("dist = %.2f, R = %.2f" %( dist, R))
-                            else:
-                                dist, R = calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
-                            R_dict[tempHost] = R
-                            ra_dict[tempHost] = r_a
-                            dist_dict[tempHost] = dist
+
+                        R_dict[tempHost] = R
+                        ra_dict[tempHost] = r_a
+                        dist_dict[tempHost] = dist
+
                         hosts.loc[hosts['objID'] == tempHost, 'dist/DLR'] = R
                         hosts.loc[hosts['objID'] == tempHost, 'dist'] = dist
+
                 print(name, file=f)
                 print("transient = \\", file=f)
                 print(name, file=f)
@@ -339,16 +347,16 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                 print("ra_dict = \\", file=f)
                 print(ra_dict, file=f)
 
-                #subset so that we're less than 4 in DLR units
+                #subset so that we're less than 5 in DLR units
                 chosenHost = min(R_dict, key=R_dict.get)
-                if R_dict[chosenHost] > 4.0:
+                if R_dict[chosenHost] > 5.0:
                     #If we can't find a host, say that this galaxy has no host
                     dict_mod[name] = np.nan
                     noHosts.append(name)
-                    print("No host chosen! r/DLR > 4.0.", file=f)
+                    print("No host chosen! r/DLR > 5.0.", file=f)
                     continue
                 else:
-                    R_dict_sub = dict((k, v) for k, v in R_dict.items() if v <= 4.0)
+                    R_dict_sub = dict((k, v) for k, v in R_dict.items() if v <= 5.0)
                     #Sort from lowest to highest DLR value
                     R_dict_sub = {k: v for k, v in sorted(R_dict_sub.items(), key=lambda item: item[1])}
 
@@ -367,12 +375,12 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                             if (hasSimbad) & (tempType != '*'):
                                 Simbad_hosts.append(key)
                         if len(gal_hosts) > 0:
-                            if gal_hosts[0] != chosenHost and R_dict[gal_hosts[0]] < 4.0:
+                            if gal_hosts[0] != chosenHost and R_dict[gal_hosts[0]] < 5.0:
                                 chosenHost = gal_hosts[0] #only change if we're within the light profile of the galaxy
                                 print("Choosing the galaxy with the smallest DLR - nearest source had DLR > 1!", file=f)
                         if len(Simbad_hosts) > 0:
                             print("Chosen SIMBAD host!", file=f)
-                            if Simbad_hosts[0] != chosenHost and R_dict[Simbad_hosts[0]] < 4.0:
+                            if Simbad_hosts[0] != chosenHost and R_dict[Simbad_hosts[0]] < 5.0:
                                 chosenHost = Simbad_hosts[0] #only change if we're within the light profile of the galaxy
                                 print("Choosing the simbad source with the smallest DLR!", file=f)
                     dict_mod[name] = chosenHost
