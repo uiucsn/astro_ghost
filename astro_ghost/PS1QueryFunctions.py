@@ -1,7 +1,6 @@
 from __future__ import print_function
 import numpy as np
 from astropy.table import Table
-import requests
 from PIL import Image
 from io import BytesIO
 import os
@@ -13,6 +12,7 @@ from astropy.table import Table
 import sys
 import re
 import json
+import mastcasjobs
 import requests
 from datetime import datetime
 from astropy import units as u
@@ -37,13 +37,21 @@ from astropy.visualization import make_lupton_rgb
 from astropy.coordinates import name_resolve
 from pyvo.dal import sia
 import pickle
-import requests
 from io import BytesIO
 
 from astropy.coordinates import SkyCoord
 from astroquery.vo_conesearch import ConeSearch
 from astroquery.vo_conesearch import vos_catalog
 vos_catalog.list_catalogs("conesearch_good")
+from warnings import simplefilter
+
+#could absolutely be more efficient, but filter for now 
+simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
+
+#set environmental variables
+if "CASJOBS_USERID" not in os.environ:
+    os.environ['CASJOBS_USERID'] = 'ghostbot'
+    os.environ['CASJOBS_PW'] = 'ghostbot'
 
 def getAllPostageStamps(df, tempSize, path=".", verbose=0):
     for i in np.arange(len(df["raMean"])):
@@ -441,6 +449,30 @@ def query_ps1_name(name, rad):
     [ra, dec] = resolve(name)
     return ps1cone(ra,dec,rad/3600,table="stack",release="dr1",format="csv",columns=None,baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False)
 
+# stolen from the wonderful API at https://ps1images.stsci.edu/ps1_dr2_api.html
+def ps1metadata(table="mean",release="dr1",
+           baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs"):
+    """Return metadata for the specified catalog and table
+
+    Parameters
+    ----------
+    table (string): mean, stack, or detection
+    release (string): dr1 or dr2
+    baseurl: base URL for the request
+
+    Returns an astropy table with columns name, type, description
+    """
+
+    checklegal(table,release)
+    url = f"{baseurl}/{release}/{table}/metadata"
+    r = requests.get(url)
+    r.raise_for_status()
+    v = r.json()
+    # convert to astropy table
+    tab = Table(rows=[(x['name'],x['type'],x['description']) for x in v],
+               names=('name','type','description'))
+    return tab
+
 # Queries PS1 to find host info for each transient
 # Input: df - a dataframe of all spectroscopically classified transients in TNS
 #        fn - the output data frame of all PS1 potential hosts
@@ -512,6 +544,7 @@ def find_host_info_SH(df, fn, dict_fn, path, rad):
     """VO Cone Search for all objects within rad arcsec of SNe (for Southern-Hemisphere (SH) objects)"""
     SN_Host_SH = {}
     SH_queries = []
+    pd.options.mode.chained_assignment = None
     for j, row in df.iterrows():
             if ":" in str(row.RA):
                 tempRA = Angle(row.RA, unit=u.hourangle)
@@ -551,10 +584,10 @@ def find_host_info_SH(df, fn, dict_fn, path, rad):
             	os.makedirs(path+'/dictionaries/')
             with open(path+"/dictionaries/" + dict_fn, 'wb') as fp:
                 pickle.dump(SN_Host_SH, fp, protocol=pickle.HIGHEST_PROTOCOL)
+    pd.options.mode.chained_assignment = 'warn'
 
 def southernSearch(ra, dec, rad):
     searchCoord = SkyCoord(ra*u.deg, dec*u.deg, frame='icrs')
-    #response = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=100.1&DEC=-31.1&SR=0.00833&RESPONSEFORMAT=CSV")
     responseMain = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
     responsePhot = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.photometry&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
 
@@ -562,7 +595,8 @@ def southernSearch(ra, dec, rad):
     dfPhot = pd.read_csv(BytesIO(responsePhot.content))
 
     filt_dfs = []
-    for filter in ['g', 'r', 'i', 'z']:
+    for filter in 'griz':
+        #add the photometry columns
         tempDF = dfPhot[dfPhot['filter']==filter]
         if len(tempDF) <1:
             tempDF.append(pd.Series(), ignore_index=True) #add dummy row for the sake of not crashing
@@ -570,14 +604,21 @@ def southernSearch(ra, dec, rad):
             if col != 'object_id':
                 tempDF[filter + col] = tempDF[col]
                 del tempDF[col]
+        #take the column with the smallest uncertainty in the measured semi-major axis - this is what we'll use to
+        #calculate DLR later!
+        tempDF = tempDF.loc[tempDF.groupby("object_id")[filter + 'e_a'].idxmin()]
         filt_dfs.append(tempDF)
 
-    test = filt_dfs[0].merge(filt_dfs[1], on='object_id', how='outer')
-    test2 = test.merge(filt_dfs[2], on='object_id', how='outer')
-    test3 = test2.merge(filt_dfs[3], on='object_id', how='outer')
-    test3['object_id'] =  np.nan_to_num(test3['object_id'])
-    test3['object_id'] = test3['object_id'].astype(np.int64)
-    fullDF = test3.merge(dfMain, on='object_id', how='outer')
+    test = filt_dfs[0]
+
+    for i in np.arange(1, len(filt_dfs)):
+        test = test.merge(filt_dfs[i], on='object_id', how='outer')
+
+    test['object_id'] =  np.nan_to_num(test['object_id'])
+    test['object_id'] = test['object_id'].astype(np.int64)
+
+    fullDF = test.merge(dfMain, on='object_id', how='outer')
+
     flag_mapping = {'objID':'object_id', 'raMean':'raj2000',
         'decMean':'dej2000','gKronRad':'gradius_kron',
         'rKronRad':'rradius_kron', 'iKronRad':'iradius_kron',
@@ -609,6 +650,12 @@ def southernSearch(ra, dec, rad):
         'r_elong':'relong', 'r_a':'ra', 'r_b':'rb', 'r_pa':'rpa',
         'i_elong':'ielong', 'i_a':'ia', 'i_b':'ib', 'i_pa':'ipa',
         'z_elong':'zelong', 'z_a':'za', 'z_b':'zb', 'z_pa':'zpa'} #'class_star' should be added
+
+    keepCols = []
+    for band in 'griz':
+        for rad in ['radius_petro', 'radius_frac20', 'radius_frac50', 'radius_frac90']:
+            flag_mapping[band + rad] = band + rad
+            keepCols.append(band + rad)
 
     df_cols = np.array(list(flag_mapping.values()))
     mapped_cols = np.array(list(flag_mapping.keys()))
@@ -683,10 +730,6 @@ def southernSearch(ra, dec, rad):
         else:
             fullDF[mapped_cols[i]] = fullDF[df_cols[i]]
 
-    for j in np.arange(len(np.unique(df_cols))):
-        if np.unique(df_cols)[j] != 'nan':
-            del fullDF[np.unique(df_cols)[j]]
-
     fullDF['gPlateScale'] = 0.50 #''/px
     fullDF['rPlateScale'] = 0.50 #''/px
     fullDF['iPlateScale'] = 0.50 #''/px
@@ -696,7 +739,6 @@ def southernSearch(ra, dec, rad):
     fullDF['bestDetection'] = 1
     fullDF['qualityFlag'] = 0 #dummy variable set so that no sources get cut by qualityFlag in PS1 (which isn't in SkyMapper)
     fullDF['ny'] = 1 #dummy variable
-
     colSet = np.concatenate([list(flag_mapping.keys()), ['gPlateScale', 'rPlateScale',
         'iPlateScale', 'zPlateScale', 'yPlateScale', 'primaryDetection', 'bestDetection', 'qualityFlag', 'ny']])
 
@@ -705,6 +747,43 @@ def southernSearch(ra, dec, rad):
     leftover = set(PS1_cols) - set(fullDF.columns.values)
     for col in leftover:
         fullDF[col] = np.nan
-    fullDF = fullDF[PS1_cols] #arrange correctly
+
+    #fullDF = fullDF[PS1_cols] #arrange correctly
     fullDF.drop_duplicates(subset=['objID'], inplace=True)
     return fullDF
+
+def getDR2_petrosianSizes(ra_arr, dec_arr, rad):
+    if len(ra_arr) < 1:
+        return
+    
+    halfLightList = []
+    for i in np.arange(len(ra_arr)):
+        query = """select st.objID, st.primaryDetection, st.gpetR90, st.rpetR90, st.ipetR90, st.zpetR90, st.ypetR90
+        from fGetNearbyObjEq(%.3f,%.3f,%.1f/60.0) nb
+        inner join StackPetrosian st on st.objID=nb.objid where st.primaryDetection = 1""" %(ra_arr[i], dec_arr[i], rad)
+
+        jobs = mastcasjobs.MastCasJobs(context="PanSTARRS_DR2")
+        tab = jobs.quick(query, task_name="halfLightSearch")
+        df_halfLight = tab.to_pandas()
+        halfLightList.append(df_halfLight)
+
+    df_halfLight_full = pd.concat(halfLightList)
+    return df_halfLight_full
+
+def getDR2_halfLightSizes(ra_arr, dec_arr, rad):
+    if len(ra_arr) < 1:
+        return
+
+    halfLightList = []
+    for i in np.arange(len(ra_arr)):
+        query = """select st.objID, st.primaryDetection, st.gHalfLightRad, st.rHalfLightRad, st.iHalfLightRad,
+        st.zHalfLightRad, st.yHalfLightRad from fGetNearbyObjEq(%.3f,%.3f,%.1f/60.0) nb
+        inner join StackModelFitExtra st on st.objID=nb.objid where st.primaryDetection = 1""" %(ra_arr[i], dec_arr[i], rad)
+
+        jobs = mastcasjobs.MastCasJobs(context="PanSTARRS_DR2")
+        tab = jobs.quick(query, task_name="halfLightSearch")
+        df_halfLight = tab.to_pandas()
+        halfLightList.append(df_halfLight)
+
+    df_halfLight_full = pd.concat(halfLightList)
+    return df_halfLight_full

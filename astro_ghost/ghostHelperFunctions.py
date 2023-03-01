@@ -12,7 +12,7 @@ from astropy.io import fits
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 import re
-from astro_ghost.PS1QueryFunctions import getcolorim, get_hosts
+from astro_ghost.PS1QueryFunctions import *
 from astro_ghost.hostMatching import build_ML_df
 from astro_ghost.NEDQueryFunctions import getNEDInfo
 from astro_ghost.SimbadQueryFunctions import getSimbadInfo
@@ -41,7 +41,7 @@ def getGHOST(real=False, verbose=False, installpath='', clobber=False):
     if not os.path.exists(installpath + '/database'):
         os.mkdir(installpath + '/database')
     else:
-        if os.path.exists(installpath + '/database/GHOST.csv') & (clobber == False):      
+        if os.path.exists(installpath + '/database/GHOST.csv') & (clobber == False):
             print("GHOST database already exists in the install path!")
             return
     if real:
@@ -476,7 +476,7 @@ def fullData(GHOSTpath=''):
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=800, savepath='./', GHOSTpath=''):
+def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=800, savepath='./', GHOSTpath='', redo_search=True):
 
     #if no names were passed in, add placeholder names for each transient in the search
     if snName == ['']:
@@ -521,6 +521,12 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
             snClass_remaining = df_transients_remaining['snClass'].values
 
             tempHost3 = findNewHosts(snName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath)
+            
+            if (len(snName_remaining) > 0) and (len(tempHost3)==0) and (redo_search):
+                 #bump up the search radius to 150 arcsec for reallyyy low-redshift hosts...
+                 if verbose: 
+                     print("Couldn't find any hosts! Trying again with a search radius of 150''.")
+                 tempHost3 = findNewHosts(snName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath, 150)
             found_by_manual = len(tempHost3)
     hostDB = pd.concat([tempHost1, tempHost2, tempHost3], ignore_index=True)
     hostDB.replace(-999.0, np.nan, inplace=True)
@@ -536,7 +542,7 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMatch=False, px=800, savepath='./'):
+def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMatch=False, px=800, savepath='./', rad=60):
     if isinstance(snName, str):
         snName = snName.replace(" ", "")
         snRA = snCoord.ra.degree
@@ -554,11 +560,8 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     snDEC_arr = np.array(snDEC)
     snClass_arr = np.array(snClass)
 
-    #now = datetime.now()
-    #dateStr = "%i%.02i%.02i" % (now.year,now.month,now.day)
     dateStr = str(datetime.today()).replace("-", '').replace(".", '').replace(":", "").replace(" ", '')
 
-    rad = 60 #arcsec
     fn_Host = "SNe_TNS_%s_PS1Hosts_%iarcsec.csv" % (dateStr, rad)
     fn_SN = 'transients_%s.csv' % dateStr
     fn_Dict = fn_Host[:-4] + ".p"
@@ -575,6 +578,11 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
 
     #begin doing the heavy lifting to associate transients with hosts
     host_DF = get_hosts(path, fn_SN, fn_Host, rad)
+    #halfLightSizes = getDR2_halfLightSizes(snRA_arr, snDEC_arr, rad)
+    halfLightSizes = getDR2_petrosianSizes(snRA_arr, snDEC_arr, rad)
+    host_DF_new = host_DF.merge(halfLightSizes, on='objID')
+    host_DF = host_DF_new if not halfLightSizes.empty else host_DF
+    #host_DF = host_DF.merge(halfLightSizes, on='objID')
 
     if len(host_DF) < 1:
         print("ERROR: Found no hosts in cone search during manual association!")
@@ -598,6 +606,9 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
         for i in np.arange(len(transient_dict)-1):
             temp.update(transient_dict[i+1])
     transient_dict = {k.replace(' ', ''): v for k, v in temp.items()}
+    desperate_dict = transient_dict.copy()
+
+    host_DF = getNEDInfo(host_DF)
 
     host_DF_north = host_DF[host_DF['decMean']>-30].reset_index(drop=True)
     host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index(drop=True)
@@ -607,6 +618,8 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
 
     cut_dict = clean_dict(transient_dict, host_DF, [])
+    desperate_dict = cut_dict.copy()
+
     hostFrac = fracWithHosts(cut_dict)*100
     if verbose:
         print("Associated fraction after quality cuts: %.2f%%."%hostFrac)
@@ -620,7 +633,6 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     host_DF_north = calc_7DCD(host_DF_north)
 
     host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
-    host_DF = getNEDInfo(host_DF)
     host_DF = getSimbadInfo(host_DF)
     host_DF.to_csv(path+"/candidateHosts_NEDSimbad.csv", index=False)
 
@@ -654,6 +666,23 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
            dump(host_dict_nospace, fp)
 
     host_DF, host_dict_nospace_postDLR, noHosts, GD_SN = chooseByDLR(path, host_gals_DF, transients, fn, host_dict_nospace, host_dict_nospace, todo="r")
+
+    #last-ditch effort -- for the ones with no found host, just pick the nearest NED galaxy.
+    for transient in noHosts:
+          tempDF = host_gals_DF[host_gals_DF['objID'].isin(desperate_dict[transient])]
+          tempDF_gals = tempDF[tempDF['NED_type'].isin(['G', 'PofG', 'GPair', 'GGroup', 'GClstr'])].reset_index()
+          if len(tempDF_gals) < 1:
+             continue
+          transientRA = transients.loc[transients['Name'] == transient, 'RA'].values[0]
+          transientDEC = transients.loc[transients['Name'] == transient, 'DEC'].values[0]
+          transientCoord = SkyCoord(transientRA*u.deg, transientDEC*u.deg, frame='icrs')
+          tempHostCoords = SkyCoord(tempDF_gals['raMean'].values*u.deg, tempDF_gals['decMean'].values*u.deg, frame='icrs')
+          sep = transientCoord.separation(tempHostCoords)
+          desperateMatch = tempDF_gals.iloc[[np.argmin(sep.arcsec)]]  
+          host_DF = pd.concat([host_DF, desperateMatch], ignore_index=True)
+          host_dict_nospace_postDLR[transient] = desperateMatch['objID'].values[0]
+          if verbose:
+               print("Desperate match found for %s, %.2f arcsec away." % (transient, sep[np.argmin(sep.arcsec)].arcsec))
 
     if len(noHosts) > 0:
         with open(path+"/dictionaries/noHosts_fromDLR.p", 'wb') as fp:
