@@ -1,40 +1,31 @@
-from __future__ import print_function
 import numpy as np
-from astropy.table import Table
 from PIL import Image
 from io import BytesIO
 import os
 import pandas as pd
-from astropy.io import fits
-from astropy.visualization import PercentileInterval, AsinhStretch
-from astropy.io import ascii
-from astropy.table import Table
 import sys
 import re
 import json
 import mastcasjobs
 import requests
 from datetime import datetime
-from astropy import units as u
-from astropy.coordinates import Angle
 try: # Python 3.x
     from urllib.parse import quote as urlencode
     from urllib.request import urlretrieve
+    import http.client as httplib
 except ImportError:  # Python 2.x
     from urllib import pathname2url as urlencode
     from urllib import urlretrieve
-try: # Python 3.x
-    import http.client as httplib
-except ImportError:  # Python 2.x
     import httplib
-# std lib
 from collections import OrderedDict
 from os import listdir
 from os.path import isfile, join
-# 3rd party
 from astropy import utils, io, convolution, wcs
-from astropy.visualization import make_lupton_rgb
-from astropy.coordinates import name_resolve
+from astropy import units as u
+from astropy.visualization import make_lupton_rgb,PercentileInterval, AsinhStretch
+from astropy.coordinates import name_resolve, Angle
+from astropy.io import fits, ascii
+from astropy.table import Table
 from pyvo.dal import sia
 import pickle
 from io import BytesIO
@@ -45,15 +36,30 @@ from astroquery.vo_conesearch import vos_catalog
 vos_catalog.list_catalogs("conesearch_good")
 from warnings import simplefilter
 
-#could absolutely be more efficient, but filter for now 
+# could absolutely be more efficient, but filter out warnings for now
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
-#set environmental variables
+# set a few environmental variables that we'll need to query PS2 for more accurate galaxy sizes.
 if "CASJOBS_USERID" not in os.environ:
     os.environ['CASJOBS_USERID'] = 'ghostbot'
     os.environ['CASJOBS_PW'] = 'ghostbot'
 
-def getAllPostageStamps(df, tempSize, path=".", verbose=0):
+def getAllPostageStamps(df, tempSize, path=".", verbose=False):
+    """Loops through a pandas dataframe and saves PS1 stacked color images of all
+       host galaxies.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        Description of parameter `df`.
+    tempSize : int
+        The downloaded image will be tempSize x tempSize pixels.
+    path : str
+        Filepath where images should be saved.
+    verbose : bool
+        If true, The progress of the image downloads is printed.
+
+    """
     for i in np.arange(len(df["raMean"])):
             tempRA = df.loc[i, 'raMean']
             tempDEC = df.loc[i, 'decMean']
@@ -68,19 +74,27 @@ def getAllPostageStamps(df, tempSize, path=".", verbose=0):
                 except:
                     continue
 
-def preview_image(i, ra, dec, rad, band, save=1):
-    a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, rad, band), ".")
-    hdul = fits.open(a[0])
-    image_file = get_pkg_data_filename(a[0])
-    image_data = fits.getdata(image_file, ext=0)
-    plt.figure()
-    plt.imshow(image_data,cmap='viridis')
-    plt.axis('off')
-    #plt.colorbar()
-    if save:
-        plt.savefig("PS1_%i_%s.png" % (i, band))
-
 def get_hosts(path, transient_fn, fn_Host, rad):
+    """Wrapper function for getting candidate host galaxies in PS1 for dec>-30 deg and
+       in Skymapper for dec<-30 deg.
+
+    Parameters
+    ----------
+    path : str
+        Filepath where csv of candidate hosts should be saved.
+    transient_fn : str
+        Filename of csv containing the transients to associate (and their coordinates).
+    fn_Host : str
+        Filename of csv containing candidate host galaxy properties.
+    rad : float
+        Search radius of the algorithm, in arcseconds.
+
+    Returns
+    -------
+    host_df : Pandas DataFrame
+        Dataframe of all candidate host galaxies.
+
+    """
     transient_df = pd.read_csv(path+"/"+transient_fn)
     now = datetime.now()
     dict_fn = fn_Host.replace(".csv", "") + ".p"
@@ -88,24 +102,45 @@ def get_hosts(path, transient_fn, fn_Host, rad):
     tempDEC = Angle(transient_df['DEC'], unit=u.deg)
     tempDEC = tempDEC.deg
 
+    # distinguish between PS1 sources and Skymapper sources.
     df_North = transient_df[(tempDEC > -30)].reset_index()
     df_South = transient_df[(tempDEC <= -30)].reset_index()
-    #print("Number of southern sources = %i.\n" % len(df_South))
+
+    # get southern-hemisphere sources
     append=0
     if len(df_South) > 0:
         print("Finding southern sources with SkyMapper...")
         find_host_info_SH(df_South, fn_Host, dict_fn, path, rad)
         append=1
-    #print("Number of northern sources = %i.\n" % len(df_North))
+
+    # get northern-hemisphere sources
     if len(df_North) > 0:
         print("Finding northern sources with Pan-starrs...")
         find_host_info_PS1(df_North, fn_Host, dict_fn, path, rad, append=append)
+
+    # load the saved csv and remove duplicates, then return
     host_df = pd.read_csv(path+"/"+fn_Host)
     host_df = host_df.drop_duplicates()
     host_df.to_csv(path+"/"+fn_Host[:-4]+"_cleaned.csv", index=False)
     return host_df
 
 def find_all(name, path):
+    """Crawls through a directory and all its sub-directories looking for a file matching
+       'name'. If found, it is returned.
+
+    Parameters
+    ----------
+    name : str
+        The filename for which to search.
+    path : str
+        The directory to search.
+
+    Returns
+    -------
+    result : list
+        The list of absolute paths to all files called 'name' in 'path'.
+
+    """
     result = []
     for root, dirs, files in os.walk(path):
         if name in files:
@@ -113,13 +148,19 @@ def find_all(name, path):
     return result
 
 def getimages(ra,dec,size=240,filters="grizy", type='stack'):
+    """Query ps1filenames.py service to get a list of images.
 
-    """Query ps1filenames.py service to get a list of images
+    ra, dec : float
+        The position in degrees
+    size : int
+        The image size in pixels (0.25 arcsec/pixel)
+    filters : str
+        A string with the filters to include
 
-    ra, dec = position in degrees
-    size = image size in pixels (0.25 arcsec/pixel)
-    filters = string with filters to include
-    Returns a table with the results
+    Returns
+    -------
+    table : Astropy Table
+        The results of the search for relevant images.
     """
 
     service = "https://ps1images.stsci.edu/cgi-bin/ps1filenames.py"
@@ -130,18 +171,27 @@ def getimages(ra,dec,size=240,filters="grizy", type='stack'):
 
 
 def geturl(ra, dec, size=240, output_size=None, filters="grizy", format="jpg", color=False, type='stack'):
+    """Get the URL for images in the table.
 
-    """Get URL for images in the table
+    ra, dec :
+        The position in degrees
+    size : int
+        The extracted image size in pixels (0.25 arcsec/pixel)
+    output_size : int
+        output (display) image size in pixels (default = size).
+        The output_size has no effect for fits format images.
+    filters : str
+        The string with filters to include.
+    format : str
+        The data format (options are "jpg", "png" or "fits").
+    color : bool
+        If True, creates a color image (only for jpg or png format).
+        If False, return a list of URLs for single-filter grayscale images.
 
-    ra, dec = position in degrees
-    size = extracted image size in pixels (0.25 arcsec/pixel)
-    output_size = output (display) image size in pixels (default = size).
-                  output_size has no effect for fits format images.
-    filters = string with filters to include
-    format = data format (options are "jpg", "png" or "fits")
-    color = if True, creates a color image (only for jpg or png format).
-            Default is return a list of URLs for single-filter grayscale images.
-    Returns a string with the URL
+    Returns
+    -------
+    url : str
+        The url for the image to download.
     """
 
     if color and format == "fits":
@@ -153,6 +203,7 @@ def geturl(ra, dec, size=240, output_size=None, filters="grizy", format="jpg", c
            "ra={ra}&dec={dec}&size={size}&format={format}").format(**locals())
     if output_size:
         url = url + "&output_size={}".format(output_size)
+
     # sort filters from red to blue
     flist = ["yzirg".find(x) for x in table['filter']]
     table = table[np.argsort(flist)]
@@ -171,16 +222,23 @@ def geturl(ra, dec, size=240, output_size=None, filters="grizy", format="jpg", c
 
 
 def getcolorim(ra, dec, size=240, output_size=None, filters="grizy", format="jpg"):
+    """Get a PS1 color image at a sky position.
 
-    """Get color image at a sky position
-
-    ra, dec = position in degrees
-    size = extracted image size in pixels (0.25 arcsec/pixel)
-    output_size = output (display) image size in pixels (default = size).
-                  output_size has no effect for fits format images.
-    filters = string with filters to include
-    format = data format (options are "jpg", "png")
-    Returns the image
+    ra, dec : float
+        The position in degrees.
+    size : int
+        The extracted image size in pixels (0.25 arcsec/pixel).
+    output_size : int
+        The output (display) image size in pixels (default = size).
+        The output_size has no effect for fits format images.
+    filters : str
+        The string with filters to include.
+    format : str
+        The data format (options are "jpg", "png")
+    Returns
+    -------
+    im : PIL Image
+        The image.
     """
 
     if format not in ("jpg","png"):
@@ -190,71 +248,73 @@ def getcolorim(ra, dec, size=240, output_size=None, filters="grizy", format="jpg
     im = Image.open(BytesIO(r.content))
     return im
 
-
-def getgrayim(ra, dec, size=240, output_size=None, filter="g", format="jpg"):
-
-    """Get grayscale image at a sky position
-
-    ra, dec = position in degrees
-    size = extracted image size in pixels (0.25 arcsec/pixel)
-    output_size = output (display) image size in pixels (default = size).
-                  output_size has no effect for fits format images.
-    filter = string with filter to extract (one of grizy)
-    format = data format (options are "jpg", "png")
-    Returns the image
-    """
-
-    if format not in ("jpg","png"):
-        raise ValueError("format must be jpg or png")
-    if filter not in list("grizy"):
-        raise ValueError("filter must be one of grizy")
-    url = geturl(ra,dec,size=size,filters=filter,output_size=output_size,format=format)
-    r = requests.get(url[0])
-    im = Image.open(BytesIO(r.content))
-    return im
-
-def get_PS1_type(ra, dec, rad, band, type):
-    fitsurl = geturl(ra, dec, size=rad, filters="{}".format(band), format="fits", type=type)
-    fh = fits.open(fitsurl[0])
-    fh.writeto('PS1_ra={}_dec={}_{}arcsec_{}_{}.fits'.format(ra, dec, int(rad*0.25), band, type))
-
-def get_PS1_wt(ra, dec, rad, band):
-    fitsurl = geturl(ra, dec, size=rad, filters="{}".format(band), format="fits", type='stack.wt')
-    fh = fits.open(fitsurl[0])
-    fh.writeto('PS1_ra={}_dec={}_{}arcsec_{}_wt.fits'.format(ra, dec, int(rad*0.25), band))
-
-def get_PS1_mask(ra, dec, rad, band):
-    fitsurl = geturl(ra, dec, size=rad, filters="{}".format(band), format="fits", type='stack.mask')
-    fh = fits.open(fitsurl[0])
-    fh.writeto('PS1_ra={}_dec={}_{}arcsec_{}_mask.fits'.format(ra, dec, int(rad*0.25), band))
-
-def get_PS1_Pic(objID, ra, dec, rad, band, safe=False):
-    fitsurl = geturl(ra, dec, size=rad, filters="{}".format(band), format="fits")
-    fh = fits.open(fitsurl[0])
-    if safe==True:
-        fh.writeto('PS1_{}_{}arcsec_{}.fits'.format(objID, int(rad*0.25), band))
-    else:
-        fh.writeto('PS1_ra={}_dec={}_{}arcsec_{}.fits'.format(ra, dec, int(rad*0.25), band))
-
-# Data Lab
-#from dl import queryClient as qc
-#from dl.helpers.utils import convert
-
-# set up Simple Image Access (SIA) service
-DEF_ACCESS_URL = "http://datalab.noao.edu/sia/des_dr1"
-svc = sia.SIAService(DEF_ACCESS_URL)
-
-##################### PS1 HELPER FUNCTIONS ############################################
-def ps1metadata(table="mean",release="dr1",baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs"):
-    """Return metadata for the specified catalog and table
+def get_PS1_type(ra, dec, size, band, type):
+    """Download and save PS1 imaging data in a given band of a given type.
 
     Parameters
     ----------
-    table (string): mean, stack, or detection
-    release (string): dr1 or dr2
-    baseurl: base URL for the request
+    ra, dec : float
+        The position in degrees.
+    size : int
+        The size of the image in pixels.
+    band : str
+        The PS1 band.
+    type : str
+        The type of imaging data to obtain. Options are given below for the PS1 stack:
+            'stack.mask' images indicate which pixels in the stack are good and which are bad
+            'stack.wt' images are the stack variance images
+            'stack.num' images contain the number of warps with valid data which contributed to each pixel
+            'stack.exp' images contain the exposure time in seconds which contributed to each pixel
+            'stack.expwt' images are weighted exposure time maps
+        See more information at https://outerspace.stsci.edu/display/PANSTARRS/PS1+Stack+images.
 
-    Returns an astropy table with columns name, type, description
+    """
+    fitsurl = geturl(ra, dec, size=size, filters="{}".format(band), format="fits", type=type)
+    fh = fits.open(fitsurl[0])
+    fh.writeto('PS1_ra={}_dec={}_{}arcsec_{}_{}.fits'.format(ra, dec, int(size*0.25), band, type))
+
+def get_PS1_Pic(objID, ra, dec, size, band, safe=False):
+    """Downloads PS1 picture (in fits) at a given position.
+
+    Parameters
+    ----------
+    objID : int
+        The PS1 objID of the object of interest (to save as filename).
+    ra, dec : float
+        The position in degrees.
+    size : int
+        The size of the of the image, in pixels (image is size x size).
+    band : str
+        The PS1 passband.
+    safe : bool
+        If True, include the objID of the object of interest in the filename
+        (useful when saving multiple files at comparable positions).
+
+    """
+    fitsurl = geturl(ra, dec, size=size, filters="{}".format(band), format="fits")
+    fh = fits.open(fitsurl[0])
+    if safe==True:
+        fh.writeto('PS1_{}_{}arcsec_{}.fits'.format(objID, int(size*0.25), band))
+    else:
+        fh.writeto('PS1_ra={}_dec={}_{}arcsec_{}.fits'.format(ra, dec, int(size*0.25), band))
+
+def ps1metadata(table="mean",release="dr1",baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs"):
+    """Return metadata for the specified catalog and table.
+
+    Parameters
+    ----------
+    table : str
+        Table type. Can be 'mean', 'stack', or 'detection'
+    release: str
+        The Pan-STARRS data release. Can be 'dr1' or 'dr2'.
+    baseurl: str
+        The base URL for the request
+
+    Returns
+    -------
+    Astropy Table
+        The table containing the metadata, with columns name, type, and description.
+
     """
 
     checklegal(table,release)
@@ -262,6 +322,7 @@ def ps1metadata(table="mean",release="dr1",baseurl="https://catalogs.mast.stsci.
     r = requests.get(url)
     r.raise_for_status()
     v = r.json()
+
     # convert to astropy table
     tab = Table(rows=[(x['name'],x['type'],x['description']) for x in v],
                names=('name','type','description'))
@@ -271,11 +332,19 @@ def ps1metadata(table="mean",release="dr1",baseurl="https://catalogs.mast.stsci.
 def mastQuery(request):
     """Perform a MAST query.
 
-        Parameters
-        ----------
-        request (dictionary): The MAST request json object
+    Parameters
+    ----------
+    request : dictionary
+        The MAST request json object.
 
-        Returns head,content where head is the response HTTP headers, and content is the returned data"""
+    Returns
+    -------
+    head : HTTP header
+        The response HTTP headers.
+    content :
+        The data obtained.
+
+    """
 
     server='mast.stsci.edu'
 
@@ -308,13 +377,19 @@ def mastQuery(request):
     return head,content
 
 def resolve(name):
-    """Get the RA and Dec for an object using the MAST name resolver
+    """Get the RA and Dec for an object using the MAST name resolver.
 
     Parameters
     ----------
-    name (str): Name of object
+    name : str
+        Name of the object of interest.
 
-    Returns RA, Dec tuple with position"""
+    Returns
+    -------
+    (objRa, objDec) : tuple
+        Position of resolved object.
+
+    """
 
     resolverRequest = {'service':'Mast.Name.Lookup',
                        'params':{'input':name,
@@ -323,6 +398,7 @@ def resolve(name):
                       }
     headers,resolvedObjectString = mastQuery(resolverRequest)
     resolvedObject = json.loads(resolvedObjectString)
+
     # The resolver returns a variety of information about the resolved object,
     # however for our purposes all we need are the RA and Dec
     try:
@@ -333,9 +409,9 @@ def resolve(name):
     return (objRa, objDec)
 
 def checklegal(table,release):
-    """Checks if this combination of table and release is acceptable
+    """Checks if this combination of table and release is acceptable.
+       Raises a VelueError exception if there is problem.
 
-    Raises a VelueError exception if there is problem
     """
 
     releaselist = ("dr1", "dr2")
@@ -349,17 +425,29 @@ def checklegal(table,release):
         raise ValueError("Bad value for table (for {} must be one of {})".format(release, ", ".join(tablelist)))
 
 def ps1search(table="mean",release="dr1",format="csv",columns=None,baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False,**kw):
-    """Do a general search of the PS1 catalog (possibly without ra/dec/radius)
+    """Do a general search of the PS1 catalog (possibly without ra/dec/radius).
 
     Parameters
     ----------
-    table (string): mean, stack, or detection
-    release (string): dr1 or dr2
-    format: csv, votable, json
-    columns: list of column names to include (None means use defaults)
-    baseurl: base URL for the request
-    verbose: print info about request
-    **kw: other parameters (e.g., 'nDetections.min':2).  Note this is required!
+    table: str
+        Can be 'mean', 'stack', or 'detection'.
+    release: str
+        PS1 data release. Can be 'dr1' or 'dr2'.
+    format: str
+        Can be 'csv', 'votable', or 'json'.
+    columns: list
+        Column names to include (None means use defaults).
+    baseurl: str
+        Base URL for the request.
+    verbose: bool
+        If true, print info about request.
+    **kw: dictionary
+        Other parameters (e.g., 'nDetections.min':2).  Note that this is required!
+
+    Returns
+    -------
+    r : 'format'
+        Result of PS1 query, in 'csv', 'votable', or 'json' format.
     """
 
     data = kw.copy()
@@ -382,11 +470,9 @@ def ps1search(table="mean",release="dr1",format="csv",columns=None,baseurl="http
         if badcols:
             raise ValueError('Some columns not found in table: {}'.format(', '.join(badcols)))
         # two different ways to specify a list of column values in the API
-        # data['columns'] = columns
         data['columns'] = '[{}]'.format(','.join(columns))
 
-# either get or post works
-#    r = requests.post(url, data=data)
+    # either get or post works
     r = requests.get(url, params=data)
 
     if verbose:
@@ -399,20 +485,33 @@ def ps1search(table="mean",release="dr1",format="csv",columns=None,baseurl="http
 
 
 def ps1cone(ra,dec,radius,table="stack",release="dr1",format="csv",columns=None,baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False,**kw):
-    """Do a cone search of the PS1 catalog
+    """Do a cone search of the PS1 catalog. Note that this is just a thin wrapper for the function 'ps1search'.
 
     Parameters
     ----------
-    ra (float): (degrees) J2000 Right Ascension
-    dec (float): (degrees) J2000 Declination
-    radius (float): (degrees) Search radius (<= 0.5 degrees)
-    table (string): mean, stack, or detection
-    release (string): dr1 or dr2
-    format: csv, votable, json
-    columns: list of column names to include (None means use defaults)
-    baseurl: base URL for the request
-    verbose: print info about request
-    **kw: other parameters (e.g., 'nDetections.min':2)
+    ra, dec: float
+        Central coordinates for the cone search, in J2000 degrees.
+    radius : float
+        Search radius, in degrees (<= 0.5 degrees)
+    table: str
+        Can be 'mean', 'stack', or 'detection'.
+    release: str
+        PS1 data release. Can be 'dr1' or 'dr2'.
+    format: str
+        Can be 'csv', 'votable', or 'json'.
+    columns: list
+        Column names to include (None means use defaults).
+    baseurl: str
+        Base URL for the request.
+    verbose: bool
+        If true, print info about request.
+    **kw: dictionary
+        Other parameters (e.g., 'nDetections.min':2).
+
+    Returns
+    -------
+    r : 'format'
+        Result of PS1 query, in 'csv', 'votable', or 'json' format.
     """
 
     data = kw.copy()
@@ -422,10 +521,20 @@ def ps1cone(ra,dec,radius,table="stack",release="dr1",format="csv",columns=None,
     return ps1search(table=table,release=release,format=format,columns=columns,
                     baseurl=baseurl, verbose=verbose, **data)
 
-#########################END PS1 HELPER FUNCTIONS##############################################
-
 def create_df(tns_loc):
-    """Combine all supernovae data into dataframe"""
+    """Combine all supernova data into a single dataframe.
+
+    Parameters
+    ----------
+    tns_loc : str
+        Filepath where files containing TNS data is stored.
+
+    Returns
+    -------
+    df : Pandas DataFrame
+        Dataframe of all TNS metadata.
+
+    """
     files = [f for f in listdir(tns_loc) if isfile(join(tns_loc, f))]
     arr = []
     for file in files:
@@ -438,29 +547,25 @@ def create_df(tns_loc):
     df = df.replace({'2019-02-13.49': ''})
     df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
     return df
-    #df.to_csv('SNe_TNS_061019.csv')
 
-def query_ps1_noname(RA, DEC, rad):
-    #print("Querying PS1 for nearest host...")
-    return ps1cone(RA,DEC,rad/3600,table="stack",release="dr1",format="csv",columns=None,baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False)
-
-def query_ps1_name(name, rad):
-    #print("Querying PS1 with host name!")
-    [ra, dec] = resolve(name)
-    return ps1cone(ra,dec,rad/3600,table="stack",release="dr1",format="csv",columns=None,baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False)
-
-# stolen from the wonderful API at https://ps1images.stsci.edu/ps1_dr2_api.html
-def ps1metadata(table="mean",release="dr1",
-           baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs"):
-    """Return metadata for the specified catalog and table
+def ps1metadata(table="mean", release="dr1", baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs"):
+    """Return metadata for the specified catalog and table. Snagged from the
+       wonderful API at https://ps1images.stsci.edu/ps1_dr2_api.html.
 
     Parameters
     ----------
-    table (string): mean, stack, or detection
-    release (string): dr1 or dr2
-    baseurl: base URL for the request
+    table: str
+        Can be 'mean', 'stack', or 'detection'.
+    release: str
+        PS1 data release. Can be 'dr1' or 'dr2'.
+    baseurl: str
+        Base URL for the request.
 
-    Returns an astropy table with columns name, type, description
+    Returns
+    -------
+    tab : Astropy Table
+        Table with columns name, type, description.
+
     """
 
     checklegal(table,release)
@@ -468,25 +573,38 @@ def ps1metadata(table="mean",release="dr1",
     r = requests.get(url)
     r.raise_for_status()
     v = r.json()
+
     # convert to astropy table
     tab = Table(rows=[(x['name'],x['type'],x['description']) for x in v],
                names=('name','type','description'))
     return tab
 
-# Queries PS1 to find host info for each transient
-# Input: df - a dataframe of all spectroscopically classified transients in TNS
-#        fn - the output data frame of all PS1 potential hosts
-#        dict_fn - the dictionary matching candidate hosts in PS1 and transients
-# Output: N/A
 def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
+    """Querying PS1 for all objects within rad arcsec of each SN.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        Dataframe of transient information (name and coordinates).
+    fn : str
+        The output data frame of all PS1 potential hosts.
+    dict_fn : str
+        The filename of the dictionary to keep track of transient-candidate host matches.
+        Keys are transient names, values are lists containing objIDs of all host candidates.
+    path : str
+        The filepath where df will be saved.
+    rad : float
+        The search radius, in arcsec.
+    append : bool
+        If True, append results to fn. If False, create a new file.
+
+    """
     i = 0
-    """Querying PS1 for all objects within rad arcsec of SNe"""
-    #os.chdir()
-    # SN_Host_PS1 - the dictionary to map SN IDs to nearby obj IDs in PS1
-    # EDIT - We now know there are MANY SNe without IDs!! This is pretty problematic, so we're going to switch to
-    # keeping a dictionary between names and objIDs
+
+    # The dictionary to map SN names to nearby obj IDs in PS1
     SN_Host_PS1 = {}
-    # PS1_queries - an array of relevant PS1 obj info
+
+    #a running list of all PS1 results
     PS1_queries = []
     for j, row in enumerate(df.itertuples(), 1):
             if ":" in str(row.RA):
@@ -494,7 +612,7 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
             else:
                 tempRA = Angle(row.RA, unit=u.deg)
             tempDEC = Angle(row.DEC, unit=u.deg)
-            a = query_ps1_noname(tempRA.degree,tempDEC.degree, rad)
+            a = ps1cone(tempRA.degree,tempDEC.degree,rad/3600,table="stack",release="dr1",format="csv",columns=None,baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False)
             if a:
                 a = ascii.read(a)
                 a = a.to_pandas()
@@ -506,21 +624,22 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
             # Print status messages every 10 lines
             if j%10 == 0:
                 print("Processed {} of {} lines!".format(j, len(df.Name)))
-                #print(SN_Host_PS1)
 
-            # Print every query to a file Note: this was done in order
+            # Print every query to a file. This was done in order
             # to prevent the code crashing after processing 99% of the data
-            # frame and losing everything. This allows for duplicates though,
-            # so they should be removed before the file is used again
+            # frame and losing everything. This allows for duplicates, though,
+            # so they should be removed before the file is used again.
             if (len(PS1_queries) > 0):
                 PS1_hosts = pd.concat(PS1_queries)
                 PS1_hosts = PS1_hosts.drop_duplicates()
+
+                #match up rows to skymapper cols to join into a single dataframe
                 newCols = np.array(['SkyMapper_StarClass', 'gelong','g_a','g_b','g_pa',
                 'relong','r_a','r_b','r_pa',
                 'ielong','i_a','i_b','i_pa',
                 'zelong','z_a','z_b','z_pa'])
                 for col in newCols:
-                    PS1_hosts[col] = np.nan #match up rows to skymapper cols to join in one dataframe
+                    PS1_hosts[col] = np.nan
                 PS1_queries = []
                 if not append:
                     PS1_hosts.to_csv(path+fn, header=True, index=False)
@@ -530,6 +649,7 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
                     PS1_hosts.to_csv(path+"/"+fn, mode='a+', header=False, index=False)
             else:
                 print("No potential hosts found for this object...")
+
             # Save host info
             if not os.path.exists(path+ '/dictionaries/'):
             	os.makedirs(path+'/dictionaries/')
@@ -540,8 +660,26 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
                 pickle.dump(SN_Host_PS1, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
 def find_host_info_SH(df, fn, dict_fn, path, rad):
+    """VO Cone Search for all objects within rad arcsec of SNe (for Southern-Hemisphere (SH) objects).
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        Dataframe of transient information (name and coordinates).
+    fn : str
+        The output data frame of all PS1 potential hosts.
+    dict_fn : str
+        The filename of the dictionary to keep track of transient-candidate host matches.
+        Keys are transient names, values are lists containing objIDs of all host candidates.
+    path : str
+        The filepath where df will be saved.
+    rad : float
+        The search radius, in arcsec.
+    append : bool
+        If True, append results to fn. If False, create a new file.
+
+    """
     i = 0
-    """VO Cone Search for all objects within rad arcsec of SNe (for Southern-Hemisphere (SH) objects)"""
     SN_Host_SH = {}
     SH_queries = []
     pd.options.mode.chained_assignment = None
@@ -562,7 +700,6 @@ def find_host_info_SH(df, fn, dict_fn, path, rad):
             # Print status messages every 10 lines
             if j%10 == 0:
                 print("Processed {} of {} lines!".format(j, len(df.Name)))
-                #print(SN_Host_PS1)
 
             # Print every query to a file Note: this was done in order
             # to prevent the code crashing after processing 99% of the data
@@ -579,6 +716,7 @@ def find_host_info_SH(df, fn, dict_fn, path, rad):
                     SH_hosts.to_csv(path+"/"+fn, mode='a+', header=False, index=False)
             else:
                 print("No potential hosts found for this object...")
+
             # Save host info
             if not os.path.exists(path+ '/dictionaries/'):
             	os.makedirs(path+'/dictionaries/')
@@ -587,6 +725,21 @@ def find_host_info_SH(df, fn, dict_fn, path, rad):
     pd.options.mode.chained_assignment = 'warn'
 
 def southernSearch(ra, dec, rad):
+    """Conducts a cone search for Skymapper objects at a given position.
+
+    Parameters
+    ----------
+    ra, dec : float
+        Search position, in degrees.
+    rad : float
+        Search radius, in degrees.
+
+    Returns
+    -------
+    fullDF : Pandas DataFrame
+        Dataframe of Skymapper objects formatted to be joined with PS1 sources.
+
+    """
     searchCoord = SkyCoord(ra*u.deg, dec*u.deg, frame='icrs')
     responseMain = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
     responsePhot = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.photometry&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
@@ -596,6 +749,7 @@ def southernSearch(ra, dec, rad):
 
     filt_dfs = []
     for filter in 'griz':
+
         #add the photometry columns
         tempDF = dfPhot[dfPhot['filter']==filter]
         if len(tempDF) <1:
@@ -604,8 +758,10 @@ def southernSearch(ra, dec, rad):
             if col != 'object_id':
                 tempDF[filter + col] = tempDF[col]
                 del tempDF[col]
-        #take the column with the smallest uncertainty in the measured semi-major axis - this is what we'll use to
-        #calculate DLR later!
+
+        # take the column with the smallest uncertainty in the measured semi-major axis -
+        # this is what we'll use to
+        # calculate DLR later!
         tempDF = tempDF.loc[tempDF.groupby("object_id")[filter + 'e_a'].idxmin()]
         filt_dfs.append(tempDF)
 
@@ -730,15 +886,17 @@ def southernSearch(ra, dec, rad):
         else:
             fullDF[mapped_cols[i]] = fullDF[df_cols[i]]
 
-    fullDF['gPlateScale'] = 0.50 #''/px
-    fullDF['rPlateScale'] = 0.50 #''/px
-    fullDF['iPlateScale'] = 0.50 #''/px
-    fullDF['zPlateScale'] = 0.50 #''/px #plate scale of skymapper
-    fullDF['yPlateScale'] = 0.50
+    # save the plate scale of skymapper in each band
+    for band in 'grizy':
+        fullDF['%sPlateScale'%band] = 0.5
     fullDF['primaryDetection'] = 1
     fullDF['bestDetection'] = 1
-    fullDF['qualityFlag'] = 0 #dummy variable set so that no sources get cut by qualityFlag in PS1 (which isn't in SkyMapper)
-    fullDF['ny'] = 1 #dummy variable
+
+    #dummy variable set so that no sources get cut by qualityFlag in PS1 (which isn't in SkyMapper)
+    fullDF['qualityFlag'] = 0
+
+    #dummy variable
+    fullDF['ny'] = 1
     colSet = np.concatenate([list(flag_mapping.keys()), ['gPlateScale', 'rPlateScale',
         'iPlateScale', 'zPlateScale', 'yPlateScale', 'primaryDetection', 'bestDetection', 'qualityFlag', 'ny']])
 
@@ -748,29 +906,62 @@ def southernSearch(ra, dec, rad):
     for col in leftover:
         fullDF[col] = np.nan
 
-    #fullDF = fullDF[PS1_cols] #arrange correctly
     fullDF.drop_duplicates(subset=['objID'], inplace=True)
     return fullDF
 
 def getDR2_petrosianSizes(ra_arr, dec_arr, rad):
+    """Retrieves petrosian radius information from DR2 for panstarrs sources.
+
+    Parameters
+    ----------
+    ra_arr : list
+        List of right ascension values, in degrees.
+    dec_arr : list
+        List of declination values, in degrees.
+    rad : float
+        The search radius, in arcseconds.
+
+    Returns
+    -------
+    df_petro_full : Pandas DataFrame
+        Dataframe containing dr2 petrosian radiuses.
+
+    """
     if len(ra_arr) < 1:
         return
-    
-    halfLightList = []
+
+    petroList = []
     for i in np.arange(len(ra_arr)):
         query = """select st.objID, st.primaryDetection, st.gpetR90, st.rpetR90, st.ipetR90, st.zpetR90, st.ypetR90
         from fGetNearbyObjEq(%.3f,%.3f,%.1f/60.0) nb
         inner join StackPetrosian st on st.objID=nb.objid where st.primaryDetection = 1""" %(ra_arr[i], dec_arr[i], rad)
 
         jobs = mastcasjobs.MastCasJobs(context="PanSTARRS_DR2")
-        tab = jobs.quick(query, task_name="halfLightSearch")
-        df_halfLight = tab.to_pandas()
-        halfLightList.append(df_halfLight)
+        tab = jobs.quick(query, task_name="PetrosianRadiusSearch")
+        df_petro = tab.to_pandas()
+        petroList.append(df_petro)
 
-    df_halfLight_full = pd.concat(halfLightList)
-    return df_halfLight_full
+    df_petro_full = pd.concat(petroList)
+    return df_petro_full
 
 def getDR2_halfLightSizes(ra_arr, dec_arr, rad):
+    """Retrieves half-light radius information from DR2 for panstarrs sources.
+
+    Parameters
+    ----------
+    ra_arr : list
+        List of right ascension values, in degrees.
+    dec_arr : list
+        List of declination values, in degrees.
+    rad : float
+        The search radius, in arcseconds.
+
+    Returns
+    -------
+    df_halfLight_full : Pandas DataFrame
+        Dataframe containing dr2 half-light radiuses.
+
+    """
     if len(ra_arr) < 1:
         return
 

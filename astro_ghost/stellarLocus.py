@@ -2,15 +2,34 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
-import astropy.table as at
+import matplotlib.colors import LogNorm
+from astropy.table import Table
 import scipy.interpolate as scinterp
 import pkg_resources
 
-# recalibration done via https://iopscience.iop.org/article/10.3847/0004-637X/822/2/66
-# Hypercalibration: A Pan-starrs1-Based recalibration of the sloan digital sky survey
-# photometry (Finkbeiner et al., 2016)
 def convert_to_SDSS(conversions, g_iPS1, band, mPS1):
+    """Convert PS1 to SDSS photometry. Recalibration done via the coefficients in
+       Hypercalibration: A Pan-starrs1-Based recalibration of the sloan digital sky survey
+       photometry (Finkbeiner et al., 2016). Publication can be found at
+       https://iopscience.iop.org/article/10.3847/0004-637X/822/2/66.
+
+    Parameters
+    ----------
+    conversions : Pandas DataFrame
+        Coefficients from Finkbeiner et al., 2016.
+    g_iPS1 : float
+        Apparent g - i color of the source in PS1.
+    band : str
+        Band in which to calculate the conversion.
+    mPS1 : float
+        AB apparent magnitude of the source in PS1.
+
+    Returns
+    -------
+    mSDSS, float
+        Estimated AB apparent magnitude of the source in SDSS.
+
+    """
     a0 = conversions.loc[conversions['Band'] == band, 'a_0'].values[0]
     a1 = conversions.loc[conversions['Band'] == band, 'a_1'].values[0]
     a2 = conversions.loc[conversions['Band'] == band, 'a_2'].values[0]
@@ -19,18 +38,27 @@ def convert_to_SDSS(conversions, g_iPS1, band, mPS1):
     mSDSS = mPS1 - (mPS1_mSDSS)
     return mSDSS
 
-# Calculate 7DCD (actually a 4DCD here, because we only have these 4 colors) and
-# store value in new column in dataframe
-# stellar_loci - the table of stellar loci taken from PS1 (Tonry et al.)
-# df - the dataframe of potential hosts
 def calc_7DCD(df):
-    #read the stellar locus table from SDSS
+    """Calculates the color distance (7DCD) of objects in df from the
+       stellar locus from Tonry et al., 2012.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        Dataframe of PS1 objects.
+
+    Returns
+    -------
+    df : Pandas DataFrame
+        The same dataframe as input, with new column 7DCD.
+
+    """
     df.replace(999.00, np.nan)
     df.replace(-999.00, np.nan)
 
+    #read the stellar locus table from SDSS
     stream = pkg_resources.resource_stream(__name__, 'tonry_ps1_locus.txt')
-    
-    skt = at.Table.read(stream, format='ascii')
+    skt = Table.read(stream, format='ascii')
 
     gr = scinterp.interp1d(skt['ri'], skt['gr'], kind='cubic', fill_value='extrapolate')
     iz = scinterp.interp1d(skt['ri'], skt['iz'], kind='cubic', fill_value='extrapolate')
@@ -64,25 +92,42 @@ def calc_7DCD(df):
         df.loc[i,"7DCD"] = np.nanmin(np.array(temp_7DCD_1val))
     return df
 
-def plotLocus(df, color=0, save=0, type="", timestamp=""):
+def plotLocus(df, color=False, save=False, type="", timestamp=""):
+    """Plots the color-color distribution of objects in df along with the Tonry et al., 2012
+       PS1 stellar locus.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        Description of parameter `df`.
+    color : bool
+        If True, color objects by their distance from the stellar locus.
+    save : bool
+        If True, saves the image.
+    type : str
+        Can be "Gals" for galaxies or "Stars" for stars. Only relevant for
+        coloring the distributions.
+    timestamp : str
+        Timestamp to append to the saved plot filename.
+
+    """
     if color:
         plt.figure(figsize=(8,8))
-        plt.scatter(df["i-z"], df["g-r"], c=df["7DCD"], s=2, alpha=0.8, norm=matplotlib.colors.LogNorm())
+        plt.scatter(df["i-z"], df["g-r"], c=df["7DCD"], s=2, alpha=0.8, norm=LogNorm())
         plt.xlim(-0.75, 1)
         plt.clim(0.1, 1000)
         plt.ylim(-0.5, 2)
         plt.xlabel("i-z")
         plt.ylabel("g-r")
         cbar = plt.colorbar()
-        cbar.set_label("3D Color Distance")
+        cbar.set_label("4D Color Distance")
         if save:
-
             plt.savefig("PS1_%s_StellarLocus_%s_Colored.pdf"%(type, timestamp))
         else:
             plt.show()
     else:
         #read the stellar locus table from PS1
-        skt = at.Table.read('./tonry_ps1_locus.txt', format='ascii')
+        skt = Table.read('./tonry_ps1_locus.txt', format='ascii')
 
         gr = scinterp.interp1d(skt['ri'], skt['gr'], kind='cubic', fill_value='extrapolate')
         iz = scinterp.interp1d(skt['ri'], skt['iz'], kind='cubic', fill_value='extrapolate')

@@ -1,4 +1,3 @@
-from astropy.io import ascii
 from astropy.table import Table
 import pkg_resources
 
@@ -9,17 +8,15 @@ import pylab
 import json
 import requests
 from astropy.io import fits
+from astro_ghost.PS1QueryFunctions import *
 
 try: # Python 3.x
     from urllib.parse import quote as urlencode
     from urllib.request import urlretrieve
+    import http.client as httplib
 except ImportError:  # Python 2.x
     from urllib import pathname2url as urlencode
     from urllib import urlretrieve
-
-try: # Python 3.x
-    import http.client as httplib
-except ImportError:  # Python 2.x
     import httplib
 
 import pandas as pd
@@ -28,9 +25,7 @@ from tensorflow import keras
 
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
-import asyncio
 import codecs
-#import aiohttp
 
 import time
 import sfdmap
@@ -38,6 +33,14 @@ import os
 import tarfile
 
 def build_sfd_dir(fname='./sfddata-master.tar.gz'):
+    """Downloads directory of Galactic dust maps for extinction correction.
+
+    Parameters
+    ----------
+    fname : str
+        Filename for dustmaps.
+
+    """
     url = 'https://github.com/kbarbary/sfddata/archive/master.tar.gz'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
@@ -51,6 +54,14 @@ def build_sfd_dir(fname='./sfddata-master.tar.gz'):
     return
 
 def get_photoz_weights(fname='./MLP_lupton.hdf5'):
+    """Get weights for MLP photo-z model.
+
+    Parameters
+    ----------
+    fname : str
+        Filename of saved MLP weights.
+
+    """
     url = 'https://uofi.box.com/shared/static/n1yiy818mv5b5riy2h3dg5yk2by3swos.hdf5'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
@@ -59,64 +70,26 @@ def get_photoz_weights(fname='./MLP_lupton.hdf5'):
     print("Done getting photo-z weights.")
     return
 
-def ps1cone(ra,dec,radius,table="mean",release="dr1",format="csv",columns=None,
-           baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False,
-           **kw):
-    """Do a cone search of the PS1 catalog
-
-    Parameters
-    ----------
-    ra (float): (degrees) J2000 Right Ascension
-    dec (float): (degrees) J2000 Declination
-    radius (float): (degrees) Search radius (<= 0.5 degrees)
-    table (string): mean, stack, or detection
-    release (string): dr1 or dr2
-    format: csv, votable, json
-    columns: list of column names to include (None means use defaults)
-    baseurl: base URL for the request
-    verbose: print info about request
-    **kw: other parameters (e.g., 'nDetections.min':2)
-    """
-
-    ra=list(ra)
-    dec=list(dec)
-    radius = list(radius)
-
-    assert len(ra) == len(dec) == len(radius)
-    #this is a dictionary... we want a list of dictionaries
-    data_list=[kw.copy() for i in range(len(ra))]
-
-    for i in range(len(data_list)):
-        data_list[i]['ra'] = ra[i]
-        data_list[i]['dec'] = dec[i]
-        data_list[i]['radius'] = radius[i]
-
-    urls = []
-    datas = []
-    for i in range(len(ra)):
-        url, data = ps1search(table=table,release=release,format=format,columns=columns,
-                    baseurl=baseurl, verbose=verbose, **data_list[i])
-
-        urls.append(url)
-        datas.append(data)
-
-    return urls, datas
-
 def ps1objIDsearch(objID,table="mean",release="dr1",format="csv",columns=None,
            baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False,
            **kw):
-    """Do an object lookup by objID
+    """Do an object lookup by objID.
 
     Parameters
     ----------
-    objID (big int): list of
-    table (string): mean, stack, or detection
-    release (string): dr1 or dr2
-    format: csv, votable, json
+    objID : list of objIDs (or dictionary?)
+        List of objIDs
+    table : str
+        Can be mean, stack, or detection.
+    release : str
+        Can be 'dr1' or 'dr2'.
+    format : str
+        Can be 'csv', 'votable', or 'json'
     columns: list of column names to include (None means use defaults)
     baseurl: base URL for the request
     verbose: print info about request
     **kw: other parameters (e.g., 'nDetections.min':2)
+
     """
     #this is a dictionary... we want a list of dictionaries
     objID=list(objID)
@@ -138,52 +111,26 @@ def ps1objIDsearch(objID,table="mean",release="dr1",format="csv",columns=None,
 
     return urls, datas
 
-
-def ps1search(table="mean",release="dr1",format="csv",columns=None,
-           baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False,
-           **kw):
-    """Do a general search of the PS1 catalog (possibly without ra/dec/radius)
+def fetch_information_serially(url, data, verbose=False, format='csv'):
+    """Short summary.
 
     Parameters
     ----------
-    table (string): mean, stack, or detection
-    release (string): dr1 or dr2
-    format: csv, votable, json
-    columns: list of column names to include (None means use defaults)
-    baseurl: base URL for the request
-    verbose: print info about request
-    **kw: other parameters (e.g., 'nDetections.min':2).  Note this is required!
+    url : str
+        Remote PS1 url.
+    data : type
+        Description of parameter `data`.
+    verbose : bool
+        If True,
+    format : str
+        Can be 'csv', 'json', or 'votable'.
+
+    Returns
+    -------
+    results : 'format'
+        Description of returned object.
+
     """
-
-    data = kw.copy()
-    if not data:
-        raise ValueError("You must specify some parameters for search")
-    checklegal(table,release)
-    if format not in ("csv","votable","json"):
-        raise ValueError("Bad value for format")
-    url = "{baseurl}/{release}/{table}.{format}".format(**locals())
-    if columns:
-        # check that column values are legal
-        # create a dictionary to speed this up
-        dcols = {}
-        for col in ps1metadata(table,release)['name']:
-            dcols[col.lower()] = 1
-        badcols = []
-        for col in columns:
-            if col.lower().strip() not in dcols:
-                badcols.append(col)
-        if badcols:
-            raise ValueError('Some columns not found in table: {}'.format(', '.join(badcols)))
-        # two different ways to specify a list of column values in the API
-        # data['columns'] = columns
-        data['columns'] = '[{}]'.format(','.join(columns))
-
-        # either get or post works
-        #r = requests.post(url, data=data)
-        return url, data
-    return url, data
-
-def fetch_information_serially(url,data,verbose=False,format='csv'):
     results = []
     for i in range(len(url)):
         r = requests.get(url[i], params=data[i])
@@ -197,47 +144,22 @@ def fetch_information_serially(url,data,verbose=False,format='csv'):
 
     return results
 
-def checklegal(table,release):
-    """Checks if this combination of table and release is acceptable
-
-    Raises a VelueError exception if there is problem
-    """
-
-    releaselist = ("dr1", "dr2")
-    if release not in ("dr1","dr2"):
-        raise ValueError("Bad value for release (must be one of {})".format(', '.join(releaselist)))
-    if release=="dr1":
-        tablelist = ("mean", "stack")
-    else:
-        tablelist = ("mean", "stack", "detection", "forced_mean")
-    if table not in tablelist:
-        raise ValueError("Bad value for table (for {} must be one of {})".format(release, ", ".join(tablelist)))
-
-
-def ps1metadata(table="mean",release="dr1",
-           baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs"):
-    """Return metadata for the specified catalog and table
+def post_url_parallel(results,YSE_ID):
+    """Short summary.
 
     Parameters
     ----------
-    table (string): mean, stack, or detection
-    release (string): dr1 or dr2
-    baseurl: base URL for the request
+    results : type
+        Description of parameter `results`.
+    YSE_ID : type
+        Description of parameter `YSE_ID`.
 
-    Returns an astropy table with columns name, type, description
+    Returns
+    -------
+    type
+        Description of returned object.
+
     """
-
-    checklegal(table,release)
-    url = "{baseurl}/{release}/{table}/metadata".format(**locals())
-    r = requests.get(url)
-    r.raise_for_status()
-    v = r.json()
-    # convert to astropy table
-    tab = Table(rows=[(x['name'],x['type'],x['description']) for x in v],
-               names=('name','type','description'))
-    return tab
-
-def post_url_parallel(results,YSE_ID):
     if type(results) != str:
         results = codecs.decode(results,'UTF-8')
     lines = results.split('\n')
@@ -252,6 +174,21 @@ def post_url_parallel(results,YSE_ID):
     return DF
 
 def post_url_serial(results,YSE_ID):
+    """Short summary.
+
+    Parameters
+    ----------
+    results : type
+        Description of parameter `results`.
+    YSE_ID : type
+        Description of parameter `YSE_ID`.
+
+    Returns
+    -------
+    type
+        Description of returned object.
+
+    """
     if type(results) != str:
         results = codecs.decode(results,'UTF-8')
     lines = results.split('\r\n')
@@ -265,6 +202,29 @@ def post_url_serial(results,YSE_ID):
     return DF
 
 def serial_objID_search(objIDs,table='forced_mean',release='dr2',columns=None,verbose=False,**constraints):
+    """Short summary.
+
+    Parameters
+    ----------
+    objIDs : type
+        Description of parameter `objIDs`.
+    table : type
+        Description of parameter `table`.
+    release : type
+        Description of parameter `release`.
+    columns : type
+        Description of parameter `columns`.
+    verbose : type
+        Description of parameter `verbose`.
+    **constraints : type
+        Description of parameter `**constraints`.
+
+    Returns
+    -------
+    type
+        Description of returned object.
+
+    """
     constrains=constraints.copy()
     URLS, DATAS = ps1objIDsearch(objID=objIDs,table='forced_mean',release=release,columns=columns,verbose=verbose,**constraints)
     Return = fetch_information_serially(URLS,DATAS)
@@ -275,6 +235,21 @@ def serial_objID_search(objIDs,table='forced_mean',release='dr2',columns=None,ve
     return DFs
 
 def post_url_parallel(results,YSE_ID):
+    """Short summary.
+
+    Parameters
+    ----------
+    results : type
+        Description of parameter `results`.
+    YSE_ID : type
+        Description of parameter `YSE_ID`.
+
+    Returns
+    -------
+    type
+        Description of returned object.
+
+    """
     results = codecs.decode(results,'UTF-8')
     lines = results.split('\n')
     if len(lines) > 2:
@@ -286,10 +261,18 @@ def post_url_parallel(results,YSE_ID):
     return DF
 
 def get_common_constraints_columns():
-    '''
-    Because I am so lazy
-    '''
-    constraints = {'nDetections.gt':1} #objects with n_detection=1 sometimes just an artifact.
+    """Short summary.
+
+    Returns
+    -------
+    constraints :
+        Description of returned object.
+    columns  :
+        Description of returned object.
+    """
+    constraints = {'nDetections.gt':1}
+
+    #objects with n_detection=1 sometimes just an artifact.
     # strip blanks and weed out blank and commented-out values
     columns ="""objID, raMean, decMean, gFKronFlux, rFKronFlux, iFKronFlux, zFKronFlux, yFKronFlux,
     gFPSFFlux, rFPSFFlux, iFPSFFlux, zFPSFFlux, yFPSFFlux,
@@ -303,6 +286,23 @@ def get_common_constraints_columns():
     return constraints, columns
 
 def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
+    """Short summary.
+
+    Parameters
+    ----------
+    DF : type
+        Description of parameter `DF`.
+    PATH : type
+        Description of parameter `PATH`.
+    ebv : type
+        Description of parameter `ebv`.
+
+    Returns
+    -------
+    type
+        Description of returned object.
+
+    """
     if ebv:
         m = sfdmap.SFDMap(PATH)
         assert ('raMean' in DF.columns.values) and ('decMean' in DF.columns.values), 'DustMap query failed because the expected coordinates didnt'\
@@ -361,6 +361,19 @@ def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
     return X
 
 def load_lupton_model(model_path):
+    """Short summary.
+
+    Parameters
+    ----------
+    model_path : type
+        Description of parameter `model_path`.
+
+    Returns
+    -------
+    type
+        Description of returned object.
+
+    """
     build_sfd_dir()
     get_photoz_weights(model_path)
     def model():
@@ -395,6 +408,26 @@ def load_lupton_model(model_path):
     return mymodel, range_z
 
 def evaluate(X,mymodel,range_z):
+    """Evaluate the MLP for a set of PS1 inputs, and return predictions.
+
+    Parameters
+    ----------
+    X : array-like
+        PS1 properties of associated hosts.
+    mymodel : keras model.
+        MLP model for photo-z estimation.
+    range_z : array-like
+        Grid over which to evaluate the posterior distribution of photo-zs.
+
+    Returns
+    -------
+    posteriors : array-like
+        Full photo-z posteriors for each galaxy.
+    point_estimates : array-like
+        The expected photo-z value for each galaxy.
+    errors : array-like
+        Photo-z uncertainties (estimated by sampling from the poterior).
+    """
     posteriors = mymodel(X,training=False).numpy()
     point_estimates = np.sum(posteriors*range_z,axis=1)
     for i in range(len(posteriors)):
@@ -406,19 +439,30 @@ def evaluate(X,mymodel,range_z):
     return posteriors, point_estimates, errors
 
 
-#PhotoZ beta: not tested for missing objids.
-#photo-z uses a artificial neural network to estimate P(Z) in range Z = (0 - 1)
-#range_z is the value of z
-#posterior is an estimate PDF of the probability of z
-#point estimate uses the mean to find a single value estimate
-#error is an array that uses sampling from the posterior to estimate a STD
-
-#relies upon the sfdmap package, (which is compatible with both unix and windows)
-#https://github.com/kbarbary/sfdmap
-
 #'id' column in DF is the 0th ordered index of hosts. missing rows are therefore signalled
 #    by skipped numbers in index
 def calc_photoz(hosts):
+    """PhotoZ beta: not tested for missing objids.
+       photo-z uses a artificial neural network to estimate P(Z) in range Z = (0 - 1)
+       range_z is the value of z
+       posterior is an estimate PDF of the probability of z
+       point estimate uses the mean to find a single value estimate
+       error is an array that uses sampling from the posterior to estimate a std dev.
+
+    #relies upon the sfdmap package, (which is compatible with both unix and windows)
+    #https://github.com/kbarbary/sfdmap
+
+    Parameters
+    ----------
+    hosts :  pandas DataFrame
+        The matched hosts from GHOST.
+
+    Returns
+    -------
+    hosts : pandas DataFrame
+        The matched hosts from GHOST, with photo-z point estimates and uncertainties.
+
+    """
     if np.nansum(hosts['decMean'] < -30) > 0:
         print("ERROR! Photo-z estimator has not yet been implemented for southern-hemisphere sources."\
         "Please remove sources below dec=-30d and try again.")
@@ -439,7 +483,7 @@ def calc_photoz(hosts):
 
 
 def get_photoz(df):
-    """Evaluate photo-z model for Pan-STARRS forced photometry
+    """Evaluate photo-z model for Pan-STARRS forced photometry.
 
     Parameters
     ----------

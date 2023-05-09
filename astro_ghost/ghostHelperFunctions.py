@@ -1,6 +1,5 @@
 import numpy as np
 from astropy.table import Table
-import requests
 from PIL import Image
 from io import BytesIO
 import pathlib
@@ -12,6 +11,7 @@ from astropy.io import fits
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 import re
+import astro_ghost
 from astro_ghost.PS1QueryFunctions import *
 from astro_ghost.hostMatching import build_ML_df
 from astro_ghost.NEDQueryFunctions import getNEDInfo
@@ -23,13 +23,26 @@ from astro_ghost.stellarLocus import calc_7DCD
 from astro_ghost.DLR import chooseByDLR
 import requests
 import pickle
-import os
 import glob
 from datetime import datetime
-import astro_ghost
 from joblib import dump, load
 
 def getGHOST(real=False, verbose=False, installpath='', clobber=False):
+    """Downloads the GHOST database.
+
+    Parameters
+    ----------
+    real : bool
+        If True, download the GHOST database. If False, write an empty files with
+        relevant columns (so that every transient is manually associated).
+    verbose : bool
+        If True, print debugging info.
+    installpath : str
+        Filepath where GHOST database will be installed.
+    clobber : bool
+        If True, write new GHOST database even if it already exists at installpath.
+
+    """
     if not installpath:
         try:
             installpath = os.environ['GHOST_PATH']
@@ -126,67 +139,72 @@ def getGHOST(real=False, verbose=False, installpath='', clobber=False):
         if verbose:
             print("Successfully created dummy database.\n")
 
-# Calculates the fraction of supernovae
-# in our dictionary that have at least
-# one candidate host associated with
-# them.
-# input: transient_dict, the dictionary
-#        of supernovae and their host
-#        galaxy candidate objIDs from PS1
-# output: the fraction of supernovae
-#         with candidate hosts
 def fracWithHosts(transient_dict):
+    """Calculates the fraction of supernovae
+       in our dictionary that have at least
+       one candidate host associated with
+       them.
+
+    Parameters
+    ----------
+    transient_dict : dictionary
+        The dictionary of supernovae and their host galaxy candidate objIDs from PS1.
+
+    Returns
+    -------
+    dictionary
+        the fraction of supernovae with at least one candidate host galaxy.
+
+    """
     count = 0
     for name, host in transient_dict.items():
         # only do matching if there's a found host
         if isinstance(host, list) or isinstance(host, np.ndarray):
             if len(host) > 0 and np.any(np.array(host == host)):
                 count += 1
-        #elif isinstance(host, np.ndarray):
-        #    if len(host) > 0 and np.any(np.array(host == host)):
-        #        count += 1
         else:
             if host == host:
                 count+=1
     return count/len(transient_dict.keys())
 
-# Removes the prefix from a string
-# input - text and prefix to remove from text
-# output - text without prefix
-# very useful for removing the 'SN' from
-# supernova names!
 def remove_prefix(text, prefix):
+    """Removes the prefix from a string. Very useful for removing the 'SN' from
+       supernova names!
+
+    Parameters
+    ----------
+    text : str
+        The full text.
+    prefix : str
+        The prefix to remove from the text.
+
+    Returns
+    -------
+    str
+        The input text, with prefix removed.
+
+    """
     return text[text.startswith(prefix) and len(prefix):]
 
-# Gets the host associated with a supernova in
-# the GHOST database, if it exists. If not,
-# this method runs through the pipeline to
-# find a host for a new event, and returns all
-# data for the transient host.
-# input - TransientCoord, the coordinates of
-#         a transient being queried
-# output - A data frame of the host
-#          associated with the transient
-#          being queried, with PS1 information.
-#          If the supernova is currently in the
-#          database, return the database object.
-#          If not, complete the pipeline for
-#          host association and return the database
-#          object.
-#          If no host is found, return None
-
-# Returns all data for a transient host
-# currently in the database based on its
-# coordinates.
-# input - TransientCoord, the coordinates of
-#         a new transient being queried
-# output - A data frame of the host
-#          associated with the transient
-#          being queried, with PS1 information.
-#          If the supernova is currently in the
-#          database, return the database object.
-#          If not found, return None
 def getDBHostFromTransientCoords(transientCoords, GHOSTpath=''):
+    """Gets the host associated with a supernova in
+       the GHOST database by the supernova's position, if it exists.
+
+    Parameters
+    ----------
+    transientCoords : array-like
+        A list of astropy SkyCoord coordinates of transients.
+    GHOSTpath : str
+        The path to the saved GHOST database.
+
+    Returns
+    -------
+    host_DF : pandas DataFrame
+        The PS1 objects associated with the queried transients in GHOST.
+    notFound : array-like
+        A list of the coordinates of transients not found in the database.
+
+    """
     fullTable = fullData(GHOSTpath)
     notFound = []
     host_DF = None
@@ -207,55 +225,63 @@ def getDBHostFromTransientCoords(transientCoords, GHOSTpath=''):
             hostList.append(host)
         else:
             notFound.append(transientCoord)
-        #    print("Sorry, that supernova was not found in our database! The closest supernova is %.2f arcsec away.\n" %np.nanmin(sep))
     if len(hostList) > 0:
         host_DF = pd.concat(hostList, ignore_index=True)
     return host_DF, notFound
 
-# Returns all data for transient host,
-# based on supernova name
-# input - TransientCoord, the coordinates of
-#         a new transient being queried
-# output - A data frame of the host
-#          associated with the transient
-#          being queried, with PS1 information.
-#          If the supernova is currently in the
-#          database, return the database object.
-#          If no host is found, return None
-def getDBHostFromTransientName(SNNames, GHOSTpath=''):
+def getDBHostFromTransientName(transientNames, GHOSTpath=''):
+    """Gets the host associated with a supernova in
+       the GHOST database by the supernova's name, if it exists.
+
+    Parameters
+    ----------
+    transientNames : array-like
+        A list of transient names.
+    GHOSTpath : str
+        The path to the saved GHOST database.
+
+    Returns
+    -------
+    host_DF : pandas DataFrame
+        The PS1 objects associated with the queried transients in GHOST.
+    notFound : array-like
+        A list of the coordinates of transients not found in the database.
+
+    """
     fullTable = fullData(GHOSTpath)
     allHosts = []
     notFound = []
     host_DF = None
-#    if isinstance(SNName, list) or isinstance(SNName, np.ndarray):
-#        SNNames = SNName
-#    else:
-#        SNNames = np.array([SNname])
-    for SNName in SNNames:
-        SNName = re.sub(r"\s+", "", str(SNName))
+    for transientName in transientNames:
+        transientName = re.sub(r"\s+", "", str(transientName))
         host = None
-        possibleNames = [SNName, SNName.upper(), SNName.lower(), "SN"+SNName]
+        possibleNames = [transientName, transientName.upper(), transientName.lower(), "SN"+transientName]
         for name in possibleNames:
             if len(fullTable[fullTable['TransientName'] == name])>0:
                 host = fullTable[fullTable['TransientName'] == name]
                 allHosts.append(host)
                 break
         if host is None:
-            notFound.append(SNName)
+            notFound.append(transientName)
     if len(allHosts) > 0:
         host_DF = pd.concat(allHosts, ignore_index=True)
     return host_DF, notFound
 
-# Returns all data for transient and host,
-# based on host name
-# input - hostName
-# output - A data frame of the host
-#          associated with the transient
-#          being queried, with PS1 information.
-#          If the supernova is currently in the
-#          database, return the database object.
-#          If no host is found, return None
 def getHostFromHostName(hostNames, GHOSTpath=''):
+    """Gets hosts in the GHOST database by name.
+
+    Parameters
+    ----------
+    hostNames : array-like
+        A list of host galaxy names.
+    GHOSTpath : str
+        The path to the saved GHOST database.
+
+    Returns
+    -------
+    host : pandas DataFrame
+        The host galaxies found in GHOST.
+    """
     fullTable = fullData(GHOSTpath)
     possibleNames = []
 
@@ -271,6 +297,21 @@ def getHostFromHostName(hostNames, GHOSTpath=''):
     return host
 
 def getHostFromHostCoords(hostCoords, GHOSTpath=''):
+    """Gets hosts in the GHOST database by coordinates.
+
+    Parameters
+    ----------
+    hostCoords : array-like
+        A list of astropy SkyCoord coordinates of host galaxies.
+    GHOSTpath : str
+        The path to the saved GHOST database.
+
+    Returns
+    -------
+    host : pandas DataFrame
+        The subset of discovered hosts.
+
+    """
     fullTable = fullData(GHOSTpath)
     c2 = SkyCoord(fullTable['raMean']*u.deg, fullTable['decMean']*u.deg, frame='icrs')
     host = []
@@ -286,15 +327,17 @@ def getHostFromHostCoords(hostCoords, GHOSTpath=''):
         host = pd.concat(host, ignore_index=True)
     return host
 
-# Returns basic statistics for transient,
-# based on a query of the coordinates of
-# its host
-# inputs - the position of the host
-# outputs - A printout of name,
-#           discovery year and discovery mag
-#           for all transients associated
-#           with a host at that coordinates
 def getTransientStatsFromHostCoords(hostCoord):
+    """Prints basic statistics for transient,
+       based on a query of the coordinates of
+       its host.
+
+    Parameters
+    ----------
+    hostCoord : Astropy SkyCoord Object
+        The position of the host galaxy.
+
+    """
     host = getHostFromHostCoords(hostCoord)
     i = 0
     if len(host) > 0:
@@ -310,25 +353,35 @@ def getTransientStatsFromHostCoords(hostCoord):
             i+= 1
     return
 
-# Returns basic statistics for transient,
-# based on a query of the coordinates of
-# its host
-# inputs - the position of the host
-# outputs - A printout of name,
-#           discovery year and discovery mag
-#           for all transients associated
-#           with a host at that coordinates
 def getTransientStatsFromHostName(hostName):
+    """Returns basic statistics for transient,
+       based on a query of the name of
+       its host.
+
+    Parameters
+    ----------
+    hostName : str
+        The name of the host galaxy.
+
+    """
     host = getHostFromHostName(hostName)
     hostCoord = SkyCoord(np.unique(host['raMean'])*u.deg, np.unique(host['decMean'])*u.deg, frame='icrs')
     getTransientStatsFromHostCoords(hostCoord)
     return
 
-# Returns basic statistics for the most likely
-# host of a previously identified transient, using
-# the pipeline outlined above.
-# inputs - the coordinates of the transient to search
 def getHostStatsFromTransientCoords(transientCoordsList, GHOSTpath=''):
+    """ Returns basic statistics for the most likely
+        host of a previously identified transient, from the
+        transient's coordinates.
+
+    Parameters
+    ----------
+    transientCoordsList : array-like
+        A list of astropy SkyCoord coordinates of transients.
+    GHOSTpath : str
+        The path to the saved GHOST database.
+
+    """
     fullTable = fullData(GHOSTpath)
     names = []
     for transientCoords in transientCoordsList:
@@ -341,14 +394,20 @@ def getHostStatsFromTransientCoords(transientCoordsList, GHOSTpath=''):
             names.append(host['TransientName'].values[0])
     getHostStatsFromTransientName(names)
 
-# Returns basic statistics for the most likely
-# host of a previously identified transient, using
-# the pipeline outlined above.
-# inputs - the coordinates of the transient to search
-def getHostStatsFromTransientName(SNName, GHOSTpath=''):
-    SNName = np.array(SNName)
+def getHostStatsFromTransientName(transientName, GHOSTpath=''):
+    """Returns basic statistics for the most likely host of a previously identified transient.
+
+    Parameters
+    ----------
+    transientName : str
+        Array of transient names.
+    GHOSTpath : str
+        The path to the saved GHOST database.
+
+    """
+    transientName = np.array(transientName)
     fullTable = fullData(GHOSTpath)
-    host, notFound = getDBHostFromTransientName(SNName, GHOSTpath)
+    host, notFound = getDBHostFromTransientName(transientName, GHOSTpath)
     if host is not None:
         for idx, row in host.iterrows():
             if np.unique(row['NED_name']) != "":
@@ -372,12 +431,24 @@ def getHostStatsFromTransientName(SNName, GHOSTpath=''):
         print("No host info found!")
     return
 
-# Returns a postage stamp of the most likely
-# host in one of the PS1 bands - g,r,i,z,y - as a
-# fits file with radius rad, and plots the image.
-# inputs
-# outputs
-def getHostImage(transientName='', band="grizy", rad=60, save=0, GHOSTpath=''):
+def getHostImage(transientName='', band="grizy", rad=60, save=False, GHOSTpath=''):
+    """Returns a postage stamp of the most likely host in one of the PS1 bands - g,r,i,z,y - as a
+       fits file with radius rad, and plots the image.
+
+    Parameters
+    ----------
+    transientName : str
+        Name of queried transient.
+    band : str
+        Band for host-galaxy image.
+    rad : float
+        Size of the image, in arcsec.
+    save : bool
+        If True, save host image.
+    GHOSTpath : str
+        The path to the saved GHOST database.
+
+    """
     if transientName == '':
         print("Error! Please enter a supernova!\n")
         return
@@ -402,12 +473,24 @@ def getHostImage(transientName='', band="grizy", rad=60, save=0, GHOSTpath=''):
     else:
         print("Transient host not found!")
 
-# description
-# inputs
-# outputs
-def getTransientSpectra(path, SNname):#
-    SNname = remove_prefix(SNname, 'SN')
-    files = glob.glob(path+"*%s*"%SNname)
+def getTransientSpectra(path, transientName):
+    """Retrieves all saved spectra associated with a transient.
+
+    Parameters
+    ----------
+    path : str
+        Filepath to spectra.
+    transientName : str
+        Name of transient to query.
+
+    Returns
+    -------
+    specFiles : list of Pandas DataFrames
+        Saved spectra.
+
+    """
+    transientName = remove_prefix(transientName, 'SN')
+    files = glob.glob(path+"*%s*"%transientName)
     specFiles = []
     if len(files) > 0:
         for file in files:
@@ -415,33 +498,56 @@ def getTransientSpectra(path, SNname):#
                 spectra = pd.read_csv(file, header=None, names=['Wave(A)', 'I', 'Ierr'])
             else:
                 spectra = pd.read_csv(file, delim_whitespace=True, header=None, names=['x', 'y', 'z'])
-            #spectra = spectra.astype('float')
             specFiles.append(spectra)
     else:
         print("Sorry! No spectra found.")
     return specFiles
 
-# description
-# inputs
-# outputs
-def getHostSpectra(SNname, path):#
-    SNname = remove_prefix(SNname, 'SN')
-    files = glob.glob(path+"*%s_hostSpectra.csv*"%SNname)
+def getHostSpectra(transientName, path):
+    """Retrieves all saved spectra associated with a host galaxy.
+
+    Parameters
+    ----------
+    path : str
+        Filepath to spectra.
+    transientName : str
+        Name of transient to query.
+
+    Returns
+    -------
+    specFiles : list of Pandas DataFrames
+        Saved spectra.
+
+    """
+    transientName = remove_prefix(transientName, 'SN')
+    files = glob.glob(path+"*%s_hostSpectra.csv*"%transientName)
     specFiles = []
     if len(files) > 0:
         for file in files:
             spectra = pd.read_csv(file)
-            #spectra = spectra.astype('float')
             specFiles.append(spectra)
     else:
         print("Sorry! No spectra found.")
     return specFiles
 
-# A cone search for all transient-host pairs
-# within a certain radius, returned as a pandas dataframe
-# inputs location, in astropy coordinates, and radius in arcsec
-# outputs the data frame of all nearby pairs
 def coneSearchPairs(coord, radius, GHOSTpath=''):
+    """A cone search for all transient-host pairs within a certain radius, returned as a pandas dataframe.
+
+    Parameters
+    ----------
+    coord : Astropy SkyCoord
+        Position for cone search.
+    radius : float
+        Search radius, in arcsec.
+    GHOSTpath : str
+        The path to the saved GHOST database.
+
+    Returns
+    -------
+    hosts : Pandas DataFrame
+        GHOST galaxies within search radius.
+
+    """
     fullTable = fullData(GHOSTpath)
     c2 = SkyCoord(fullTable['TransientRA']*u.deg, fullTable['TransientDEC']*u.deg, frame='icrs')
     sep = np.array(coord.separation(c2).arcsec)
@@ -449,13 +555,22 @@ def coneSearchPairs(coord, radius, GHOSTpath=''):
     if np.nanmin(sep) < radius:
         host_idx = np.where(sep < radius)[0]
         hosts = fullTable.iloc[host_idx]
-        #hosts = pd.concat(hosts)
     return hosts
 
-# Returns the full table of data
-# inputs: none
-# outputs: the full GHOST database
 def fullData(GHOSTpath=''):
+    """Returns the full GHOST database.
+
+    Parameters
+    ----------
+    GHOSTpath : str
+        The path to the saved GHOST database.
+
+    Returns
+    -------
+    fullTable : Pandas DataFrame
+        GHOST database.
+
+    """
     if not GHOSTpath:
         GHOSTpath = os.getenv('GHOST_PATH')
         if not GHOSTpath:
@@ -468,37 +583,65 @@ def fullData(GHOSTpath=''):
     fullTable = pd.read_csv(GHOSTpath+"/database/GHOST.csv")
     return fullTable
 
-# The wrapper function for the
-# host association pipeline.
-# inputs: the location of the supernova
-#         as an astropy SkyCoord object
-# output: A pandas dataframe of
-#         the most likely host in PS1,
-#         with stats provided at
-#         printout
-def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcut='normal', ascentMatch=False, px=800, savepath='./', GHOSTpath='', redo_search=True):
+def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=False, starcut='normal', ascentMatch=False, px=800, savepath='./', GHOSTpath='', redo_search=True):
+    """The wrapper function for the main host association pipeline. The function first
+       searches the pre-existing GHOST database by transient name, then by transient coordinates, and finally
+       associates the remaining transients not found.
+
+    Parameters
+    ----------
+    transientName : array-like
+        List of transients to associate.
+    snCoord : array-like
+        List of astropy SkyCoord transient positions.
+    snClass : array-like
+        List of transient classifications (if they exist).
+    verbose : bool
+        If True, print logging information.
+    starcut : str
+        Strings corresponding to the classification thresholds required to classify a star as such.
+        Options are 'gentle' (P>0.8), normal (P>0.5), and aggressive (P>0.3).
+    ascentMatch : bool
+        If True, run the gradient ascent algorithm for the transients not matched with the
+        Directional Light Radius algorithm.
+    px : int
+        Size of the image used in gradient ascent (ignored if ascentMatch=False).
+    savepath : str
+        Filepath where dataframe of associated hosts will be saved.
+    GHOSTpath : str
+        The path to the saved GHOST database.
+    redo_search : bool
+        If True, redo the search with 150'' cone search radius if hosts were not
+        found for any of the queried transients.
+
+    Returns
+    -------
+    hostDB : Pandas DataFrame
+        Final dataframe of associated transients and host galaxies.
+
+    """
 
     #if no names were passed in, add placeholder names for each transient in the search
-    if snName == ['']:
-        snName = []
+    if transientName == ['']:
+        transientName = []
         print("No transient names listed, adding placeholder names...")
         for i in np.arange(len(snCoord)):
-            snName.append("Transient_%i" % (i+1))
+            transientName.append("Transient_%i" % (i+1))
     hostDB = None
     tempHost1 = tempHost2 = tempHost3 = None
     found_by_name = found_by_coord = found_by_manual = 0
     if not isinstance(snCoord, list) and not isinstance(snCoord, np.ndarray):
         snCoord = [snCoord]
-        snName = [snName]
+        transientName = [transientName]
         snClass = [snClass]
-    if len(snClass) != len(snName):
-        snClass = ['']*len(snName)
+    if len(snClass) != len(transientName):
+        snClass = ['']*len(transientName)
 
-    snName = [x.replace(" ", "") for x in snName]
-    df_transients = pd.DataFrame({'Name':np.array(snName), 'snCoord':np.array(snCoord), 'snClass':np.array(snClass)})
+    transientName = [x.replace(" ", "") for x in transientName]
+    df_transients = pd.DataFrame({'Name':np.array(transientName), 'snCoord':np.array(snCoord), 'snClass':np.array(snClass)})
 
-    tempHost1, notFoundNames = getDBHostFromTransientName(snName, GHOSTpath)
-    found_by_name = len(snName) - len(notFoundNames)
+    tempHost1, notFoundNames = getDBHostFromTransientName(transientName, GHOSTpath)
+    found_by_name = len(transientName) - len(notFoundNames)
 
     if tempHost1 is None or len(notFoundNames) > 0:
         if verbose:
@@ -509,24 +652,24 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
         snCoord_remaining =  df_transients_remaining['snCoord'].values
 
         tempHost2, notFoundCoords = getDBHostFromTransientCoords(snCoord_remaining, GHOSTpath);
-        found_by_coord = len(snName) - len(notFoundCoords) - found_by_name
+        found_by_coord = len(transientName) - len(notFoundCoords) - found_by_name
         if tempHost2 is None or len(notFoundCoords) > 0:
             if verbose:
                 print("%i transients not found in GHOST by name or coordinates, manually associating..."% len(notFoundCoords))
 
             df_transients_remaining = df_transients_remaining[df_transients_remaining['snCoord'].isin(notFoundCoords)]
 
-            snName_remaining =  df_transients_remaining['Name'].values
+            transientName_remaining =  df_transients_remaining['Name'].values
             snCoord_remaining = df_transients_remaining['snCoord'].values
             snClass_remaining = df_transients_remaining['snClass'].values
 
-            tempHost3 = findNewHosts(snName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath)
-            
-            if (len(snName_remaining) > 0) and (len(tempHost3)==0) and (redo_search):
-                 #bump up the search radius to 150 arcsec for reallyyy low-redshift hosts...
-                 if verbose: 
+            tempHost3 = findNewHosts(transientName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath)
+
+            if (len(transientName_remaining) > 0) and (len(tempHost3)==0) and (redo_search):
+                 #bump up the search radius to 150 arcsec for extremely low-redshift hosts...
+                 if verbose:
                      print("Couldn't find any hosts! Trying again with a search radius of 150''.")
-                 tempHost3 = findNewHosts(snName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath, 150)
+                 tempHost3 = findNewHosts(transientName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath, 150)
             found_by_manual = len(tempHost3)
     hostDB = pd.concat([tempHost1, tempHost2, tempHost3], ignore_index=True)
     hostDB.replace(-999.0, np.nan, inplace=True)
@@ -534,28 +677,56 @@ def getTransientHosts(snName=[''], snCoord=[''], snClass=[''], verbose=0, starcu
         print("%i transients found by name, %i transients found by coordinates, %i transients manually associated."% (found_by_name, found_by_coord, found_by_manual))
     return hostDB
 
-# The wrapper function for the
-# host association pipeline.
 # inputs: the location of the supernova
 #         as an astropy SkyCoord object
 # output: A pandas dataframe of
 #         the most likely host in PS1,
 #         with stats provided at
 #         printout
-def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMatch=False, px=800, savepath='./', rad=60):
-    if isinstance(snName, str):
-        snName = snName.replace(" ", "")
+def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle', ascentMatch=False, px=800, savepath='./', rad=60):
+    """Associates hosts of transients not in the GHOST database.
+
+    Parameters
+    ----------
+    transientName : array-like
+        List of transients to associate.
+    snCoord : array-like
+        List of astropy SkyCoord transient positions.
+    snClass : array-like
+        List of transient classifications (if they exist).
+    verbose : bool
+        If True, print logging information.
+    starcut : str
+        Strings corresponding to the classification thresholds required to classify a star as such.
+        Options are 'gentle' (P>0.8), normal (P>0.5), and aggressive (P>0.3).
+    ascentMatch : bool
+        If True, run the gradient ascent algorithm for the transients not matched with the
+        Directional Light Radius algorithm.
+    px : int
+        Size of the image used in gradient ascent (ignored if ascentMatch=False).
+    savepath : str
+        Filepath where dataframe of associated hosts will be saved.
+    rad : float
+        The search radius around each transient position, in arcseconds.
+
+    Returns
+    -------
+    host_df : Pandas DataFrame
+        Final dataframe of associated transients and host galaxies.
+
+    """
+    if isinstance(transientName, str):
+        transientName = transientName.replace(" ", "")
         snRA = snCoord.ra.degree
         snDEC = snCoord.dec.degree
-    elif isinstance(snName, list) or isinstance(snName, np.ndarray):
-        snName = [x.replace(" ", "") for x in snName]
+    elif isinstance(transientName, list) or isinstance(transientName, np.ndarray):
+        transientName = [x.replace(" ", "") for x in transientName]
         snRA = [x.ra.degree for x in snCoord]
         snDEC = [x.dec.degree for x in snCoord]
     else:
         print("Error! Please pass in your transient name as either a string or a list/array of strings.\n")
-        #return None
 
-    snName_arr = np.array(snName)
+    transientName_arr = np.array(transientName)
     snRA_arr = np.array(snRA)
     snDEC_arr = np.array(snDEC)
     snClass_arr = np.array(snClass)
@@ -571,26 +742,22 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
         os.chmod(savepath, 0o777)
     os.makedirs(savepath + dir_name)
     path = savepath+dir_name+'/'
-    #create temp dataframe with RA and DEC corresponding to the transient
 
-    snDF = pd.DataFrame({'Name':snName_arr, 'RA':snRA_arr, 'DEC':snDEC_arr, 'HostName':['']*len(snDEC_arr), 'Obj. Type':snClass_arr})
+    #create temp dataframe with RA and DEC corresponding to the transient
+    snDF = pd.DataFrame({'Name':transientName_arr, 'RA':snRA_arr, 'DEC':snDEC_arr, 'HostName':['']*len(snDEC_arr), 'Obj. Type':snClass_arr})
     snDF.to_csv(path+fn_SN, index=False)
 
     #begin doing the heavy lifting to associate transients with hosts
     host_DF = get_hosts(path, fn_SN, fn_Host, rad)
-    #halfLightSizes = getDR2_halfLightSizes(snRA_arr, snDEC_arr, rad)
     halfLightSizes = getDR2_petrosianSizes(snRA_arr, snDEC_arr, rad)
     host_DF_new = host_DF.merge(halfLightSizes, on='objID')
     host_DF = host_DF_new if not halfLightSizes.empty else host_DF
-    #host_DF = host_DF.merge(halfLightSizes, on='objID')
 
     if len(host_DF) < 1:
         print("ERROR: Found no hosts in cone search during manual association!")
         return None
 
-    #turn off all cuts now for debugging
     cuts = ["n", "quality", "coords", "duplicate"]
-    #cuts = []
 
     transient_dict =[]
     # this bit of trickery is required to combine northern-hemisphere and
@@ -626,7 +793,6 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
 
     #automatically add to host association for gradient ascent
     lost = np.array([k for k, v in cut_dict.items() if len(v) <1])
-    #lost = set(snName_arr) - set(cut_dict.keys())
 
     host_DF_north = getColors(host_DF_north)
     host_DF_north = removePS1Duplicates(host_DF_north)
@@ -657,15 +823,11 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
 
     fn = "DLR.txt"
     transients = pd.read_csv(path+fn_SN)
-#    clean_dict(host_dict_nospace, host_gals_DF, [])
-#    fracWithHosts(host_dict_nospace)
-#    print(len(host_gals_DF[host_gals_DF['decMean'] < -30]))
 
     with open(path+"/dictionaries/checkpoint_preDLR.p", 'wb') as fp:
-           #pickle.dump(host_dict_nospace, fp, protocol=pickle.HIGHEST_PROTOCOL)
            dump(host_dict_nospace, fp)
 
-    host_DF, host_dict_nospace_postDLR, noHosts, GD_SN = chooseByDLR(path, host_gals_DF, transients, fn, host_dict_nospace, host_dict_nospace, todo="r")
+    host_DF, host_dict_nospace_postDLR, noHosts, GD_SN = chooseByDLR(path, host_gals_DF, transients, fn, host_dict_nospace, todo="r")
 
     #last-ditch effort -- for the ones with no found host, just pick the nearest NED galaxy.
     for transient in noHosts:
@@ -678,7 +840,7 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
           transientCoord = SkyCoord(transientRA*u.deg, transientDEC*u.deg, frame='icrs')
           tempHostCoords = SkyCoord(tempDF_gals['raMean'].values*u.deg, tempDF_gals['decMean'].values*u.deg, frame='icrs')
           sep = transientCoord.separation(tempHostCoords)
-          desperateMatch = tempDF_gals.iloc[[np.argmin(sep.arcsec)]]  
+          desperateMatch = tempDF_gals.iloc[[np.argmin(sep.arcsec)]]
           host_DF = pd.concat([host_DF, desperateMatch], ignore_index=True)
           host_dict_nospace_postDLR[transient] = desperateMatch['objID'].values[0]
           if verbose:
@@ -686,18 +848,14 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
 
     if len(noHosts) > 0:
         with open(path+"/dictionaries/noHosts_fromDLR.p", 'wb') as fp:
-            #pickle.dump(noHosts, fp)
             dump(noHosts, fp)
 
     if len(GD_SN) > 0:
         with open(path+"/dictionaries/badInfo_fromDLR.p", 'wb') as fp:
-            #pickle.dump(GD_SN, fp)
              dump(GD_SN, fp)
 
     #gradient ascent algorithm for the SNe that didn't pass this stage
     SN_toReassociate = np.concatenate([np.array(noHosts), np.array(GD_SN), np.array(list(lost))])
-    #SN_toReassociate = np.concatenate([np.array(noHosts), np.array(list(lost))])
-    #SN_toReassociate = np.array(SN_toReassociate)
 
     if (len(SN_toReassociate) > 0) and (ascentMatch):
         if verbose:
@@ -710,14 +868,12 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
         host_dict_nospace_postDLR_GD, host_DF, unchanged = gradientAscent(path, transient_dict,  host_dict_nospace_postDLR, SN_toReassociate, host_DF, transients, fn_GD, plot=verbose, px=px)
 
         with open(path+"/dictionaries/gals_postGD.p", 'wb') as fp:
-            #pickle.dump(host_dict_nospace_postDLR_GD, fp, protocol=pickle.HIGHEST_PROTOCOL)
             dump(host_dict_nospace_postDLR_GD, fp)
 
         if verbose:
             print("Hosts not found for %i transients in gradient ascent. Storing names in GD_unchanged.txt" %(len(unchanged)))
 
         with open(path+"/GD_unchanged.txt", 'wb') as fp:
-            #pickle.dump(unchanged, fp)
             dump(unchanged, fp)
 
         hostFrac = fracWithHosts(host_dict_nospace_postDLR_GD)*100
@@ -733,7 +889,6 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
     host_DF = build_ML_df(final_dict, host_DF, transients)
 
     with open(path+"/dictionaries/" + "Final_Dictionary.p", 'wb') as fp:
-           #pickle.dump(final_dict, fp, protocol=pickle.HIGHEST_PROTOCOL)
            dump(final_dict, fp)
 
     #a few final cleaning steps
@@ -749,13 +904,9 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
 
     host_DF.to_csv(path+"FinalAssociationTable.csv", index=False)
 
-    #hSpecPath = path+"/hostSpectra/"
-    #tSpecPath = path+"/SNspectra/"
-    #psPath = path+"/hostPostageStamps/"
     tablePath = path+"/tables/"
     printoutPath = path+'/printouts/'
 
-    #paths = [hSpecPath, tSpecPath, psPath, tablePath, printoutPath]
     paths = [tablePath, printoutPath]
 
     for tempPath in paths:
@@ -779,4 +930,4 @@ def findNewHosts(snName, snCoord, snClass, verbose=0, starcut='gentle', ascentMa
         del host_DF['index']
     except:
         pass
-    return(host_DF)
+    return host_DF
