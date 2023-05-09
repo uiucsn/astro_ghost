@@ -48,7 +48,7 @@ def getAllPostageStamps(df, tempSize, path=".", verbose=False):
     """Loops through a pandas dataframe and saves PS1 stacked color images of all
        host galaxies.
 
-    :param df: Dataframe of PS1 sources. 
+    :param df: Dataframe of PS1 sources.
     :type df: Pandas DataFrame
     :param tempSize: The downloaded image will be tempSize x tempSize pixels.
     :type tempSize: int
@@ -223,7 +223,6 @@ def getcolorim(ra, dec, size=240, output_size=None, filters="grizy", format="jpg
     :type filters: str
     :param format: The data format (options are "jpg", "png" or "fits").
     :type format: str
-
     :return: The image.
     :rtype: PIL Image
     """
@@ -677,7 +676,6 @@ def find_host_info_SH(df, fn, dict_fn, path, rad):
 
 def southernSearch(ra, dec, rad):
     """Conducts a cone search for Skymapper objects at a given position.
-
 
     :param ra: Right ascension of central coordinate, in J200 degrees.
     :type ra: float
