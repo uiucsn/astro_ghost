@@ -441,11 +441,8 @@ def get_photoz(df):
 
     :param df: Pan-STARRS forced mean photometry data, you can get it using
         \\`ps1objIDsearch\\` from this module, Pan-STARRS web-portal or via
-        astroquery:
-        \\`astroquery.mast.Catalogs.query_{criteria,region}(
-            ...,
-            catalog=\\'Panstarrs\\',
-            table=\\'forced_mean\\')\\`
+        astroquery i.e., \\`astroquery.mast.Catalogs.query_{criteria,region}(...,
+        catalog=\\'Panstarrs\\',table=\\'forced_mean\\')\\`
     :type df: Pandas DataFrame
     :return: Posterior distributions for the grid of redshifts defined as
         \\`np.linspace(0, 1, n)\\`
