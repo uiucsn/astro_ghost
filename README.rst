@@ -7,6 +7,10 @@ GHOST
     :target: http://www.astropy.org
     :alt: Powered by Astropy Badge
 
+.. pypi-shield::
+    :project: astro_ghost
+    :downloads: month
+
 "At the last dim horizon, we search among ghostly errors of observations for
 landmarks that are scarcely more substantial. The search will continue. The
 urge is older than history. It is not satisfied and it will not be oppressed."
