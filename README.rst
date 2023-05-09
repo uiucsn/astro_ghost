@@ -11,6 +11,10 @@ GHOST
     :project: astro_ghost
     :downloads: month
 
+.. rtfd-shield::
+    :project: astro_ghost
+    :target: https://astro-ghost.readthedocs.io/en/latest/
+
 "At the last dim horizon, we search among ghostly errors of observations for
 landmarks that are scarcely more substantial. The search will continue. The
 urge is older than history. It is not satisfied and it will not be oppressed."
