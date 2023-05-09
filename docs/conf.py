@@ -41,6 +41,9 @@ extensions = [
     'sphinx_toolbox.github',
 ]
 
+github_username = 'alexandergagliano'
+github_repository = 'astro_ghost'
+
 # Add any paths that contain templates here, relative to this directory.
 # templates_path = ['_templates']
 
