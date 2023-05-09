@@ -11,16 +11,14 @@ warnings.filterwarnings("ignore", category=UserWarning)
 def getNEDSpectra(df, path, verbose=False):
     """Downloads NED spectra for the host galaxy, if it exists.
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        Dataframe containing the associated transients and their host galaxies in PS1.
-    path : str
-        Filepath where NED spectra should be saved.
-    verbose : boolean
-        Whether to print relevant debugging information.
-
+    :param df: Dataframe containing the associated transients and their host galaxies in PS1.
+    :type df: Pandas DataFrame
+    :param path: Filepath where NED spectra should be saved.
+    :type path: str
+    :param verbose: Whether to print relevant debugging information.
+    :type verbose: boolean
     """
+
     hostNames = np.array(df.dropna(subset=['NED_name'])['NED_name'])
     transientNames = np.array(df.dropna(subset=['NED_name'])['TransientName'])
     for j in np.arange(len(hostNames)):
@@ -47,17 +45,12 @@ def getNEDSpectra(df, path, verbose=False):
 def getNEDInfo(df):
     """Gets galaxy information from NED, if it exists.
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        Dataframe of the PS1 objects for which to query NED.
-
-    Returns
-    -------
-    df : Pandas DataFrame
-        The same dataframe as input, with NED info added.
-
+    :param df: Dataframe of the PS1 objects for which to query NED.
+    :type df: Pandas DataFrame
+    :return: The same dataframe as input, with NED info added.
+    :rtype: Pandas DataFrame
     """
+
     df.reset_index(inplace=True, drop=True)
 
     df['NED_name'] = ""
@@ -143,7 +136,7 @@ def getNEDInfo(df):
                         df.loc[index, 'NED_mag'] = float(tempMag)
                     if tempRedFlag:
                         df.loc[index, 'NED_redshift_flag'] = str(tempRedFlag)
-                        
+
         # if the method fails for many in a row, it's likely that too many queries have been made.
         if missingCounter > 5000:
             print("Locked out of NED, will have to try again later...")

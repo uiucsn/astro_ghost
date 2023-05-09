@@ -48,9 +48,8 @@ def getAllPostageStamps(df, tempSize, path=".", verbose=False):
     """Loops through a pandas dataframe and saves PS1 stacked color images of all
        host galaxies.
 
-    :param df: Pandas DataFrame
-        Description of parameter `df`.
-    :type df:
+    :param df: Dataframe of PS1 sources. 
+    :type df: Pandas DataFrame
     :param tempSize: The downloaded image will be tempSize x tempSize pixels.
     :type tempSize: int
     :param path: Filepath where images should be saved.
