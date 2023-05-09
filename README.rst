@@ -1,9 +1,11 @@
-astro_GHOST
+## astro_ghost
 -----------
 
 .. image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
     :target: http://www.astropy.org
     :alt: Powered by Astropy Badge
+
+[![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.18914.svg)](http://dx.doi.org/10.5281/zenodo.18914)
 
 "At the last dim horizon, we search among ghostly errors of observations for
 landmarks that are scarcely more substantial. The search will continue. The
