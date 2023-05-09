@@ -30,19 +30,17 @@ from joblib import dump, load
 def getGHOST(real=False, verbose=False, installpath='', clobber=False):
     """Downloads the GHOST database.
 
-    Parameters
-    ----------
-    real : bool
-        If True, download the GHOST database. If False, write an empty files with
+    :param real: If True, download the GHOST database. If False, write an empty files with
         relevant columns (so that every transient is manually associated).
-    verbose : bool
-        If True, print debugging info.
-    installpath : str
-        Filepath where GHOST database will be installed.
-    clobber : bool
-        If True, write new GHOST database even if it already exists at installpath.
-
+    :type real: bool, optional
+    :param verbose: If True, print debugging info.
+    :type verbose: bool, optional
+    :param installpath: Filepath where GHOST database will be installed.
+    :type installpath: str
+    :param clobber: If True, write new GHOST database even if it already exists at installpath.
+    :type clobber: bool, optional
     """
+    
     if not installpath:
         try:
             installpath = os.environ['GHOST_PATH']
@@ -600,7 +598,7 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
         If True, print logging information.
     starcut : str
         Strings corresponding to the classification thresholds required to classify a star as such.
-        Options are 'gentle' (P>0.8), normal (P>0.5), and aggressive (P>0.3).
+        Options are \\'gentle\\' (P>0.8), normal (P>0.5), and aggressive (P>0.3).
     ascentMatch : bool
         If True, run the gradient ascent algorithm for the transients not matched with the
         Directional Light Radius algorithm.
@@ -611,7 +609,7 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
     GHOSTpath : str
         The path to the saved GHOST database.
     redo_search : bool
-        If True, redo the search with 150'' cone search radius if hosts were not
+        If True, redo the search with 150\\" cone search radius if hosts were not
         found for any of the queried transients.
 
     Returns
@@ -698,7 +696,7 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
         If True, print logging information.
     starcut : str
         Strings corresponding to the classification thresholds required to classify a star as such.
-        Options are 'gentle' (P>0.8), normal (P>0.5), and aggressive (P>0.3).
+        Options are \\'gentle\\' (P>0.8), normal (P>0.5), and aggressive (P>0.3).
     ascentMatch : bool
         If True, run the gradient ascent algorithm for the transients not matched with the
         Directional Light Radius algorithm.

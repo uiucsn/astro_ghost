@@ -16,18 +16,12 @@ def choose_band_SNR(host_df):
        Estimate the S/N of each band and choose the bands
        with the highest S/N for the rest of our measurements.
 
-    Parameters
-    ----------
-    host_df : pandas dataframe
-        The dataframe containing the candidate host galaxy (should just be one galaxy).
-
-    Returns
-    -------
-    bands[i] : str
-        The PS1 band with the highest S/N.
-
+    :param host_df: The dataframe containing the candidate host galaxy (should just be one galaxy).
+    :type host_df: Pandas DataFrame
+    :return: The PS1 band with the highest S/N.
+    :rtype: str
     """
-    
+
     bands = 'grizy'
     try:
         gSNR = float(1/host_df["gPSFMagErr"])
@@ -48,32 +42,28 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
        Gupta et al., 2013 found at
        https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1916&context=edissertations.
 
-    Parameters
-    ----------
-    ra_SN : float
-        The right ascension of the SN, in degrees.
-    dec_SN : float
-        The declination of the SN, in degrees.
-    ra_host : float
-        The right ascension of the host, in degrees.
-    dec_host : float
-        The declination of the host, in degrees.
-    r_a : float
-        The semi-major axis of the host in arcseconds.
-    r_b : float
-        The semi-minor axis of the host in arcseconds.
-    source : pandas DataFrame
-        The Dataframe containing the PS1 information for the candidate host galaxy.
-    best_band : str
-        The PS1 passband with the highest S/N, from which second-order moments are estimated.
-
-    Returns
-    -------
-    dist : float
-        The angular separation between galaxy and transient, in arcseconds.
-    R : float
-        The normalized distance (angular separation divided by the DLR).
+    :param ra_SN: The right ascension of the SN, in degrees.
+    :type ra_SN: float
+    :param dec_SN: The declination of the SN, in degrees.
+    :type dec_SN: float
+    :param ra_host: The right ascension of the host, in degrees.
+    :type ra_host: float
+    :param dec_host: The declination of the host, in degrees.
+    :type dec_host: float
+    :param r_a: The semi-major axis of the host in arcseconds.
+    :type r_a: float
+    :param r_b: The semi-minor axis of the host in arcseconds.
+    :type r_b: float
+    :param source: The Dataframe containing the PS1 information for the candidate host galaxy.
+    :type source: Pandas DataFrame
+    :param best_band: The PS1 passband with the highest S/N, from which second-order moments are estimated.
+    :type best_band: str
+    :return: The angular separation between galaxy and transient, in arcseconds.
+    :rtype: float
+    :return: The normalized distance (angular separation divided by the DLR).
+    :rtype: float
     """
+
     xr = np.abs(ra_SN.deg - float(ra_host))*3600
     yr = np.abs(dec_SN.deg - float(dec_host))*3600
 
@@ -119,38 +109,31 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
     """ Calculate the DLR method but for Skymapper (southern-hemisphere) sources,
         which don't have xx and yy moments reported in the catalog.
 
-    Parameters
-    ----------
-    ra_SN : float
-        The right ascension of the SN, in degrees.
-    dec_SN : float
-        The declination of the SN, in degrees.
-    ra_host : float
-        The right ascension of the host, in degrees.
-    dec_host : float
-        The declination of the host, in degrees.
-    r_a : float
-        The semi-major axis of the host in arcseconds.
-    elong : float
-        The elongation parameter of the galaxy.
-    phi : float
-        The rotation angle of the galaxy, in radians.
-    source : pandas DataFrame
-        The Dataframe containing the PS1 information for the candidate host galaxy.
-    best_band : str
-        The PS1 passband with the highest S/N, from which second-order moments are estimated.
-
-    Returns
-    -------
-    dist : float
-        The angular separation between galaxy and transient, in arcseconds.
-    R : float
-        The normalized distance (angular separation divided by the DLR).
-
+    :param ra_SN: The right ascension of the SN, in degrees.
+    :type ra_SN: float
+    :param dec_SN: The declination of the SN, in degrees.
+    :type dec_SN: float
+    :param ra_host: The right ascension of the host, in degrees.
+    :type ra_host: float
+    :param dec_host: The declination of the host, in degrees.
+    :type dec_host: float
+    :param r_a: The semi-major axis of the host in arcseconds.
+    :type r_a: float
+    :param elong: The elongation parameter of the galaxy.
+    :type elong: float
+    :param phi: The rotation angle of the galaxy, in radians.
+    :type phi: float
+    :param source: The Dataframe containing the PS1 information for the candidate host galaxy.
+    :type source: Pandas DataFrame
+    :param best_band: The PS1 passband with the highest S/N, from which second-order moments are estimated.
+    :type best_band: str
+    :return: The angular separation between galaxy and transient, in arcseconds.
+    :rtype: float
+    :return: The normalized distance (angular separation divided by the DLR).
+    :rtype: float
     """
 
     # EVERYTHING IS IN ARCSECONDS
-
     ## taken from "Understanding Type Ia Supernovae Through Their Host Galaxies..." by Gupta
     #https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1916&context=edissertations
     xr = np.abs(ra_SN.deg - float(ra_host))*3600
@@ -183,36 +166,32 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
     """The wrapper function for selecting hosts by the directional light radius method
        introduced in Gupta et al., 2013.
 
-    Parameters
-    ----------
-    path : str
-        Filepath where to write out the results of the DLR algorithm.
-    hosts : Pandas DataFrame
-        DataFrame containing PS1 information for all candidate hosts.
-    transients : Pandas DataFrame
-        DataFrame containing TNS information for all transients.
-    fn : str
-        Filename to write the results of the associations (useful for debugging).
-    orig_dict : dictionary
-        Dictionary of
-    todo : str
-        If todo == 's', save the dictionary and the list of remaining sources.
-        If todo == 'r', return them.
-
-    Returns
-    -------
-    hosts : Pandas DataFrame
-        The dataframe of PS1 properties for host galaxies found by DLR.
-    dict_mod : dictionary
-        Dictionary of matches after DLR, with transient names as keys and a list of host galaxy pan-starrs objIDs as values.
-    noHosts : list
-        List of transients for which no reliable host galaxy was found.
-    GA_SN : list
-        List of transients for which an issue arose in DLR (most likely, a candidate
+    :param path: Filepath where to write out the results of the DLR algorithm.
+    :type path: str
+    :param hosts: DataFrame containing PS1 information for all candidate hosts.
+    :type hosts: Pandas DataFrame
+    :param transients: DataFrame containing TNS information for all transients.
+    :type transients: Pandas DataFrame
+    :param fn: Filename to write the results of the associations (useful for debugging).
+    :type fn: str
+    :param orig_dict: Dictionary consisting of key,val pairs of transient names, and lists of
+        their candidate host galaxy objIDs in PS1.
+    :type orig_dict: dictionary
+    :param todo: If todo == \\'s\\', save the dictionary and the list of remaining sources.
+        If todo == \\'r\\', return them.
+    :type todo: str
+    :return: The dataframe of PS1 properties for host galaxies found by DLR.
+    :rtype: Pandas DataFrame
+    :return: Dictionary of matches after DLR, with transient names as keys and a list of host galaxy pan-starrs objIDs as values.
+    :rtype: dictionary
+    :return: List of transients for which no reliable host galaxy was found.
+    :rtype: array-like
+    :return: List of transients for which an issue arose in DLR (most likely, a candidate
         host galaxy in the field didn't have radius information). This list is used
         to recommend candidates to associate via the gradient ascent method.
-
+    :rtype: array-like
     """
+
     dict_mod = orig_dict.copy()
     if todo=="s":
         if not os.path.exists(path+'/dictionaries'):

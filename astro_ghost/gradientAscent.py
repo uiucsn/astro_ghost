@@ -70,37 +70,32 @@ def dist(p1, p2):
 def plot_DLR_vectors_GD(size, path, transient, transient_df, host_dict_candidates, host_dict_final, host_df, R_dict, ra_dict, scale=1):
     """Plots the DLR vectors associated with each candidate host in a transient's field.
 
-    Parameters
-    ----------
-    size : int
-        Size of the plotted image, in pixels.
-    path : str
-        Filepath where image will be saved.
-    transient : str
-        Name of transient.
-    transient_df : Pandas DataFrame
-        Description of parameter `transient_df`.
-    host_dict_candidates : dictionary
-        key,value pairs of transient name, list of PS1 objIDs of
+    :param size: Size of the plotted image, in pixels.
+    :type size: int
+    :param path: Filepath where image will be saved.
+    :type path: str
+    :param transient: Name of transient.
+    :type transient: str
+    :param transient_df: Dataframe of transient properties from TNS.
+    :type transient_df:  Pandas DataFrame
+    :param host_dict_candidates: key,value pairs of transient name, list of PS1 objIDs of
         candidate hosts. Dictionary is before gradient ascent is run.
-    host_dict_final : dictionary
-        key,value pairs of transient name, list of PS1 objIDs of
+    :type host_dict_candidates: dictionary
+    :param host_dict_final: key,value pairs of transient name, list of PS1 objIDs of
         candidate hosts. Dictionary is after gradient ascent is run.
-    host_df : Pandas DataFrame
-        List of all candidate hosts in the field (before gradient ascent).
-    R_dict : dictionary
-        The r/DLR normalized distance metrics for all candidate hosts.
-    ra_dict : dictionary
-        The DLR values for all candidate hosts.
-    scale : float
-        An additional scale factor for the image size (to fully capture low-z hosts).
-
-    Returns
-    -------
-    ax_grads : figure axis
-        axes of the plotted image (to overlay a quiver map, or 2D field of gradient arrows).
-
+    :type host_dict_final: dictionary
+    :param host_df: List of all candidate hosts in the field (before gradient ascent).
+    :type host_df: Pandas DataFrame
+    :param R_dict: The r/DLR normalized distance metrics for all candidate hosts.
+    :type R_dict: dictionary
+    :param ra_dict: The DLR values for all candidate hosts.
+    :type ra_dict: dictionary
+    :param scale: An additional scale factor for the image size (to fully capture low-z hosts).
+    :type scale: float
+    :return: figure axis
+    :rtype: axes of the plotted image (to overlay a quiver map, or 2D field of gradient arrows).
     """
+
     hostList = host_dict_candidates[str(transient)]
     if type(hostList) is np.ndarray:
         if len(hostList) > 1:
@@ -196,20 +191,20 @@ def plot_DLR_vectors_GD(size, path, transient, transient_df, host_dict_candidate
 def plot_ellipse(ax, px, s, ra, dec, color):
     """Plots an ellipse on an image.
 
-    Parameters
-    ----------
-    ax : figure axis
-        Axis of figure for plotting.
-    px : int
-        Image size, in pixels.
-    s : Pandas DataFrame
-        PS1 source, with shape parameters (phi, r_a, and r_b)
-    ra, dec : float
-        Image position, in degrees.
-    color : str
-        Color of plotted ellipse.
-
+    :param ax: Axis of figure for plotting.
+    :type ax: figure axis
+    :param px: Image size, in pixels.
+    :type px: int
+    :param s: PS1 source, with shape parameters (phi, r_a, and r_b)
+    :type s: Pandas DataFrame
+    :param ra: Right ascension of image center, in degrees.
+    :type ra: float
+    :param dec: Declination of image center, in degrees.
+    :type dec: float
+    :param color: Color of plotted ellipse.
+    :type color: str
     """
+
     i=0
     size = px  #PS cutout image size, 240*sidelength in arcmin
     x0, y0 = ((ra-s['raMean'])*4*3600*np.cos(s['decMean']/180*np.pi)+(size/2)), (s['decMean']-dec)*4*3600+(size/2)
@@ -228,30 +223,23 @@ def plot_ellipse(ax, px, s, ra, dec, color):
 
 def denoise(img, weight=0.1, eps=1e-3, num_iter_max=200):
     """Perform total-variation denoising on a grayscale image.
+       Uses Rudin, Osher and Fatemi algorithm.
 
-    Parameters
-    ----------
-    img : array
-        2-D input data to be de-noised.
-    weight : float, optional
-        Denoising weight. The greater `weight`, the more de-noising (at
+    :param img: 2-D input data to be de-noised.
+    :type img: array-like
+    :param weight: Denoising weight. The greater `weight`, the more de-noising (at
         the expense of fidelity to `img`).
-    eps : float, optional
-        Relative difference of the value of the cost function that determines
+    :type weight: float, optional
+    :param eps: Relative difference of the value of the cost function that determines
         the stop criterion. The algorithm stops when:
-            (E_(n-1) - E_n) < eps * E_0
-    num_iter_max : int, optional
-        Maximal number of iterations used for the optimization.
-
-    Returns
-    -------
-    out : array
-        De-noised array of floats.
-
-    Notes
-    -----
-    Rudin, Osher and Fatemi algorithm.
+        (E_(n-1) - E_n) < eps * E_0
+    :type eps: float, optional
+    :param num_iter_max: Maximal number of iterations used for the optimization.
+    :type num_iter_max: int, optional
+    :return: De-noised array of floats.
+    :rtype: array-like
     """
+
     u = np.zeros_like(img)
     px = np.zeros_like(img)
     py = np.zeros_like(img)
@@ -305,25 +293,22 @@ def get_clean_img(ra, dec, px, band):
        estimates new pixel values through a 2D
        interpolation.
 
-    Parameters
-    ----------
-    ra, dec : float
-        Image position, in degrees.
-    px : int
-        Image size, in pixels.
-    band : str
-        Passband of image.
-
-    Returns
-    -------
-    image_masked : 2D array
-        Image data, with bad pixels masked.
-    wcs : Astropy world coordinate system object
-        wcs of image fits file.
-    hdu : Fits header
-        header of image fits file.
-
+    :param ra: Right ascension of image position, in degrees.
+    :type ra: float
+    :param dec: Declination of image position, in degrees.
+    :type dec: float
+    :param px: Image size, in pixels.
+    :type px: int
+    :param band: Passband of image.
+    :type band: str
+    :return: Image data, with bad pixels masked.
+    :rtype: 2D array
+    :return: Astropy world coordinate system object
+    :rtype: wcs of image fits file.
+    :return: Header of image fits file.
+    :rtype: Fits header
     """
+
     #first, mask the data
     if dec > -30:
         a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.25), band), '.')
@@ -403,22 +388,17 @@ def getSteps(SN_dict, transientNames, hostDF):
     """Calculates a scale factor for the gradient ascent step
        based on the mean kron radius of the galaxies in the field.
 
-    Parameters
-    ----------
-    SN_dict : dictionary
-        Key,value pairs of transient names and lists of candidate
+    :param SN_dict: Key,value pairs of transient names and lists of candidate
         host galaxy objIDs in PS1.
-    transientNames : array-like
-        Names of transients to associate.
-    hostDF : type
-        Description of parameter `hostDF`.
-
-    Returns
-    -------
-    steps : array-like
-        List of calculated steps.
-
+    :type SN_dict: dictionary
+    :param transientNames: Names of transients to associate.
+    :type transientNames: array-like
+    :param hostDF: Dataframe of all candidate host galaxies.
+    :type hostDF: Pandas DataFrame
+    :return: List of calculated steps.
+    :rtype: array-like
     """
+
     steps = []
     hostDF.replace(-999, np.nan, inplace=True)
     hostDF.replace(-999, np.nan, inplace=True)
@@ -445,42 +425,37 @@ def getSteps(SN_dict, transientNames, hostDF):
 def gradientAscent(path, SN_dict, SN_dict_postDLR, transientNames, hostDF, transientDF, fn, plot=True, px=800):
     """The gradient ascent algorithm for identifying a final host galaxy.
 
-    Parameters
-    ----------
-    path : str
-        Filepath to save the output log for the algorithm.
-    SN_dict : dictionary
-        Key, val pairs are transient name, list of PS1 objIDs of
+    :param path: Filepath to save the output log for the algorithm.
+    :type path: str
+    :param SN_dict: Key, val pairs are transient name, list of PS1 objIDs of
         potential hosts. Dictionary is before the DLR method.
-    SN_dict_postDLR : dictionary
-        Key, val pairs are transient name, list of PS1 objIDs of
+    :type SN_dict: dictionary
+    :param SN_dict_postDLR: Key, val pairs are transient name, list of PS1 objIDs of
         potential hosts. Dictionary is after the DLR method (so
         should have mostly one host per transient).
-    transientNames : array-like
-        List of transient names.
-    hostDF : Pandas DataFrame
-        PS1 info for candidate hosts.
-    transientDF : Pandas DataFrame
-        TNS info for associated transients.
-    fn : str
-        Filename for gradientAscent log.
-    plot : bool
-        If True, plot the associated transients, the background maps,
+    :type SN_dict_postDLR: dictionary
+    :param transientNames: List of transient names.
+    :type transientNames: array-like
+    :param hostDF: PS1 info for candidate hosts.
+    :type hostDF: Pandas DataFrame
+    :param transientDF: TNS info for associated transients.
+    :type transientDF: Pandas DataFrame
+    :param fn: Filename for gradientAscent log.
+    :type fn: str
+    :param plot: If True, plot the associated transients, the background maps,
         and the gradient fields associated with each transient.
-    px : int
-        Image size (in pixels).
-
-    Returns
-    -------
-    SN_dict_postDLR : dictionary
-        Dictionary of transient, host objID pairs after
+    :type plot: bool, optional
+    :param px: Image size (in pixels).
+    :type px: int
+    :return: Dictionary of transient, host objID pairs after
         gradient ascent.
-    hostDF : Pandas DataFrame
-        Description of returned object.
-    unchanged : array-like
-        List of transients for which gradient ascent failed.
-
+    :rtype: dictionary
+    :return: Dataframe of final associated hosts (after gradient ascent).
+    :rtype: Pandas Dataframe
+    :return: List of transients for which gradient ascent failed.
+    :rtype: array-like
     """
+
     warnings.filterwarnings('ignore', category=AstropyUserWarning)
     warnings.filterwarnings('ignore', category=AstropyWarning)
     step_sizes = getSteps(SN_dict, transientNames, hostDF)
