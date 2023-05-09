@@ -412,8 +412,8 @@ def ps1search(table="mean",release="dr1",format="csv",columns=None,baseurl="http
     :type baseurl: str
     :param verbose: If true, print info about request.
     :type verbose: bool
-    :param **kw: Other parameters (e.g., \\'nDetections.min\\':2).  Note that this is required!
-    :type **kw: dictionary
+    :param \\*\\*kw: Other parameters (e.g., \\'nDetections.min\\':2).  Note that this is required!
+    :type \\*\\*kw: dictionary
     :return: Result of PS1 query, in \\'csv\\', \\'votable\\', or \\'json\\' format.
     :rtype: Same as \\'format\\'
     """
@@ -473,8 +473,8 @@ def ps1cone(ra,dec,radius,table="stack",release="dr1",format="csv",columns=None,
     :type baseurl: str
     :param verbose: If true, print info about request.
     :type verbose: bool
-    :param **kw: Other parameters (e.g., \\'nDetections.min\\':2).  Note that this is required!
-    :type **kw: dictionary
+    :param \\*\\*kw: Other parameters (e.g., \\'nDetections.min\\':2).  Note that this is required!
+    :type \\*\\*kw: dictionary
     :return: Result of PS1 query, in \\'csv\\', \\'votable\\', or \\'json\\' format.
     :rtype: Same as \\'format\\'
     """
