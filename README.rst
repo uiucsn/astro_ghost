@@ -7,13 +7,13 @@ GHOST
     :target: http://www.astropy.org
     :alt: Powered by Astropy Badge
 
-.. pypi-shield::
-    :project: astro_ghost
-    :downloads: month
+.. image:: https://img.shields.io/pypi/dm/astro-ghost
+   :target: https://pypi.org/project/astro-ghost/
+   :alt: PyPI - Downloads
 
-.. rtfd-shield::
-    :project: astro_ghost
-    :target: https://astro-ghost.readthedocs.io/en/latest/
+.. image:: https://img.shields.io/readthedocs/astro-ghost
+   :target: https://astro-ghost.readthedocs.io/en/latest/
+   :alt: Read the Docs
 
 "At the last dim horizon, we search among ghostly errors of observations for
 landmarks that are scarcely more substantial. The search will continue. The
