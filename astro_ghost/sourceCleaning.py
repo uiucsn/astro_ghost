@@ -1,74 +1,32 @@
-from __future__ import print_function
 import numpy as np
 import os
 import pandas as pd
-import matplotlib.pyplot as plt
-#from PS1QueryFunctions import *
-import json
-from astropy.coordinates import Angle
 from astropy import units as u
 import astropy.coordinates as coord
 
-## between two dataframes, remove all the rows in the second one
-def removeDuplicateSN_hostTable(host_DF, severalHosts):
-    for host in severalHosts:
-        host_DF_sub = host_DF[host_DF['NED_name'] == host]
-        tempCoord = coord.SkyCoord(row.TransientRA*u.deg,row.TransientDEC*u.deg, frame='icrs')
-        sep = coord.SkyCoord(host_DF_sub['TransientRA']*u.deg,host_DF_sub['TransientDEC']*u.deg, frame='icrs').separation(tempCoord)
-        idx = np.argmin(sep)
-        idx_DF = host_DF.index[idx]
-        if (sep[idx].arcsec <= 1) and (row.TransientDiscoveryYear == host_DF_sub.loc[idx_DF, 'TransientDiscoveryYear']):
-            #print('supernova to match is: ')
-            #print(index)
-            print("Matched:")
-            print("%s" % row['TransientName'])
-            print("%s" % row.TransientClass)
-            print("%s "%host_DF_sub.loc[idx_DF, 'TransientName'])
-            print("%s" %host_DF_sub.loc[idx_DF, 'TransientClass'])
-            host_DF.drop([idx_DF], inplace=True)
-            host_DF.reset_index(inplace=True, drop=True)
-        else:
-            print("No matches, smallest separation is:")
-            print(sep[idx].arcsec)
-    return host_DF
-
-## between two dataframes, remove all the rows in the second one
-def find_unique_transients(transients, OSC_df):
-    for index, row in transients.iterrows():
-        print(index)
-        tempCoord = coord.SkyCoord(row.RA_deg*u.deg,row.DEC_deg*u.deg, frame='icrs')
-        sep = coord.SkyCoord(OSC_df['RA_deg']*u.deg,OSC_df['DEC_deg']*u.deg, frame='icrs').separation(tempCoord)
-        idx = np.argmin(sep)
-
-        if sep[idx].arcsec < 2 and row.Year == OSC_df.loc[idx, 'Year']:
-            #print('supernova to match is: ')
-            #print(index)
-            print("TNS SNe: %s" % row.Name)
-            print("TNS Type: %s" % row.ObjType)
-            #print("from")
-            #print(row.Source)
-            #print("supernova matched is:")
-            #print(idx)
-            print("OSC SNe: %s "%OSC_df.loc[idx, 'Name'])
-            print("OSC Type: %s" %OSC_df.loc[idx, 'ObjType'])
-            #print("from")
-            #print(OSC_df.loc[idx, 'Source'])
-            #print("distance between the two is:")
-            #print(sep[idx])
-            OSC_df.drop([idx], inplace=True)
-            OSC_df.reset_index(inplace=True, drop=True)
-        else:
-            print("No matches, smallest separation is:")
-            print(sep[idx].arcsec)
-
-# re-write the dictionary such that
-# no potential hosts exist that are not
-# in our data frame of potential hosts
-# (you can pass in an array, to_keep,
-# of potential hosts to keep in the
-# dictionary even if they're not in
-# the dataframe)
 def clean_dict(dic, df, to_keep):
+    """Re-writes the transient, host list dictionary such that
+       no potential hosts remain that are not in our data frame
+       of potential hosts (you can pass in an array,
+       to_keep, of potential hosts to keep in the
+       dictionary).
+
+    Parameters
+    ----------
+    dic : dictionary
+        key,value pairs of transient name, list of candidate host PS1 objIDs.
+    df : Pandas DataFrame
+        PS1 properties for candidate hosts.
+    to_keep : array-like
+        List of PS1 objIDs for candidates to keep in the dictionary
+        (even if they're not in the dataframe).
+
+    Returns
+    -------
+    dic : dictionary
+        key,value pairs of transient name, list of candidate host PS1 objIDs (after cleaning).
+
+    """
     for name, host in dic.items():
             host = host.tolist()
             newHosts = host
@@ -79,10 +37,19 @@ def clean_dict(dic, df, to_keep):
                 dic[name] = np.array(newHosts)
     return dic
 
-# check to make sure that the list of all potential hosts
-# in the dataframe matches all potential hosts in the
-# dictionary - that the two describe the same hosts
 def check_dict(dic, df):
+    """Check to make sure that the list of all potential hosts
+       in the dataframe matches all potential hosts in the
+       dictionary - that the two describe the same hosts.
+
+    Parameters
+    ----------
+    dic : dictionary
+        key,value pairs of transient name, list of candidate host PS1 objIDs.
+    df : Pandas DataFrame
+        PS1 properties for candidate hosts.
+
+    """
     for name, host in dic.items():
             host = host.tolist()
             newHosts = host
@@ -92,12 +59,33 @@ def check_dict(dic, df):
                         print("Error: {}".format(hostCandidate))
                         print("objID not found!")
 
-# clean the dictionary to match the datasetself
-# note that if we're cutting by bestDetection, we find that
-# we cut out many true hosts. So we only overwrite the
-# list of potential hosts in this case if our new list isn't
-# empty
-def clean_dict(dic, df, to_keep=[],bestDetectionCut=0):
+def clean_dict(dic, df, to_keep=[],bestDetectionCut=False):
+    """ Clean the dictionary to match the dataset.
+        note that if we're cutting by bestDetection, we find that
+        we cut out many true hosts. So we only overwrite the
+        list of potential hosts in this case if our new list isn't
+        empty.
+
+    Parameters
+    ----------
+    dic : dictionary
+        key,value pairs of transient name, list of candidate host PS1 objIDs.
+    df : Pandas DataFrame
+        PS1 properties for candidate hosts.
+    to_keep : list
+        A list of hosts to keep in the matched dictionary, even if they're not
+        in the host dataframe.
+    bestDetectionCut : bool
+        If True, bestDetection==1 was a selection cut. Don't remove hosts from the
+        dictionary if this would remove all of a transient's potential hosts.
+
+    Returns
+    -------
+    dic : dictionary
+        key,value pairs of transient name, list of candidate host PS1 objIDs, after
+        removing PS1 objects not in the dataframe.
+
+    """
     for name, host in dic.items():
             host = host.tolist()
             newHosts = host
@@ -112,6 +100,22 @@ def clean_dict(dic, df, to_keep=[],bestDetectionCut=0):
     return dic
 
 def clean_df_from_dict(dic, df):
+    """Remove sources from PS1 object DataFrame if not in the
+       dictionary matching transients to their candidate hosts.
+
+    Parameters
+    ----------
+    dic : dictionary
+        key,value pairs of transient name, list of candidate host PS1 objIDs.
+    df : Pandas DataFrame
+        PS1 properties for candidate hosts.
+
+    Returns
+    -------
+    df : Pandas DataFrame
+        PS1 properties, after removing sources.
+
+    """
     allHosts = np.array([])
     for name, host in dic.items():
         if host.size>0:
@@ -125,11 +129,24 @@ def clean_df_from_dict(dic, df):
             df.drop(index, inplace=True)
     return df
 
-#Because there are many duplicate entries in PS1 host table, follow this hierarchy:
-# 1. If duplicate, remove non-primary detections
-# 2. If still duplicate, remove NANs in yKronFlux, yskyErr, and yExtNSigma
-# 3. If still duplicate, take the value with the smallest yKronFluxErr
 def removePS1Duplicates(df):
+    """Because there are many duplicate entries in PS1 host table, follow this hierarchy for
+        prioritizing which ones to keep:
+        1. If duplicate, remove non-primary detections
+        2. If still duplicate, remove NANs in yKronFlux, yskyErr, and yExtNSigma
+        3. If still duplicate, take the value with the smallest yKronFluxErr
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        PS1 properties for candidate hosts.
+
+    Returns
+    -------
+    df : Pandas DataFrame
+        PS1 properties, after removing duplicates.
+
+    """
     df.replace(-999.0,np.nan, inplace=True)
     new_df = []
     for hostCandidate in np.unique(df["objID"]):
@@ -150,10 +167,24 @@ def removePS1Duplicates(df):
         df = pd.concat(new_df)
     return df
 
-# TODO add description
 def getColors(df):
+    """Calulate observer-frame colors for PS1 sources, and make some cuts
+       from bad photometry.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        PS1 properties for candidate hosts.
+
+    Returns
+    -------
+    df : Pandas DataFrame
+        PS1 properties for candidate hosts, with color and photometry cuts.
+
+    """
     df.replace(-999, np.nan, inplace=True)
     df.replace(999, np.nan, inplace=True)
+
     # create color attributes for all hosts
     df["i-z"] = df["iApMag"] - df["zApMag"]
     df["g-r"]= df["gApMag"] - df["rApMag"]
@@ -178,8 +209,6 @@ def getColors(df):
     df["iApMag_iKronMag"] = df["iApMag"] - df["iKronMag"]
     df["zApMag_zKronMag"] = df["zApMag"] - df["zKronMag"]
     df["yApMag_yKronMag"] = df["yApMag"] - df["yKronMag"]
-    #df["gApMag_rApMag"] = df["gApMag"] - df["rApMag"]
-    #df["iApMag_zApMag"] = df["iApMag"] - df["zApMag"]
 
     # to be sure we're getting physical mags
     df.loc[df['iApMag_iKronMag'] > 100, 'iApMag_iKronMag'] = np.nan
@@ -189,14 +218,33 @@ def getColors(df):
     return df
 
 def makeCuts(df,cuts=[],dict=""):
+    """Make a series of quality cuts on the candidate host galaxies in the dataframe.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        PS1 properties for candidate hosts.
+    cuts : array-like
+        List of cuts to apply. Options are:
+        'n' - remove objects without at least 10 detections.
+        'quality'- remove objects with PS1 qualityFlag > 128 (suggesting bad photometry).
+        'coords' - remove objects with missing position information.
+        'mag' - remove objects with missing photometry (aperture magnitudes).
+        'primary' - remove objects with primaryDetection = 0.
+        'best' - remove objects with bestDetection = 0.
+        'duplicate' - remove all completely duplicated rows.
+    dic : dictionary
+        key,value pairs of transient name, list of candidate host PS1 objIDs.
+
+    Returns
+    -------
+    df : Pandas DataFrame
+        PS1 properties for candidate hosts, with quality cuts applied.
+
+    """
     for cut in cuts:
         if cut == "n":
             df = df[df['nDetections'] >= 10]
-#            df = df[df['ng'] >= 1]
-#            df = df[df['nr'] >= 1]
-#            df = df[df['ni'] >= 1]
-#            df = df[df['nz'] >= 1]
-#            df = df[df['ny'] >= 1]
         elif cut == "quality":
             df = df[df["qualityFlag"] < 128]
         elif cut == "coords":

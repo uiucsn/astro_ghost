@@ -1,34 +1,32 @@
-from matplotlib import colors
-from scipy import ndimage
-from astropy.wcs import WCS
-import matplotlib.patches as mpatches
-from matplotlib.pyplot import figure
-from astro_ghost.sourceCleaning import clean_dict
-from astropy.io import ascii
-from astropy.table import Table
-import requests
-from astropy import units as u
-from astropy.coordinates import SkyCoord
-from astropy.coordinates import Angle
-from collections import OrderedDict
-from astropy.utils.data import get_pkg_data_filename
 import numpy as np
-import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib import colors
+from astro_ghost.sourceCleaning import clean_dict
+from astropy import units as u
+from astropy.coordinates import SkyCoord, Angle
+from astropy.wcs import WCS
+from astropy.utils.data import get_pkg_data_filename
 
-def find_nearest(array, value):
-    array = np.asarray(array)
-    idx = (np.abs(array - value)).nanargmin()
-    return idx, array[idx]
-
-#Taken from https://www.eso.org/~ohainaut/ccd/sn.html
-#Error on Mag  ~    1/  (S/N)
-# So calculating SNR for each band as 1/PSFMagErr
-# Estimate the SNR of each band and choose the bands
-# with the highest SNR for the rest of our measurements
-# host_df - the dataframe of hosts we're considering
 def choose_band_SNR(host_df):
+    """Gets the PS1 band (of grizy) with the highest SNR in PSF mag.
+       From https://www.eso.org/~ohainaut/ccd/sn.html,
+       Error on Mag  ~    1/  (S/N)
+       So calculating S/N for each band as 1/PSFMagErr
+       Estimate the S/N of each band and choose the bands
+       with the highest S/N for the rest of our measurements.
+
+    Parameters
+    ----------
+    host_df : pandas dataframe
+        The dataframe containing the candidate host galaxy (should just be one galaxy).
+
+    Returns
+    -------
+    bands[i] : str
+        The PS1 band with the highest S/N.
+
+    """
     bands = 'grizy'
     try:
         gSNR = float(1/host_df["gPSFMagErr"])
@@ -40,16 +38,41 @@ def choose_band_SNR(host_df):
         SNR = np.array([gSNR, rSNR, iSNR, zSNR, ySNR])
         i = np.nanargmax(SNR)
     except:
-        #if we have issues getting the band with the highest SNR, just use 'r'-band
+        #if we have issues getting the band with the highest SNR, just use r-band
         i = 1
     return bands[i]
 
-#Plot the DLR on each of these, as vectors in direction of SNe (SNe as star)
 def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
-    # EVERYTHING IS IN ARCSECONDS
+    """Calculate the directional light radius for a given galaxy and transient pair. Calculation is adapted from
+       Gupta et al., 2013 found at
+       https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1916&context=edissertations.
 
-    ## taken from "Understanding Type Ia Supernovae Through Their Host Galaxies..." by Gupta
-    #https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1916&context=edissertations
+    Parameters
+    ----------
+    ra_SN : float
+        The right ascension of the SN, in degrees.
+    dec_SN : float
+        The declination of the SN, in degrees.
+    ra_host : float
+        The right ascension of the host, in degrees.
+    dec_host : float
+        The declination of the host, in degrees.
+    r_a : float
+        The semi-major axis of the host in arcseconds.
+    r_b : float
+        The semi-minor axis of the host in arcseconds.
+    source : pandas DataFrame
+        The Dataframe containing the PS1 information for the candidate host galaxy.
+    best_band : str
+        The PS1 passband with the highest S/N, from which second-order moments are estimated.
+
+    Returns
+    -------
+    dist : float
+        The angular separation between galaxy and transient, in arcseconds.
+    R : float
+        The normalized distance (angular separation divided by the DLR).
+    """
     xr = np.abs(ra_SN.deg - float(ra_host))*3600
     yr = np.abs(dec_SN.deg - float(dec_host))*3600
 
@@ -57,15 +80,14 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     hostCoord = SkyCoord(ra_host*u.deg, dec_host*u.deg, frame='icrs')
     sep = SNcoord.separation(hostCoord)
     dist = sep.arcsecond
-    badR = 10000000000.0 # if we don't have spatial information, get rid of it #this
-    # is good in that it gets rid of lots of artifacts without radius information
-    #dist = float(np.sqrt(xr**2 + yr**2))
-
+    badR = 10000000000.0
 
     XX = best_band + 'momentXX'
     YY = best_band + 'momentYY'
     XY = best_band + 'momentXY'
 
+    # if we don't have spatial information, get rid of it
+    # this gets rid of lots of artifacts without radius information
     if (float(source[XX]) != float(source[XX])) | (float(source[XY]) != float(source[XY])) | \
         (float(source[YY]) != float(source[YY])):
         return dist, badR
@@ -92,8 +114,39 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     return dist, R
 
 
-#calculate the DLR method but for Skymapper sources, that don't have xx and yy moments
 def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_band):
+    """ Calculate the DLR method but for Skymapper (southern-hemisphere) sources,
+        which don't have xx and yy moments reported in the catalog.
+
+    Parameters
+    ----------
+    ra_SN : float
+        The right ascension of the SN, in degrees.
+    dec_SN : float
+        The declination of the SN, in degrees.
+    ra_host : float
+        The right ascension of the host, in degrees.
+    dec_host : float
+        The declination of the host, in degrees.
+    r_a : float
+        The semi-major axis of the host in arcseconds.
+    elong : float
+        The elongation parameter of the galaxy.
+    phi : float
+        The rotation angle of the galaxy, in radians.
+    source : pandas DataFrame
+        The Dataframe containing the PS1 information for the candidate host galaxy.
+    best_band : str
+        The PS1 passband with the highest S/N, from which second-order moments are estimated.
+
+    Returns
+    -------
+    dist : float
+        The angular separation between galaxy and transient, in arcseconds.
+    R : float
+        The normalized distance (angular separation divided by the DLR).
+
+    """
     # EVERYTHING IS IN ARCSECONDS
 
     ## taken from "Understanding Type Ia Supernovae Through Their Host Galaxies..." by Gupta
@@ -105,12 +158,10 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
     hostCoord = SkyCoord(ra_host*u.deg, dec_host*u.deg, frame='icrs')
     sep = SNcoord.separation(hostCoord)
     dist = sep.arcsecond
-    badR = 10000000000.0 # if we don't have spatial information, get rid of it #this
-    # is good in that it gets rid of lots of artifacts without radius information
-    #dist = float(np.sqrt(xr**2 + yr**2))
+    badR = 10000000000.0
 
+    # if we don't have shape information for a southern-hemisphere galaxy, return
     if (float(r_a) != float(r_a)) | (float(elong) != float(elong)):
-        #print("Bad DLR for SH source.")
         return dist, badR
 
     gam = np.arctan(yr/xr)
@@ -126,142 +177,41 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
 
     return dist, R
 
-def plot_ellipse(ax, px, s, ra, dec, color):
-    i=0
-    size = px  #PS cutout image size, 240*sidelength in arcmin
-    x0, y0 = ((ra-s['raMean'])*4*3600*np.cos(s['decMean']/180*np.pi)+(size/2)), (s['decMean']-dec)*4*3600+(size/2)
-    i=i+1
+def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
+    """The wrapper function for selecting hosts by the directional light radius method
+       introduced in Gupta et al., 2013.
 
-    y, x = np.mgrid[0:size, 0:size]# 4 pixel for 1 arcsec for PS1, here image size is set to be 20"*20", depend on your cutout image size
-    #make fitted image
-    n_radius=2
-    theta1 = s['phi']#rot angle
-    a1= s['r_a']
-    b1= s['r_b']
-    e1 = mpatches.Ellipse((x0, y0), 4*n_radius*a1, 4*n_radius*b1, theta1, lw=2, ls='--', edgecolor=color,
-                          facecolor='none',  label='source 1')
-    ax.add_patch(e1)
+    Parameters
+    ----------
+    path : str
+        Filepath where to write out the results of the DLR algorithm.
+    hosts : Pandas DataFrame
+        DataFrame containing PS1 information for all candidate hosts.
+    transients : Pandas DataFrame
+        DataFrame containing TNS information for all transients.
+    fn : str
+        Filename to write the results of the associations (useful for debugging).
+    orig_dict : dictionary
+        Dictionary of
+    todo : str
+        If todo == 's', save the dictionary and the list of remaining sources.
+        If todo == 'r', return them.
 
-def plot_DLR_vectors(path, transient, transient_df, host_dict_candidates, host_dict_final, host_df, R_dict, ra_dict, df = "TNS", dual_axes=0, scale=1, postCut=0):
-    hostList = host_dict_candidates[str(transient)]
-    #os.chdir(path)
-    if type(hostList) is np.ndarray:
-        if len(hostList) > 1:
-            chosen = host_dict_final[transient]
-        else:
-            chosen = hostList[0]
-    else:
-        chosen = hostList
-        hostList = np.array(hostList)
-    band = 'r'
-    px = int(240*scale)
-    row = transient_df[transient_df['Name'] == transient]
+    Returns
+    -------
+    hosts : Pandas DataFrame
+        The dataframe of PS1 properties for host galaxies found by DLR.
+    dict_mod : dictionary
+        Dictionary of matches after DLR, with transient names as keys and a list of host galaxy pan-starrs objIDs as values.
+    noHosts : list
+        List of transients for which no reliable host galaxy was found.
+    GA_SN : list
+        List of transients for which an issue arose in DLR (most likely, a candidate
+        host galaxy in the field didn't have radius information). This list is used
+        to recommend candidates to associate via the gradient ascent method.
 
-    tempRA = Angle(row.RA, unit=u.hourangle)
-    tempDEC = Angle(row.DEC, unit=u.degree)
-    transientRA = tempRA.degree[0]
-    transientDEC = tempDEC.degree[0]
-
-    try:
-        truehostRA  = host_df.loc[host_df['objID'] == chosen, 'raMean'].values[0]
-        truehostDEC = host_df.loc[host_df['objID'] == chosen, 'decMean'].values[0]
-        searchRA = truehostRA
-        searchDEC = truehostDEC
-    except:
-        searchRA = transientRA
-        searchDEC = transientDEC
-
-    a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(searchRA, searchDEC, int(px*0.25), band), '.')
-    if not a:
-        get_PS1_Pic(searchRA, searchDEC, px, band)
-        a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(searchRA, searchDEC, int(px*0.25), band), '.')
-    hdu = fits.open(a[0])[0]
-    image_data = fits.open(a[0])[0].data
-    wcs = WCS(hdu.header)
-    figure(num=None, figsize=(8, 6), facecolor='w', edgecolor='k')
-    ax = plt.subplot(projection=wcs)
-    ax.annotate(r'%s' % np.array(row.Name)[0], xy=(transientRA-150, transientDEC+25), xytext=(transientRA-150, transientDEC+5), fontsize=20, color='r')
-    if (dual_axes):
-        overlay = ax.get_coords_overlay('fk5')
-        overlay['ra'].set_axislabel('RA', fontsize=16)
-        overlay['dec'].set_axislabel('DEC', fontsize=16)
-    else:
-        ax.set_xlabel("RA", fontsize=16)
-        ax.set_ylabel("DEC", fontsize=16)
-    # plotting the transient
-    ax.scatter(transientRA, transientDEC, transform=ax.get_transform('fk5'), marker='*', lw=4, s=200,
-           color="#f3a712",zorder=100)
-    for host in hostList:
-        hostDF = host_df[host_df['objID'] == host]
-
-        band = choose_band_SNR(hostDF)
-        XX = hostDF[band + 'momentXX'].values[0]
-        YY = hostDF[band + 'momentYY'].values[0]
-        XY = hostDF[band + 'momentXY'].values[0]
-        U = float(XY)
-        Q = float(XX) - float(YY)
-        if (Q == 0):
-            r_a = 1.e-5
-        else:
-            phi = 0.5*np.arctan(U/Q)
-        kappa = Q**2 + U**2
-        a_over_b = (1 + kappa + 2*np.sqrt(kappa))/(1 - kappa)
-
-        r_a = ra_dict[host]
-        r_b = r_a/(a_over_b)
-
-        hostDF['r_a'] = r_a
-        hostDF['r_b'] = r_b
-        hostDF['phi'] = phi
-        hostRA = host_df.loc[host_df['objID'] == host,'raMean'].values[0]
-        hostDEC = host_df.loc[host_df['objID'] == host,'decMean'].values[0]
-
-        hostDLR = R_dict[host]
-        c = '#666dc9'
-        c2 = 'red'
-        if (host == chosen):
-            c = c2 = '#d308d0'
-        plot_ellipse(ax, px, hostDF, searchRA, searchDEC, c)
-        #plot_ellipse(ax, px, hostDF, transientRA, transientDEC, c)
-
-        # in arcseconds
-        dx = float(hostRA - transientRA)*3600
-        dy = float(hostDEC - transientDEC)*3600
-
-        dist = np.sqrt(dx**2 + dy**2)
-        if hostDLR == 10000000000.0:
-            hostDLR = 0.0
-        else:
-            hostDLR = dist/hostDLR
-        #in arcseconds
-        scale_factor = hostDLR/dist
-
-        DLR_RA = float(hostRA) - dx*scale_factor/3600
-        DLR_DEC = float(hostDEC) - dy*scale_factor/3600
-
-        pointRA = [hostRA, DLR_RA]
-        pointDEC = [hostDEC, DLR_DEC]
-
-        ax.plot(pointRA, pointDEC, transform=ax.get_transform('fk5'), lw=2, color= c)
-    ax.imshow(image_data, norm=colors.PowerNorm(gamma = 0.5, vmin=1, vmax=1.e4), cmap='gray_r')
-    try:
-        z_host = float(host_df[host_df["objID"] == chosen]['NED_redshift'].values[0])
-        if(z_host == z_host):
-            print(" z_host={}\n".format(z_host))
-            #ax.annotate(r"$z_{Host}$ = {%.2f}".format(z_host),xy=(transientRA, transientDEC), xytext=(transientRA, transientDEC), fontsize=300)
-            ax.annotate(r'$z_{Host}$ = %.3f' % z_host, xy=(transientRA-280, transientDEC+40), xytext=(transientRA-280, transientDEC+40), fontsize=20, color='k')
-            #ax.text(transientRA+0.003, transientDEC+0.003, "$z_{Host}$ = {%.2f}".format(z_host), transform=ax.get_transform('fk5'), fontsize=10)
-    except:
-        host_redshift = 0
-    if postCut:
-        plt.savefig("PS1_ra={}_dec={}_{}arcsec_{}_postCut.pdf".format(transientRA, transientDEC, int(px*0.25), band))
-    else:
-        plt.savefig("PS1_ra={}_dec={}_{}arcsec_{}_DLR.pdf".format(transientRA, transientDEC, int(px*0.25), band))
-
-# if todo == "s", save the dictionary and the list of
-# remaining sources
-# if todo == "r", return them
-def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
+    """
+    dict_mod = orig_dict.copy()
     if todo=="s":
         if not os.path.exists(path+'/dictionaries'):
              os.makedirs(path+'/dictionaries')
@@ -274,7 +224,7 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
     clean_dict(orig_dict, hosts, [])
     f = open(path+fn, 'w')
     GDflag = 0
-    GD_SN = []
+    GA_SN = []
     for name, host in orig_dict.items():
         if (type(host) is not np.int64 and type(host) is not float):
              if (len(host.shape) > 0) and (host.shape[0] > 0):
@@ -284,7 +234,6 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                 host = np.array(host)
                 if len(host)>0:
                     for tempHost in host:
-                        #noGood = 0
                         theta = 0
                         host_df = hosts[hosts["objID"] == tempHost]
                         transient_df = transients[transients["Name"] == str(name)]
@@ -294,6 +243,8 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                         # (but the radius goes into plotting, so ra is artificially shrunk)
                         R =  dist = 1.e10
                         r_a = 0.05
+
+                        #flag for running gradient ascent, if the DLR method fails.
                         GDflag = 1
 
                         if ":" in str(transient_df["RA"].values):
@@ -307,7 +258,7 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                             ra_SN = ra_SN[0]
                             dec_SN = dec_SN[0]
                         if (dec_SN.deg > -30):
-                            #switching from kron radius to half-light radius (more robust!)
+                            #switching from kron radius to petrosian radius (more robust!)
                             for band in 'gri':
                                 #temp_r_a = float(host_df[band + 'HalfLightRad'].values[0])
                                 try:
@@ -360,10 +311,6 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                     #Sort from lowest to highest DLR value
                     R_dict_sub = {k: v for k, v in sorted(R_dict_sub.items(), key=lambda item: item[1])}
 
-                    # 08/22/22 -- Bugfix; DON'T take the first 3 only, as this could exclude the true host in crowded fields
-                    #N = min(3, len(R_dict_sub.keys()))
-                    #R_dict_sub = dict(list(R_dict_sub.items())[:N])
-                    #print(R_dict_sub)
                     if len(R_dict_sub.keys()) > 1:
                         gal_hosts = []
                         Simbad_hosts = []
@@ -389,7 +336,7 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
                     if (GDflag):
                         GDflag = 0
                         print("Issue with DLR. Try Gradient Descent!", file=f)
-                        GD_SN.append(name)
+                        GA_SN.append(name)
                     print(float(hosts[hosts['objID'] == chosenHost]['raMean']), float(hosts[hosts['objID'] == chosenHost]['decMean']), file=f)
                 f.flush()
     f.close()
@@ -399,4 +346,4 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, dict_mod, todo="s"):
         hosts.to_csv("../tables/DLR_rankOrdered_hosts.csv")
         return
     elif todo =="r":
-        return hosts, dict_mod, noHosts, GD_SN
+        return hosts, dict_mod, noHosts, GA_SN

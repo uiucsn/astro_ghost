@@ -7,14 +7,28 @@ from astropy.coordinates import Angle
 import os
 import sys
 from datetime import datetime
-from astropy import units as u
-from astropy.coordinates import SkyCoord
-import pandas as pd
-import numpy as np
 import pickle
 from collections import Counter
 
 def build_ML_df(dic, hostDF, transientDF):
+    """Consolidates the final host associations into a single dataframe.
+
+    Parameters
+    ----------
+    dic : dictionary
+        key,value pairs of transient name, list of associated host PS1 objIDs
+        (should be one-to-one except where the association failed).
+    hostDF : Pandas DataFrame
+        PS1 properties for all host galaxies.
+    transientDF : Pandas DataFrame
+        TNS properties for all transients.
+
+    Returns
+    -------
+    hostDF : Pandas DataFrame
+        The final consolidated DF of transient & host galaxy properties.
+
+    """
     hostDF = hostDF.reset_index(drop=True)
     hostDF = hostDF.drop_duplicates(subset=['objID'],ignore_index=True)
     hostDF["TransientClass"] = ""
@@ -51,9 +65,6 @@ def build_ML_df(dic, hostDF, transientDF):
             #adding all the extra columns that we haven't added yet
             for val in colNames:
                 hostDF.loc[idx, "Transient"+val.replace(" ", "")] = transientDF.loc[idx_transient, val].to_string(index=False).strip()
-            #hostDF.loc[idx, "TransientDiscoveryMag"] = transientDF.loc[idx_transient, 'Discovery Mag'].to_string(index=False).strip()
-            #hostDF.loc[idx, "TransientRedshift"] = transientDF.loc[idx_transient, 'Redshift'].to_string(index=False).strip()
     hostDF = hostDF[hostDF["TransientClass"] != ""]
-    #hostDF = hostDF.drop_duplicates(subset=hostDF.columns.difference(['distance']))
     hostDF = hostDF.reset_index(drop=True)
     return hostDF

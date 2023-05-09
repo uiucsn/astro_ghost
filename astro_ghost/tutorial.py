@@ -5,7 +5,6 @@ from astro_ghost.TNSQueryFunctions import getTNSSpectra
 from astro_ghost.NEDQueryFunctions import getNEDSpectra
 from astro_ghost.ghostHelperFunctions import *
 from astropy.coordinates import SkyCoord
-from astro_ghost.classifier import classify
 from astropy import units as u
 import pandas as pd
 from datetime import datetime
@@ -15,7 +14,7 @@ import astro_ghost
 verbose = 1
 
 
-#download the database from ghost.ncsa.illinois.edu
+#Download the GHOST database.
 #note: real=False creates an empty database, which
 #allows you to use the association methods without
 #needing to download the full database first
@@ -32,10 +31,6 @@ snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
 # this first checks the GHOST database for a SN by name, then by coordinates, and
 # if we have no match then it manually associates them.
 hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True, px=64, savepath='/path/to/savedir/', GHOSTpath='/where/did/you/install/GHOSTdb?/')
-
-
-# classify transients
-hosts_wPredictions = classify(hosts)
 
 #create directories to store the host spectra, the transient spectra, and the postage stamps
 hSpecPath = "./hostSpectra/"
@@ -87,7 +82,7 @@ getHostImage(snName, save=0)
 # 6. Find all supernova-host galaxy matches within a certain search radius (in arcseconds)
 coneSearchPairs(supernovaCoord[0], 1.e3)
 
-#7. Beta: find photometric redshift of host galaxies matches:
+#7. Find photometric redshift of host galaxies matches:
 from astro_ghost.photoz_helper import calc_photoz
 posterior_dict, hosts = calc_photoz(hosts)
 print(hosts['photo_z'].values)
