@@ -71,22 +71,24 @@ def ps1objIDsearch(objID,table="mean",release="dr1",format="csv",columns=None,
            **kw):
     """Do an object lookup by objID.
 
-    Parameters
-    ----------
-    objID : list of objIDs (or dictionary?)
-        List of objIDs
-    table : str
-        Can be mean, stack, or detection.
-    release : str
-        Can be 'dr1' or 'dr2'.
-    format : str
-        Can be 'csv', 'votable', or 'json'
-    columns: list of column names to include (None means use defaults)
-    baseurl: base URL for the request
-    verbose: print info about request
-    **kw: other parameters (e.g., 'nDetections.min':2)
-
+    :param objID: list of objIDs (or dictionary?)
+    :type objID: List of objIDs
+    :param table: Can be \\'mean\\', \\'stack\\', or \\'detection\\'.
+    :type table: str
+    :param release: Can be 'dr1' or 'dr2'.
+    :type release: str
+    :param format: Can be 'csv', 'votable', or 'json'
+    :type format: str
+    :param columns: list of column names to include (None means use defaults)
+    :type columns: arrray-like
+    :param baseurl: base URL for the request
+    :type baseurl: str
+    :param verbose: print info about request
+    :type verbose: bool,optional
+    :param \\*\\*kw: other parameters (e.g., 'nDetections.min':2)
+    :type \\*\\*kw: dictionary
     """
+
     #this is a dictionary... we want a list of dictionaries
     objID=list(objID)
 
@@ -110,23 +112,18 @@ def ps1objIDsearch(objID,table="mean",release="dr1",format="csv",columns=None,
 def fetch_information_serially(url, data, verbose=False, format='csv'):
     """Short summary.
 
-    Parameters
-    ----------
-    url : str
-        Remote PS1 url.
-    data : type
-        Description of parameter `data`.
-    verbose : bool
-        If True,
-    format : str
-        Can be 'csv', 'json', or 'votable'.
-
-    Returns
-    -------
-    results : 'format'
-        Description of returned object.
-
+    :param url: Remote PS1 url.
+    :type url: str
+    :param data: Description of parameter `data`.
+    :type data:
+    :param verbose: If True,
+    :type verbose: bool, optional
+    :param format: Can be \\'csv\\', \\'json\\', or \\'votable\\'.
+    :type format:
+    :return:
+    :rtype: Same type as \\'format\\'.
     """
+
     results = []
     for i in range(len(url)):
         r = requests.get(url[i], params=data[i])
@@ -143,19 +140,14 @@ def fetch_information_serially(url, data, verbose=False, format='csv'):
 def post_url_parallel(results,YSE_ID):
     """Short summary.
 
-    Parameters
-    ----------
-    results : type
-        Description of parameter `results`.
-    YSE_ID : type
-        Description of parameter `YSE_ID`.
-
-    Returns
-    -------
-    type
-        Description of returned object.
-
+    :param results: Description of parameter.
+    :type results: type
+    :param YSE_ID: Description of parameter.
+    :type YSE_ID: type
+    :return: Description of returned object.
+    :rtype: Pandas DataFrame
     """
+
     if type(results) != str:
         results = codecs.decode(results,'UTF-8')
     lines = results.split('\n')
@@ -172,18 +164,12 @@ def post_url_parallel(results,YSE_ID):
 def post_url_serial(results,YSE_ID):
     """Short summary.
 
-    Parameters
-    ----------
-    results : type
-        Description of parameter `results`.
-    YSE_ID : type
-        Description of parameter `YSE_ID`.
-
-    Returns
-    -------
-    type
-        Description of returned object.
-
+    :param results: Description of parameter.
+    :type results: type
+    :param YSE_ID: Description of parameter.
+    :type YSE_ID: type.
+    :return:
+    :rtype:
     """
     if type(results) != str:
         results = codecs.decode(results,'UTF-8')
@@ -200,27 +186,22 @@ def post_url_serial(results,YSE_ID):
 def serial_objID_search(objIDs,table='forced_mean',release='dr2',columns=None,verbose=False,**constraints):
     """Short summary.
 
-    Parameters
-    ----------
-    objIDs : type
-        Description of parameter `objIDs`.
-    table : type
-        Description of parameter `table`.
-    release : type
-        Description of parameter `release`.
-    columns : type
-        Description of parameter `columns`.
-    verbose : type
-        Description of parameter `verbose`.
-    **constraints : type
-        Description of parameter `**constraints`.
-
-    Returns
-    -------
-    type
-        Description of returned object.
-
+    :param objIDs: Description of param
+    :type objIDs: type
+    :param table: Description of param
+    :type table: type
+    :param release : Description of param
+    :type release: type
+    :param columns: Description of param
+    :type columns: type
+    :param verbose: Description of param
+    :type verbose: type.
+    :param \\*\\*constraints: Description of param
+    :type \\*\\*constraints: type.
+    :return: Description of param
+    :rtype: type
     """
+
     constrains=constraints.copy()
     URLS, DATAS = ps1objIDsearch(objID=objIDs,table='forced_mean',release=release,columns=columns,verbose=verbose,**constraints)
     Return = fetch_information_serially(URLS,DATAS)
@@ -233,19 +214,14 @@ def serial_objID_search(objIDs,table='forced_mean',release='dr2',columns=None,ve
 def post_url_parallel(results,YSE_ID):
     """Short summary.
 
-    Parameters
-    ----------
-    results : type
-        Description of parameter `results`.
-    YSE_ID : type
-        Description of parameter `YSE_ID`.
-
-    Returns
-    -------
-    type
-        Description of returned object.
-
+    :param results: Description of param.
+    :type results: type
+    :param YSE_ID: Description of param.
+    :type YSE_ID: type
+    :return:
+    :rtype:
     """
+
     results = codecs.decode(results,'UTF-8')
     lines = results.split('\n')
     if len(lines) > 2:
@@ -259,13 +235,12 @@ def post_url_parallel(results,YSE_ID):
 def get_common_constraints_columns():
     """Short summary.
 
-    Returns
-    -------
-    constraints :
-        Description of returned object.
-    columns  :
-        Description of returned object.
+    :return: adfasdf
+    :rtype: adfasdf
+    :return: adfasdf
+    :rtype: asdfasdf
     """
+
     constraints = {'nDetections.gt':1}
 
     #objects with n_detection=1 sometimes just an artifact.
@@ -284,20 +259,14 @@ def get_common_constraints_columns():
 def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
     """Short summary.
 
-    Parameters
-    ----------
-    DF : type
-        Description of parameter `DF`.
-    PATH : type
-        Description of parameter `PATH`.
-    ebv : type
-        Description of parameter `ebv`.
-
-    Returns
-    -------
-    type
-        Description of returned object.
-
+    :param DF: asdfasdf
+    :type DF: asdfasdf
+    :param PATH: asdfasdf
+    :type PATH: asdfasdf
+    :param ebv: asdfasdf
+    :type ebv: asdfasdf
+    :return: asdfasdf
+    :rtype: asdfasdf
     """
     if ebv:
         m = sfdmap.SFDMap(PATH)
@@ -359,17 +328,14 @@ def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
 def load_lupton_model(model_path):
     """Short summary.
 
-    Parameters
-    ----------
-    model_path : type
-        Description of parameter `model_path`.
-
-    Returns
-    -------
-    type
-        Description of returned object.
-
+    :param model_path: Description of param.
+    :type model_path: str
+    :return: Trained photo-z MLP.
+    :rtype: keras tensorflow model.
+    :return: ??
+    :rtype:
     """
+
     build_sfd_dir()
     get_photoz_weights(model_path)
     def model():
@@ -406,24 +372,22 @@ def load_lupton_model(model_path):
 def evaluate(X,mymodel,range_z):
     """Evaluate the MLP for a set of PS1 inputs, and return predictions.
 
-    Parameters
-    ----------
-    X : array-like
-        PS1 properties of associated hosts.
-    mymodel : keras model.
-        MLP model for photo-z estimation.
-    range_z : array-like
-        Grid over which to evaluate the posterior distribution of photo-zs.
+    :param X: PS1 properties of associated hosts.
+    :type X: array-like
+    :param mymodel: MLP model for photo-z estimation.
+    :type mymodel: keras model
+    :param range_z: Grid over which to evaluate the posterior distribution of photo-zs.
+    :type range_z: array-like
 
-    Returns
-    -------
-    posteriors : array-like
-        Full photo-z posteriors for each galaxy.
-    point_estimates : array-like
-        The expected photo-z value for each galaxy.
-    errors : array-like
-        Photo-z uncertainties (estimated by sampling from the poterior).
+    :return: Posterior distributions for the grid of redshifts defined as
+        \\`np.linspace(0, 1, n)\\`
+    :rtype: ndarray shape of (df.shape[0], n)
+    :return: Means
+    :rtype: ndarray shape of (df.shape[0],)
+    :return: Standard deviations
+    :rtype: ndarray shape of (df.shape[0],)
     """
+
     posteriors = mymodel(X,training=False).numpy()
     point_estimates = np.sum(posteriors*range_z,axis=1)
     for i in range(len(posteriors)):
@@ -444,21 +408,15 @@ def calc_photoz(hosts):
        posterior is an estimate PDF of the probability of z
        point estimate uses the mean to find a single value estimate
        error is an array that uses sampling from the posterior to estimate a std dev.
+       Relies upon the sfdmap package, (which is compatible with both unix and windows),
+       found at https://github.com/kbarbary/sfdmap.
 
-    #relies upon the sfdmap package, (which is compatible with both unix and windows)
-    #https://github.com/kbarbary/sfdmap
-
-    Parameters
-    ----------
-    hosts :  pandas DataFrame
-        The matched hosts from GHOST.
-
-    Returns
-    -------
-    hosts : pandas DataFrame
-        The matched hosts from GHOST, with photo-z point estimates and uncertainties.
-
+    :param hosts: The matched hosts from GHOST.
+    :type hosts: pandas DataFrame
+    :return: The matched hosts from GHOST, with photo-z point estimates and uncertainties.
+    :rtype: Pandas DataFrame
     """
+
     if np.nansum(hosts['decMean'] < -30) > 0:
         print("ERROR! Photo-z estimator has not yet been implemented for southern-hemisphere sources."\
         "Please remove sources below dec=-30d and try again.")
@@ -481,27 +439,21 @@ def calc_photoz(hosts):
 def get_photoz(df):
     """Evaluate photo-z model for Pan-STARRS forced photometry.
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Pan-STARRS forced mean photometry data, you can get it using
-        `ps1objIDsearch` from this module, Pan-STARRS web-portal or via
+    :param df: Pan-STARRS forced mean photometry data, you can get it using
+        \\`ps1objIDsearch\\` from this module, Pan-STARRS web-portal or via
         astroquery:
-        `astroquery.mast.Catalogs.query_{criteria,region}(
+        \\`astroquery.mast.Catalogs.query_{criteria,region}(
             ...,
-            catalog='Panstarrs',
-            table='forced_mean'
-        )`
-
-    Returns
-    -------
-    posteriors : ndarray shape of (df.shape[0], n)
-        Posterior distributions for the grid of redshifts defined as
-        `np.linspace(0, 1, n)`
-    point_estimates : ndarray shape of (df.shape[0],)
-        Means
-    errors : ndarray shape of (df.shape[0],)
-        Standard deviations
+            catalog=\\'Panstarrs\\',
+            table=\\'forced_mean\\')\\`
+    :type df: Pandas DataFrame
+    :return: Posterior distributions for the grid of redshifts defined as
+        \\`np.linspace(0, 1, n)\\`
+    :rtype: ndarray shape of (df.shape[0], n)
+    :return: Means
+    :rtype: ndarray shape of (df.shape[0],)
+    :return: Standard deviations
+    :rtype: ndarray shape of (df.shape[0],)
     """
 
     # The function load_lupton_model downloads the necessary dust models and

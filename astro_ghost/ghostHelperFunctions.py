@@ -491,7 +491,6 @@ def coneSearchPairs(coord, radius, GHOSTpath=''):
     :type GHOSTpath: str
     :return: GHOST galaxies within search radius.
     :rtype: Pandas DataFrame
-    radius : float
     """
 
     fullTable = fullData(GHOSTpath)
