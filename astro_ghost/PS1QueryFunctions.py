@@ -48,17 +48,15 @@ def getAllPostageStamps(df, tempSize, path=".", verbose=False):
     """Loops through a pandas dataframe and saves PS1 stacked color images of all
        host galaxies.
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
+    :param df: Pandas DataFrame
         Description of parameter `df`.
-    tempSize : int
-        The downloaded image will be tempSize x tempSize pixels.
-    path : str
-        Filepath where images should be saved.
-    verbose : bool
-        If true, The progress of the image downloads is printed.
-
+    :type df:
+    :param tempSize: The downloaded image will be tempSize x tempSize pixels.
+    :type tempSize: int
+    :param path: Filepath where images should be saved.
+    :type path: str
+    :param verbose: If true, The progress of the image downloads is printed.
+    :type verbose: bool
     """
 
     for i in np.arange(len(df["raMean"])):
@@ -79,22 +77,16 @@ def get_hosts(path, transient_fn, fn_Host, rad):
     """Wrapper function for getting candidate host galaxies in PS1 for dec>-30 deg and
        in Skymapper for dec<-30 deg.
 
-    Parameters
-    ----------
-    path : str
-        Filepath where csv of candidate hosts should be saved.
-    transient_fn : str
-        Filename of csv containing the transients to associate (and their coordinates).
-    fn_Host : str
-        Filename of csv containing candidate host galaxy properties.
-    rad : float
-        Search radius of the algorithm, in arcseconds.
-
-    Returns
-    -------
-    host_df : Pandas DataFrame
-        Dataframe of all candidate host galaxies.
-
+    :param path: Filepath where csv of candidate hosts should be saved.
+    :type path: str
+    :param transient_fn: Filename of csv containing the transients to associate (and their coordinates).
+    :type transient_fn: str
+    :param fn_Host: Filename of csv containing candidate host galaxy properties.
+    :type fn_Host: str
+    :param rad: Search radius of the algorithm, in arcseconds.
+    :type rad: float
+    :return: Dataframe of all candidate host galaxies.
+    :rtype: Pandas DataFrame
     """
 
     transient_df = pd.read_csv(path+"/"+transient_fn)
@@ -130,18 +122,12 @@ def find_all(name, path):
     """Crawls through a directory and all its sub-directories looking for a file matching
        'name'. If found, it is returned.
 
-    Parameters
-    ----------
-    name : str
-        The filename for which to search.
-    path : str
-        The directory to search.
-
-    Returns
-    -------
-    result : list
-        The list of absolute paths to all files called 'name' in 'path'.
-
+    :param name: The filename for which to search.
+    :type name: str
+    :param path: The directory to search.
+    :type path: str
+    :return: The list of absolute paths to all files called 'name' in 'path'.
+    :rtype: list
     """
 
     result = []
@@ -153,17 +139,16 @@ def find_all(name, path):
 def getimages(ra,dec,size=240,filters="grizy", type='stack'):
     """Query ps1filenames.py service to get a list of images.
 
-    ra, dec : float
-        The position in degrees
-    size : int
-        The image size in pixels (0.25 arcsec/pixel)
-    filters : str
-        A string with the filters to include
-
-    Returns
-    -------
-    table : Astropy Table
-        The results of the search for relevant images.
+    :param ra: Right ascention of position, in degrees.
+    :type ra: float
+    :param dec: Declination of position, in degrees.
+    :type dec: float
+    :param size: The image size in pixels (0.25 arcsec/pixel)
+    :type size: int
+    :param filters: A string with the filters to include
+    :type filters: str
+    :return: The results of the search for relevant images.
+    :rtype: Astropy Table
     """
 
     service = "https://ps1images.stsci.edu/cgi-bin/ps1filenames.py"
@@ -176,25 +161,24 @@ def getimages(ra,dec,size=240,filters="grizy", type='stack'):
 def geturl(ra, dec, size=240, output_size=None, filters="grizy", format="jpg", color=False, type='stack'):
     """Get the URL for images in the table.
 
-    ra, dec :
-        The position in degrees
-    size : int
-        The extracted image size in pixels (0.25 arcsec/pixel)
-    output_size : int
-        output (display) image size in pixels (default = size).
+    :param ra: Right ascention of position, in degrees.
+    :type ra: float
+    :param dec: Declination of position, in degrees.
+    :type dec: float
+    :param size: The extracted image size in pixels (0.25 arcsec/pixel)
+    :type size: int
+    :param output_size: output (display) image size in pixels (default = size).
         The output_size has no effect for fits format images.
-    filters : str
-        The string with filters to include.
-    format : str
-        The data format (options are "jpg", "png" or "fits").
-    color : bool
-        If True, creates a color image (only for jpg or png format).
+    :type output_size: int
+    :param filters: The string with filters to include.
+    :type filters: str
+    :param format: The data format (options are "jpg", "png" or "fits").
+    :type format: str
+    :param color: If True, creates a color image (only for jpg or png format).
         If False, return a list of URLs for single-filter grayscale images.
-
-    Returns
-    -------
-    url : str
-        The url for the image to download.
+    :type color:
+    :return: The url for the image to download.
+    :rtype: str
     """
 
     if color and format == "fits":

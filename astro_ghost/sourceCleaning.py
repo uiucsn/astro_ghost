@@ -11,22 +11,21 @@ def clean_dict(dic, df, to_keep):
        to_keep, of potential hosts to keep in the
        dictionary).
 
-    Parameters
-    ----------
-    dic : dictionary
-        key,value pairs of transient name, list of candidate host PS1 objIDs.
-    df : Pandas DataFrame
-        PS1 properties for candidate hosts.
-    to_keep : array-like
-        List of PS1 objIDs for candidates to keep in the dictionary
+    :param dic: key,value pairs of transient name, list of candidate host PS1
+        objIDs.
+    :type dic: dictionary
+    :param df: PS1 properties for candidate hosts.
+    :type df: Pandas DataFrame
+    :param to_keep: List of PS1 objIDs for candidates to keep in the dictionary
         (even if they're not in the dataframe).
+    :type to_keep: array
 
-    Returns
-    -------
-    dic : dictionary
-        key,value pairs of transient name, list of candidate host PS1 objIDs (after cleaning).
 
+    :return: key,value pairs of transient name, list of candidate host PS1
+        objIDs (after cleaning).
+    :rtype: dictionary
     """
+
     for name, host in dic.items():
             host = host.tolist()
             newHosts = host
@@ -42,14 +41,13 @@ def check_dict(dic, df):
        in the dataframe matches all potential hosts in the
        dictionary - that the two describe the same hosts.
 
-    Parameters
-    ----------
-    dic : dictionary
-        key,value pairs of transient name, list of candidate host PS1 objIDs.
-    df : Pandas DataFrame
-        PS1 properties for candidate hosts.
-
+    :param dic: key,value pairs of transient name, list of candidate host PS1
+        objIDs.
+    :type dic: dictionary
+    :param df: PS1 properties for candidate hosts.
+    :type df: Pandas DataFrame
     """
+
     for name, host in dic.items():
             host = host.tolist()
             newHosts = host
@@ -66,26 +64,24 @@ def clean_dict(dic, df, to_keep=[],bestDetectionCut=False):
         list of potential hosts in this case if our new list isn't
         empty.
 
-    Parameters
-    ----------
-    dic : dictionary
-        key,value pairs of transient name, list of candidate host PS1 objIDs.
-    df : Pandas DataFrame
-        PS1 properties for candidate hosts.
-    to_keep : list
-        A list of hosts to keep in the matched dictionary, even if they're not
-        in the host dataframe.
-    bestDetectionCut : bool
-        If True, bestDetection==1 was a selection cut. Don't remove hosts from the
-        dictionary if this would remove all of a transient's potential hosts.
+    :param dic: key,value pairs of transient name, list of candidate host PS1
+        objIDs.
+    :type dic: dictionary
+    :param df: PS1 properties for candidate hosts.
+    :type df: Pandas DataFrame
+    :param to_keep: List of PS1 objIDs for candidates to keep in the dictionary
+        (even if they're not in the dataframe).
+    :type to_keep: array
+    :param bestDetectionCut: If True, bestDetection==1 was a selection cut.
+        Don't remove hosts from the dictionary if this would remove all
+        of a transient's potential hosts.
+    :type bestDetectionCut: bool
 
-    Returns
-    -------
-    dic : dictionary
-        key,value pairs of transient name, list of candidate host PS1 objIDs, after
-        removing PS1 objects not in the dataframe.
-
+    :return: key,value pairs of transient name, list of candidate
+        host PS1 objIDs, after removing PS1 objects not in the dataframe.
+    :rtype: dictionary
     """
+
     for name, host in dic.items():
             host = host.tolist()
             newHosts = host
@@ -103,19 +99,16 @@ def clean_df_from_dict(dic, df):
     """Remove sources from PS1 object DataFrame if not in the
        dictionary matching transients to their candidate hosts.
 
-    Parameters
-    ----------
-    dic : dictionary
-        key,value pairs of transient name, list of candidate host PS1 objIDs.
-    df : Pandas DataFrame
-        PS1 properties for candidate hosts.
 
-    Returns
-    -------
-    df : Pandas DataFrame
-        PS1 properties, after removing sources.
-
+    :param dic: key,value pairs of transient name, list of candidate host PS1
+        objIDs.
+    :type dic: dictionary
+    :param df: PS1 properties for candidate hosts.
+    :type df: Pandas DataFrame
+    :return: PS1 properties, after removing sources.
+    :rtype: Pandas DataFrame
     """
+
     allHosts = np.array([])
     for name, host in dic.items():
         if host.size>0:
@@ -136,17 +129,12 @@ def removePS1Duplicates(df):
         2. If still duplicate, remove NANs in yKronFlux, yskyErr, and yExtNSigma
         3. If still duplicate, take the value with the smallest yKronFluxErr
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        PS1 properties for candidate hosts.
-
-    Returns
-    -------
-    df : Pandas DataFrame
-        PS1 properties, after removing duplicates.
-
+    :param df: PS1 properties for candidate hosts.
+    :type df: Pandas DataFrame
+    :return: PS1 properties, after removing duplicates.
+    :rtype: Pandas DataFrame
     """
+
     df.replace(-999.0,np.nan, inplace=True)
     new_df = []
     for hostCandidate in np.unique(df["objID"]):
@@ -171,17 +159,12 @@ def getColors(df):
     """Calulate observer-frame colors for PS1 sources, and make some cuts
        from bad photometry.
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        PS1 properties for candidate hosts.
-
-    Returns
-    -------
-    df : Pandas DataFrame
-        PS1 properties for candidate hosts, with color and photometry cuts.
-
+    :param df: PS1 properties for candidate hosts.
+    :type df: Pandas DataFrame
+    :return: PS1 properties, with color and photometry cuts.
+    :rtype: Pandas DataFrame
     """
+
     df.replace(-999, np.nan, inplace=True)
     df.replace(999, np.nan, inplace=True)
 
@@ -220,12 +203,9 @@ def getColors(df):
 def makeCuts(df,cuts=[],dict=""):
     """Make a series of quality cuts on the candidate host galaxies in the dataframe.
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        PS1 properties for candidate hosts.
-    cuts : array-like
-        List of cuts to apply. Options are:
+    :param df: PS1 properties for candidate hosts.
+    :type df: Pandas DataFrame
+    :param cuts: List of cuts to apply. Options are:
         'n' - remove objects without at least 10 detections.
         'quality'- remove objects with PS1 qualityFlag > 128 (suggesting bad photometry).
         'coords' - remove objects with missing position information.
@@ -233,15 +213,15 @@ def makeCuts(df,cuts=[],dict=""):
         'primary' - remove objects with primaryDetection = 0.
         'best' - remove objects with bestDetection = 0.
         'duplicate' - remove all completely duplicated rows.
-    dic : dictionary
-        key,value pairs of transient name, list of candidate host PS1 objIDs.
+    :type cuts: array
+    :param dic: key,value pairs of transient name, list of candidate host PS1
+        objIDs.
+    :type dic: dictionary
 
-    Returns
-    -------
-    df : Pandas DataFrame
-        PS1 properties for candidate hosts, with quality cuts applied.
-
+    :return: PS1 properties, with quality cuts applied.
+    :rtype: Pandas DataFrame
     """
+
     for cut in cuts:
         if cut == "n":
             df = df[df['nDetections'] >= 10]
