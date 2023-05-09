@@ -20,6 +20,8 @@ landmarks that are scarcely more substantial. The search will continue. The
 urge is older than history. It is not satisfied and it will not be oppressed."
 --Edwin Hubble
 
+TEST
+
 Welcome to GHOST, the database for supernovae and their host galaxies. This
 database contains ~16k sources in PS1, which were used to predict supernova
 classes in Gagliano et al. (2020). Installation instructions for the analysis
