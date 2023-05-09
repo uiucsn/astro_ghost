@@ -84,7 +84,7 @@ Example Usage
     getNEDSpectra(hosts, hSpecPath, verbose) #get spectra of hosts
     getTNSSpectra(transients, tSpecPath, verbose) #get spectra of transients (if on TNS)
 
-The database of supernova-host galaxy matches can be found at http://ghost.ncsa.illinois.edu/static/GHOST.csv, and retrieved using the getGHOST() function. This database will need to be created before running the association pipeline. Helper functions can be found in ghostHelperFunctions.py for querying and getting quick stats about SNe within the database, and tutorial_databaseSearch.py provides example usages. The software to associate these supernovae with host galaxies is also provided, and tutorial.py provides examples for using this code.
+The database of supernova-host galaxy matches can be found at http://ghost.ncsa.illinois.edu/static/GHOST.csv, and retrieved using the getGHOST() function. This database will need to be created before running the association pipeline. Helper functions can be found in ghostHelperFunctions.py for querying and getting quick stats about SNe within the database. The software to associate these supernovae with host galaxies is also provided, and tutorial.py provides examples for using this code.
 
 
 GHOST Viewer
