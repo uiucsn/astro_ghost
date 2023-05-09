@@ -27,6 +27,7 @@ def choose_band_SNR(host_df):
         The PS1 band with the highest S/N.
 
     """
+    
     bands = 'grizy'
     try:
         gSNR = float(1/host_df["gPSFMagErr"])
@@ -147,6 +148,7 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
         The normalized distance (angular separation divided by the DLR).
 
     """
+
     # EVERYTHING IS IN ARCSECONDS
 
     ## taken from "Understanding Type Ia Supernovae Through Their Host Galaxies..." by Gupta

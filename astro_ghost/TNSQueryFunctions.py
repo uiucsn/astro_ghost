@@ -8,16 +8,14 @@ from astro_ghost.ghostHelperFunctions import remove_prefix
 def getTNSSpectra(transients, path, verbose=False):
     """Scrapes the Transient Name Server for all public spectra of a transient.
 
-    Parameters
-    ----------
-    transients : Pandas DataFrame
-        Dataframe of transient information (must contain the column 'Name').
-    path : str
-        Filepath where spectra will be saved.
-    verbose : bool
-        If True, print progress.
-
+    :param transients: Dataframe of transient information (must contain the column 'Name').
+    :type transients: Pandas DataFrame
+    :param path: Filepath where spectra will be saved.
+    :type path: str
+    :param verbose: If True, print progress.
+    :type verbose: bool, optional
     """
+
     names = [remove_prefix(x, "SN") for x in transients['Name']]
 
     # loop through transients

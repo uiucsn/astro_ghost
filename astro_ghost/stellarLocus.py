@@ -13,21 +13,19 @@ def convert_to_SDSS(conversions, g_iPS1, band, mPS1):
        photometry (Finkbeiner et al., 2016). Publication can be found at
        https://iopscience.iop.org/article/10.3847/0004-637X/822/2/66.
 
-    Parameters
-    ----------
-    conversions : Pandas DataFrame
-        Coefficients from Finkbeiner et al., 2016.
-    g_iPS1 : float
-        Apparent g - i color of the source in PS1.
-    band : str
-        Band in which to calculate the conversion.
-    mPS1 : float
-        AB apparent magnitude of the source in PS1.
+    :param conversions: Coefficients from Finkbeiner et al., 2016.
+    :type conversions: Pandas DataFrame
+    :param g_iPS1: Apparent g - i color of the source in PS1.
+    :type g_iPS1: float
+    :param band: Band in which to calculate the conversion.
+    :type band: str
+    :param mPS1: AB apparent magnitude of the source in PS1.
+    :type mPS1: float
 
     Returns
     -------
-    mSDSS, float
-        Estimated AB apparent magnitude of the source in SDSS.
+    :return: Estimated AB apparent magnitude of the source in SDSS.
+    :rtype: float
 
     """
     a0 = conversions.loc[conversions['Band'] == band, 'a_0'].values[0]
@@ -42,16 +40,11 @@ def calc_7DCD(df):
     """Calculates the color distance (7DCD) of objects in df from the
        stellar locus from Tonry et al., 2012.
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        Dataframe of PS1 objects.
+    :param df: Dataframe of PS1 objects.
+    :type df: Pandas DataFrame
 
-    Returns
-    -------
-    df : Pandas DataFrame
-        The same dataframe as input, with new column 7DCD.
-
+    :return: The same dataframe as input, with new column 7DCD.
+    :rtype: Pandas DataFrame
     """
     df.replace(999.00, np.nan)
     df.replace(-999.00, np.nan)
@@ -96,20 +89,17 @@ def plotLocus(df, color=False, save=False, type="", timestamp=""):
     """Plots the color-color distribution of objects in df along with the Tonry et al., 2012
        PS1 stellar locus.
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        Description of parameter `df`.
-    color : bool
-        If True, color objects by their distance from the stellar locus.
-    save : bool
-        If True, saves the image.
-    type : str
-        Can be "Gals" for galaxies or "Stars" for stars. Only relevant for
+    :param df: Dataframe of PS1 objects.
+    :type df: Pandas DataFrame
+    :param color: If True, color objects by their distance from the stellar locus.
+    :type color: bool, optional
+    :param save: If True, saves the image.
+    :type save: bool, optional
+    :param type: Can be "Gals" for galaxies or "Stars" for stars. Only relevant for
         coloring the distributions.
-    timestamp : str
-        Timestamp to append to the saved plot filename.
-
+    :type type: str, optional
+    :param timestamp: Timestamp to append to the saved plot filename.
+    :type timestamp: str, optional
     """
     if color:
         plt.figure(figsize=(8,8))
