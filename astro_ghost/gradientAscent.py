@@ -21,28 +21,22 @@ import warnings
 
 def updateStep(px, gradx, grady, step, point, size):
     """ Determine direction of movement by image gradients.
-
-    Parameters
-    ----------
-    px : int
-        The maximum size of the image, in pixels.
-    gradx : float
-        The horizontal gradient of the image.
-    grady : float
-        The vertical gradient of the image.
-    step : float
-        The step size for updating the position.
-    point : array-like
-        The current position.
-    size : str
-        The predicted size of the true host. Can be "small", "medium", or "large".
-
-    Returns
-    -------
-    newPoint : array-like
-        The updated position.
-
+    :param px: The maximum size of the image, in pixels.
+    :type px: int
+    :param gradx: The horizontal gradient of the image.
+    :type gradx: float
+    :param grady: The vertical gradient of the image.
+    :type grady: float
+    :param step: The step size for updating the position.
+    :type step: float
+    :param point: The current position.
+    :type point: array-like
+    :param size: The predicted size of the true host. Can be "small", "medium", or "large".
+    :type size: str
+    :return: The updated position.
+    :rtype: array-like
     """
+
     max_x = px
     max_y =  px
     grad = np.array([gradx[point[0], point[1]], grady[point[0], point[1]]])
@@ -63,19 +57,14 @@ def updateStep(px, gradx, grady, step, point, size):
 def dist(p1, p2):
     """Measure the euclidean distance between two points.
 
-    Parameters
-    ----------
-    p1 : array-like
-        The first point.
-    p2 : array-like
-        The second point.
-
-    Returns
-    -------
-    float
-        The euclidean distance.
-
+    :param p1: The first point.
+    :type p1: array-like
+    :param p2: The second point.
+    :type p2: array-like
+    :return: The euclidean distance.
+    :rtype: float
     """
+
     return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
 def plot_DLR_vectors_GD(size, path, transient, transient_df, host_dict_candidates, host_dict_final, host_df, R_dict, ra_dict, scale=1):
