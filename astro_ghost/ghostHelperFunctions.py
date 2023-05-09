@@ -544,7 +544,7 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
     :type ascentMatch: bool
     :param px: Size of the image used in gradient ascent (ignored if ascentMatch=False).
     :type px: int
-    :param savepath : Filepath where dataframe of associated hosts will be saved.
+    :param savepath: Filepath where dataframe of associated hosts will be saved.
     :type savepath: str
     :param GHOSTpath: The path to the saved GHOST database.
     :type GHOSTpath: str
