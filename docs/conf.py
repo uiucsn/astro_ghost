@@ -42,7 +42,7 @@ extensions = [
 ]
 
 github_username = 'alexandergagliano'
-github_repository = 'astro_ghost'
+github_repository = 'uiucsn/astro_ghost'
 
 # Add any paths that contain templates here, relative to this directory.
 # templates_path = ['_templates']
