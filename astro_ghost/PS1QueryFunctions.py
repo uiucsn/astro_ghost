@@ -246,11 +246,11 @@ def get_PS1_type(ra, dec, size, band, type):
     :param band: The PS1 band.
     :type band: str
     :param type: The type of imaging data to obtain. Options are given below for the PS1 stack.
-        'stack.mask' images indicate which pixels in the stack are good and which are bad
-        'stack.wt' images are the stack variance images
-        'stack.num' images contain the number of warps with valid data which contributed to each pixel
-        'stack.exp' images contain the exposure time in seconds which contributed to each pixel
-        'stack.expwt' images are weighted exposure time maps
+        \'stack.mask\' images indicate which pixels in the stack are good and which are bad
+        \'stack.wt\' images are the stack variance images
+        \'stack.num\' images contain the number of warps with valid data which contributed to each pixel
+        \'stack.exp\' images contain the exposure time in seconds which contributed to each pixel
+        \'stack.expwt\' images are weighted exposure time maps
         See more information at https://outerspace.stsci.edu/display/PANSTARRS/PS1+Stack+images.
     :type type: str
     """
