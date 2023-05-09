@@ -40,7 +40,7 @@ def getGHOST(real=False, verbose=False, installpath='', clobber=False):
     :param clobber: If True, write new GHOST database even if it already exists at installpath.
     :type clobber: bool, optional
     """
-    
+
     if not installpath:
         try:
             installpath = os.environ['GHOST_PATH']
@@ -143,17 +143,12 @@ def fracWithHosts(transient_dict):
        one candidate host associated with
        them.
 
-    Parameters
-    ----------
-    transient_dict : dictionary
-        The dictionary of supernovae and their host galaxy candidate objIDs from PS1.
-
-    Returns
-    -------
-    dictionary
-        the fraction of supernovae with at least one candidate host galaxy.
-
+    :param transient_dict: The dictionary of supernovae and their host galaxy candidate objIDs from PS1.
+    :type transient_dict: dictionary
+    :return: The fraction of supernovae with at least one candidate host galaxy.
+    :rtype: dictionary
     """
+
     count = 0
     for name, host in transient_dict.items():
         # only do matching if there's a found host
@@ -169,40 +164,31 @@ def remove_prefix(text, prefix):
     """Removes the prefix from a string. Very useful for removing the 'SN' from
        supernova names!
 
-    Parameters
-    ----------
-    text : str
-        The full text.
-    prefix : str
-        The prefix to remove from the text.
-
-    Returns
-    -------
-    str
-        The input text, with prefix removed.
-
+    :param text: The full text.
+    :type text: str
+    :param prefix: The prefix to remove from the text.
+    :type prefix: str
+    :return: The input text, with prefix removed.
+    :rtype: str
     """
+
     return text[text.startswith(prefix) and len(prefix):]
 
 def getDBHostFromTransientCoords(transientCoords, GHOSTpath=''):
     """Gets the host associated with a supernova in
        the GHOST database by the supernova's position, if it exists.
 
-    Parameters
-    ----------
-    transientCoords : array-like
-        A list of astropy SkyCoord coordinates of transients.
-    GHOSTpath : str
-        The path to the saved GHOST database.
+    :param transientCoords: A list of astropy SkyCoord coordinates of transients.
+    :type transientCoords: array-like
+    :param GHOSTpath: The path to the saved GHOST database.
+    :type GHOSTpath: str
 
-    Returns
-    -------
-    host_DF : pandas DataFrame
-        The PS1 objects associated with the queried transients in GHOST.
-    notFound : array-like
-        A list of the coordinates of transients not found in the database.
-
+    :return: The PS1 objects associated with the queried transients in GHOST.
+    :rtype: Pandas DataFrame
+    :return: A list of the coordinates of transients not found in the database.
+    :rtype: host_DF : array-like
     """
+
     fullTable = fullData(GHOSTpath)
     notFound = []
     host_DF = None
@@ -231,21 +217,16 @@ def getDBHostFromTransientName(transientNames, GHOSTpath=''):
     """Gets the host associated with a supernova in
        the GHOST database by the supernova's name, if it exists.
 
-    Parameters
-    ----------
-    transientNames : array-like
-        A list of transient names.
-    GHOSTpath : str
-        The path to the saved GHOST database.
-
-    Returns
-    -------
-    host_DF : pandas DataFrame
-        The PS1 objects associated with the queried transients in GHOST.
-    notFound : array-like
-        A list of the coordinates of transients not found in the database.
-
+    :param transientNames: A list of transient names.
+    :type transientNames: array-like
+    :param GHOSTpath: The path to the saved GHOST database.
+    :type GHOSTpath: str
+    :return: The PS1 objects associated with the queried transients in GHOST.
+    :rtype: Pandas DataFrame
+    :return: A list of the coordinates of transients not found in the database.
+    :rtype: array-like
     """
+
     fullTable = fullData(GHOSTpath)
     allHosts = []
     notFound = []
@@ -268,18 +249,14 @@ def getDBHostFromTransientName(transientNames, GHOSTpath=''):
 def getHostFromHostName(hostNames, GHOSTpath=''):
     """Gets hosts in the GHOST database by name.
 
-    Parameters
-    ----------
-    hostNames : array-like
-        A list of host galaxy names.
-    GHOSTpath : str
-        The path to the saved GHOST database.
-
-    Returns
-    -------
-    host : pandas DataFrame
-        The host galaxies found in GHOST.
+    :param hostNames: A list of host galaxy names.
+    :type hostNames: array-like
+    :param GHOSTpath: The path to the saved GHOST database.
+    :type GHOSTpath: str
+    :return: The host galaxies found in GHOST.
+    :rtype: Pandas DataFrame
     """
+
     fullTable = fullData(GHOSTpath)
     possibleNames = []
 
@@ -297,19 +274,14 @@ def getHostFromHostName(hostNames, GHOSTpath=''):
 def getHostFromHostCoords(hostCoords, GHOSTpath=''):
     """Gets hosts in the GHOST database by coordinates.
 
-    Parameters
-    ----------
-    hostCoords : array-like
-        A list of astropy SkyCoord coordinates of host galaxies.
-    GHOSTpath : str
-        The path to the saved GHOST database.
-
-    Returns
-    -------
-    host : pandas DataFrame
-        The subset of discovered hosts.
-
+    :param hostCoords : A list of astropy SkyCoord coordinates of host galaxies.
+    :type hostCoords: array-like
+    :param GHOSTpath: The path to the saved GHOST database.
+    :type GHOSTpath: str
+    :return: The subset of discovered hosts.
+    :rtype: Pandas DataFrame
     """
+
     fullTable = fullData(GHOSTpath)
     c2 = SkyCoord(fullTable['raMean']*u.deg, fullTable['decMean']*u.deg, frame='icrs')
     host = []
@@ -330,12 +302,10 @@ def getTransientStatsFromHostCoords(hostCoord):
        based on a query of the coordinates of
        its host.
 
-    Parameters
-    ----------
-    hostCoord : Astropy SkyCoord Object
-        The position of the host galaxy.
-
+    :param hostCoord: The position of the host galaxy.
+    :type hostCoord: Astropy SkyCoord Object
     """
+
     host = getHostFromHostCoords(hostCoord)
     i = 0
     if len(host) > 0:
@@ -356,12 +326,10 @@ def getTransientStatsFromHostName(hostName):
        based on a query of the name of
        its host.
 
-    Parameters
-    ----------
-    hostName : str
-        The name of the host galaxy.
-
+    :param hostName: The name of the host galaxy.
+    :type hostName: str
     """
+
     host = getHostFromHostName(hostName)
     hostCoord = SkyCoord(np.unique(host['raMean'])*u.deg, np.unique(host['decMean'])*u.deg, frame='icrs')
     getTransientStatsFromHostCoords(hostCoord)
@@ -372,14 +340,12 @@ def getHostStatsFromTransientCoords(transientCoordsList, GHOSTpath=''):
         host of a previously identified transient, from the
         transient's coordinates.
 
-    Parameters
-    ----------
-    transientCoordsList : array-like
-        A list of astropy SkyCoord coordinates of transients.
-    GHOSTpath : str
-        The path to the saved GHOST database.
-
+    :param transientCoordsList: A list of astropy SkyCoord coordinates of transients.
+    :type transientCoordsList: array-like
+    :param GHOSTpath: The path to the saved GHOST database.
+    :type GHOSTpath: str
     """
+
     fullTable = fullData(GHOSTpath)
     names = []
     for transientCoords in transientCoordsList:
@@ -395,14 +361,12 @@ def getHostStatsFromTransientCoords(transientCoordsList, GHOSTpath=''):
 def getHostStatsFromTransientName(transientName, GHOSTpath=''):
     """Returns basic statistics for the most likely host of a previously identified transient.
 
-    Parameters
-    ----------
-    transientName : str
-        Array of transient names.
-    GHOSTpath : str
-        The path to the saved GHOST database.
-
+    :param transientName: Array of transient names.
+    :type transientName: array-like
+    :param GHOSTpath: The path to the saved GHOST database.
+    :type GHOSTpath: str
     """
+
     transientName = np.array(transientName)
     fullTable = fullData(GHOSTpath)
     host, notFound = getDBHostFromTransientName(transientName, GHOSTpath)
@@ -433,20 +397,18 @@ def getHostImage(transientName='', band="grizy", rad=60, save=False, GHOSTpath='
     """Returns a postage stamp of the most likely host in one of the PS1 bands - g,r,i,z,y - as a
        fits file with radius rad, and plots the image.
 
-    Parameters
-    ----------
-    transientName : str
-        Name of queried transient.
-    band : str
-        Band for host-galaxy image.
-    rad : float
-        Size of the image, in arcsec.
-    save : bool
-        If True, save host image.
-    GHOSTpath : str
-        The path to the saved GHOST database.
-
+    :param transientName: Name of queried transient.
+    :type transientName: str
+    :param band: Band for host-galaxy image.
+    :type band: str
+    :param rad: Size of the image, in arcsec.
+    :type rad: float
+    :param save: If True, save host image.
+    :type save: bool, optional
+    :param GHOSTpath: The path to the saved GHOST database.
+    :type GHOSTpath: str
     """
+
     if transientName == '':
         print("Error! Please enter a supernova!\n")
         return
@@ -474,19 +436,14 @@ def getHostImage(transientName='', band="grizy", rad=60, save=False, GHOSTpath='
 def getTransientSpectra(path, transientName):
     """Retrieves all saved spectra associated with a transient.
 
-    Parameters
-    ----------
-    path : str
-        Filepath to spectra.
-    transientName : str
-        Name of transient to query.
-
-    Returns
-    -------
-    specFiles : list of Pandas DataFrames
-        Saved spectra.
-
+    :param path: Filepath to spectra.
+    :type path: str
+    :param transientName: Name of transient to query.
+    :type transientName: str
+    :return: Saved spectra.
+    :rtype: list of Pandas DataFrames
     """
+
     transientName = remove_prefix(transientName, 'SN')
     files = glob.glob(path+"*%s*"%transientName)
     specFiles = []
@@ -504,19 +461,14 @@ def getTransientSpectra(path, transientName):
 def getHostSpectra(transientName, path):
     """Retrieves all saved spectra associated with a host galaxy.
 
-    Parameters
-    ----------
-    path : str
-        Filepath to spectra.
-    transientName : str
-        Name of transient to query.
-
-    Returns
-    -------
-    specFiles : list of Pandas DataFrames
-        Saved spectra.
-
+    :param path: Filepath to spectra.
+    :type path: str
+    :param transientName: Name of transient to query.
+    :type transientName: str
+    :return: Saved spectra.
+    :rtype: list of Pandas DataFrames
     """
+
     transientName = remove_prefix(transientName, 'SN')
     files = glob.glob(path+"*%s_hostSpectra.csv*"%transientName)
     specFiles = []
@@ -531,21 +483,17 @@ def getHostSpectra(transientName, path):
 def coneSearchPairs(coord, radius, GHOSTpath=''):
     """A cone search for all transient-host pairs within a certain radius, returned as a pandas dataframe.
 
-    Parameters
-    ----------
-    coord : Astropy SkyCoord
-        Position for cone search.
+    :param coord: Astropy SkyCoord
+    :type coord: Position for cone search.
+    :param radius: Search radius, in arcsec.
+    :type radius: float
+    :param GHOSTpath: The path to the saved GHOST database.
+    :type GHOSTpath: str
+    :return: GHOST galaxies within search radius.
+    :rtype: Pandas DataFrame
     radius : float
-        Search radius, in arcsec.
-    GHOSTpath : str
-        The path to the saved GHOST database.
-
-    Returns
-    -------
-    hosts : Pandas DataFrame
-        GHOST galaxies within search radius.
-
     """
+
     fullTable = fullData(GHOSTpath)
     c2 = SkyCoord(fullTable['TransientRA']*u.deg, fullTable['TransientDEC']*u.deg, frame='icrs')
     sep = np.array(coord.separation(c2).arcsec)
@@ -558,17 +506,12 @@ def coneSearchPairs(coord, radius, GHOSTpath=''):
 def fullData(GHOSTpath=''):
     """Returns the full GHOST database.
 
-    Parameters
-    ----------
-    GHOSTpath : str
-        The path to the saved GHOST database.
-
-    Returns
-    -------
-    fullTable : Pandas DataFrame
-        GHOST database.
-
+    :param GHOSTpath: The path to the saved GHOST database.
+    :type GHOSTpath: str
+    :return: GHOST database.
+    :rtype: Pandas DataFrame
     """
+
     if not GHOSTpath:
         GHOSTpath = os.getenv('GHOST_PATH')
         if not GHOSTpath:
@@ -586,37 +529,31 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
        searches the pre-existing GHOST database by transient name, then by transient coordinates, and finally
        associates the remaining transients not found.
 
-    Parameters
-    ----------
-    transientName : array-like
-        List of transients to associate.
-    snCoord : array-like
-        List of astropy SkyCoord transient positions.
-    snClass : array-like
-        List of transient classifications (if they exist).
-    verbose : bool
-        If True, print logging information.
-    starcut : str
-        Strings corresponding to the classification thresholds required to classify a star as such.
+    :param transientName: List of transients to associate.
+    :type transientName: array-like
+    :param snCoord: List of astropy SkyCoord transient positions.
+    :type snCoord: array-like
+    :param snClass: List of transient classifications (if they exist).
+    :type snClass: array-like
+    :param verbose: If True, print logging information.
+    :type verbose: bool, optional
+    :param starcut: Strings corresponding to the classification thresholds required to classify a star as such.
         Options are \\'gentle\\' (P>0.8), normal (P>0.5), and aggressive (P>0.3).
-    ascentMatch : bool
-        If True, run the gradient ascent algorithm for the transients not matched with the
+    :type starcut: str
+    :param ascentMatch: If True, run the gradient ascent algorithm for the transients not matched with the
         Directional Light Radius algorithm.
-    px : int
-        Size of the image used in gradient ascent (ignored if ascentMatch=False).
-    savepath : str
-        Filepath where dataframe of associated hosts will be saved.
-    GHOSTpath : str
-        The path to the saved GHOST database.
-    redo_search : bool
-        If True, redo the search with 150\\" cone search radius if hosts were not
+    :type ascentMatch: bool
+    :param px: Size of the image used in gradient ascent (ignored if ascentMatch=False).
+    :type px: int
+    :param savepath : Filepath where dataframe of associated hosts will be saved.
+    :type savepath: str
+    :param GHOSTpath: The path to the saved GHOST database.
+    :type GHOSTpath: str
+    :param redo_search: If True, redo the search with 150\\" cone search radius if hosts were not
         found for any of the queried transients.
-
-    Returns
-    -------
-    hostDB : Pandas DataFrame
-        Final dataframe of associated transients and host galaxies.
-
+    :type redo_search: bool
+    :return: Final dataframe of associated transients and host galaxies.
+    :rtype: Pandas DataFrame
     """
 
     #if no names were passed in, add placeholder names for each transient in the search
@@ -675,44 +612,33 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
         print("%i transients found by name, %i transients found by coordinates, %i transients manually associated."% (found_by_name, found_by_coord, found_by_manual))
     return hostDB
 
-# inputs: the location of the supernova
-#         as an astropy SkyCoord object
-# output: A pandas dataframe of
-#         the most likely host in PS1,
-#         with stats provided at
-#         printout
 def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle', ascentMatch=False, px=800, savepath='./', rad=60):
     """Associates hosts of transients not in the GHOST database.
 
-    Parameters
-    ----------
-    transientName : array-like
-        List of transients to associate.
-    snCoord : array-like
-        List of astropy SkyCoord transient positions.
-    snClass : array-like
-        List of transient classifications (if they exist).
-    verbose : bool
-        If True, print logging information.
-    starcut : str
-        Strings corresponding to the classification thresholds required to classify a star as such.
+    :param transientName: List of transients to associate.
+    :type transientName: array-like
+    :param snCoord: List of astropy SkyCoord transient positions.
+    :type snCoord: array-like
+    :param snClass: List of transient classifications (if they exist).
+    :type snClass: array-like
+    :param verbose: If True, print logging information.
+    :type verbose: bool, optional
+    :param starcut: Strings corresponding to the classification thresholds required to classify a star as such.
         Options are \\'gentle\\' (P>0.8), normal (P>0.5), and aggressive (P>0.3).
-    ascentMatch : bool
-        If True, run the gradient ascent algorithm for the transients not matched with the
+    :type starcut: str, optional
+    :param ascentMatch: If True, run the gradient ascent algorithm for the transients not matched with the
         Directional Light Radius algorithm.
-    px : int
-        Size of the image used in gradient ascent (ignored if ascentMatch=False).
-    savepath : str
-        Filepath where dataframe of associated hosts will be saved.
-    rad : float
-        The search radius around each transient position, in arcseconds.
-
-    Returns
-    -------
-    host_df : Pandas DataFrame
-        Final dataframe of associated transients and host galaxies.
-
+    :type ascentMatch: bool, optional
+    :param px: Size of the image used in gradient ascent (ignored if ascentMatch=False).
+    :type px: int
+    :param savepath: Filepath where dataframe of associated hosts will be saved.
+    :type savepath: str
+    :param rad: The search radius around each transient position, in arcseconds.
+    :type rad: float
+    :return: Final dataframe of associated transients and host galaxies.
+    :rtype: Pandas DataFrame
     """
+
     if isinstance(transientName, str):
         transientName = transientName.replace(" ", "")
         snRA = snCoord.ra.degree
