@@ -26,8 +26,8 @@ For details on installing and using GHOST, see the
 
 Citation
 ------------
-If you use this code, please cite the associated paper with the bibtex entry below: ::
-
+If you use this code, please cite the associated paper with the bibtex entry below:
+```
 @ARTICLE{2021ApJ...908..170G,
        author = {{Gagliano}, Alex and {Narayan}, Gautham and {Engel}, Andrew and {Carrasco Kind}, Matias and {LSST Dark Energy Science Collaboration}},
         title = "{GHOST: Using Only Host Galaxy Information to Accurately Associate and Distinguish Supernovae}",
@@ -46,7 +46,7 @@ archivePrefix = {arXiv},
        adsurl = {https://ui.adsabs.harvard.edu/abs/2021ApJ...908..170G},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
-
+```
 
 License
 -------
