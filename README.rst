@@ -23,6 +23,31 @@ Installation
 For details on installing and using GHOST, see the
 `Jdaviz documentation <https://astro-ghost.readthedocs.io/en/latest/>`_.
 
+
+Citation
+------------
+If you use this code, please cite the associated paper with the bibtex entry below: ::
+
+@ARTICLE{2021ApJ...908..170G,
+       author = {{Gagliano}, Alex and {Narayan}, Gautham and {Engel}, Andrew and {Carrasco Kind}, Matias and {LSST Dark Energy Science Collaboration}},
+        title = "{GHOST: Using Only Host Galaxy Information to Accurately Associate and Distinguish Supernovae}",
+      journal = {\apj},
+     keywords = {Supernovae, Classification, Random Forests, Support vector machine, Astronomy databases, Open source software, 1668, 1907, 1935, 1936, 83, 1866, Astrophysics - Astrophysics of Galaxies, Astrophysics - Cosmology and Nongalactic Astrophysics, Astrophysics - Instrumentation and Methods for Astrophysics},
+         year = 2021,
+        month = feb,
+       volume = {908},
+       number = {2},
+          eid = {170},
+        pages = {170},
+          doi = {10.3847/1538-4357/abd02b},
+archivePrefix = {arXiv},
+       eprint = {2008.09630},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2021ApJ...908..170G},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+
 License
 -------
 
