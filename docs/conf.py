@@ -35,7 +35,8 @@ extensions = [
     'sphinx_copybutton',
     'sphinx_automodapi.automodapi',
     'sphinx_automodapi.smart_resolver',
-    'sphinx_toolbox.shields'
+    'sphinx_toolbox.shields',
+    'sphinx_toolbox.github'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
