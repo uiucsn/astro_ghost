@@ -21,7 +21,7 @@ Installation
 ------------
 
 For details on installing and using GHOST, see the
-`Jdaviz documentation <https://astro-ghost.readthedocs.io/en/latest/>`_.
+`documentation <https://astro-ghost.readthedocs.io/en/latest/>`_.
 
 
 Citation
