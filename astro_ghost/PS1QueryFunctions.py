@@ -60,6 +60,7 @@ def getAllPostageStamps(df, tempSize, path=".", verbose=False):
         If true, The progress of the image downloads is printed.
 
     """
+
     for i in np.arange(len(df["raMean"])):
             tempRA = df.loc[i, 'raMean']
             tempDEC = df.loc[i, 'decMean']
@@ -95,6 +96,7 @@ def get_hosts(path, transient_fn, fn_Host, rad):
         Dataframe of all candidate host galaxies.
 
     """
+
     transient_df = pd.read_csv(path+"/"+transient_fn)
     now = datetime.now()
     dict_fn = fn_Host.replace(".csv", "") + ".p"
@@ -141,6 +143,7 @@ def find_all(name, path):
         The list of absolute paths to all files called 'name' in 'path'.
 
     """
+
     result = []
     for root, dirs, files in os.walk(path):
         if name in files:
@@ -269,6 +272,7 @@ def get_PS1_type(ra, dec, size, band, type):
         See more information at https://outerspace.stsci.edu/display/PANSTARRS/PS1+Stack+images.
 
     """
+
     fitsurl = geturl(ra, dec, size=size, filters="{}".format(band), format="fits", type=type)
     fh = fits.open(fitsurl[0])
     fh.writeto('PS1_ra={}_dec={}_{}arcsec_{}_{}.fits'.format(ra, dec, int(size*0.25), band, type))
@@ -291,6 +295,7 @@ def get_PS1_Pic(objID, ra, dec, size, band, safe=False):
         (useful when saving multiple files at comparable positions).
 
     """
+
     fitsurl = geturl(ra, dec, size=size, filters="{}".format(band), format="fits")
     fh = fits.open(fitsurl[0])
     if safe==True:
@@ -535,6 +540,7 @@ def create_df(tns_loc):
         Dataframe of all TNS metadata.
 
     """
+
     files = [f for f in listdir(tns_loc) if isfile(join(tns_loc, f))]
     arr = []
     for file in files:
@@ -599,6 +605,7 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
         If True, append results to fn. If False, create a new file.
 
     """
+
     i = 0
 
     # The dictionary to map SN names to nearby obj IDs in PS1
@@ -679,6 +686,7 @@ def find_host_info_SH(df, fn, dict_fn, path, rad):
         If True, append results to fn. If False, create a new file.
 
     """
+
     i = 0
     SN_Host_SH = {}
     SH_queries = []
@@ -740,6 +748,7 @@ def southernSearch(ra, dec, rad):
         Dataframe of Skymapper objects formatted to be joined with PS1 sources.
 
     """
+
     searchCoord = SkyCoord(ra*u.deg, dec*u.deg, frame='icrs')
     responseMain = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
     responsePhot = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.photometry&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
@@ -927,6 +936,7 @@ def getDR2_petrosianSizes(ra_arr, dec_arr, rad):
         Dataframe containing dr2 petrosian radiuses.
 
     """
+
     if len(ra_arr) < 1:
         return
 
@@ -962,6 +972,7 @@ def getDR2_halfLightSizes(ra_arr, dec_arr, rad):
         Dataframe containing dr2 half-light radiuses.
 
     """
+
     if len(ra_arr) < 1:
         return
 
