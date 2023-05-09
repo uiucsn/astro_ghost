@@ -138,7 +138,7 @@ def find_all(name, path):
 def getimages(ra,dec,size=240,filters="grizy", type='stack'):
     """Query ps1filenames.py service to get a list of images.
 
-    :param ra: Right ascention of position, in degrees.
+    :param ra: Right ascension of position, in degrees.
     :type ra: float
     :param dec: Declination of position, in degrees.
     :type dec: float
@@ -160,7 +160,7 @@ def getimages(ra,dec,size=240,filters="grizy", type='stack'):
 def geturl(ra, dec, size=240, output_size=None, filters="grizy", format="jpg", color=False, type='stack'):
     """Get the URL for images in the table.
 
-    :param ra: Right ascention of position, in degrees.
+    :param ra: Right ascension of position, in degrees.
     :type ra: float
     :param dec: Declination of position, in degrees.
     :type dec: float
@@ -210,7 +210,7 @@ def geturl(ra, dec, size=240, output_size=None, filters="grizy", format="jpg", c
 def getcolorim(ra, dec, size=240, output_size=None, filters="grizy", format="jpg"):
     """Get a PS1 color image at a sky position.
 
-    :param ra: Right ascention of position, in degrees.
+    :param ra: Right ascension of position, in degrees.
     :type ra: float
     :param dec: Declination of position, in degrees.
     :type dec: float
@@ -237,7 +237,7 @@ def getcolorim(ra, dec, size=240, output_size=None, filters="grizy", format="jpg
 def get_PS1_type(ra, dec, size, band, type):
     """Download and save PS1 imaging data in a given band of a given type.
 
-    :param ra: Right ascention of position, in degrees.
+    :param ra: Right ascension of position, in degrees.
     :type ra: float
     :param dec: Declination of position, in degrees.
     :type dec: float
@@ -245,12 +245,12 @@ def get_PS1_type(ra, dec, size, band, type):
     :type size: int
     :param band: The PS1 band.
     :type band: str
-    :param type: The type of imaging data to obtain. Options are given below for the PS1 stack:
-            'stack.mask' images indicate which pixels in the stack are good and which are bad
-            'stack.wt' images are the stack variance images
-            'stack.num' images contain the number of warps with valid data which contributed to each pixel
-            'stack.exp' images contain the exposure time in seconds which contributed to each pixel
-            'stack.expwt' images are weighted exposure time maps
+    :param type: The type of imaging data to obtain. Options are given below for the PS1 stack.
+        'stack.mask' images indicate which pixels in the stack are good and which are bad
+        'stack.wt' images are the stack variance images
+        'stack.num' images contain the number of warps with valid data which contributed to each pixel
+        'stack.exp' images contain the exposure time in seconds which contributed to each pixel
+        'stack.expwt' images are weighted exposure time maps
         See more information at https://outerspace.stsci.edu/display/PANSTARRS/PS1+Stack+images.
     :type type: str
     """
@@ -264,7 +264,7 @@ def get_PS1_Pic(objID, ra, dec, size, band, safe=False):
 
     :param objID: The PS1 objID of the object of interest (to save as filename).
     :type objID: int
-    :param ra: Right ascention of position, in degrees.
+    :param ra: Right ascension of position, in degrees.
     :type ra: float
     :param dec: Declination of position, in degrees.
     :type dec: float
