@@ -296,7 +296,7 @@ def ps1metadata(table="mean",release="dr1",baseurl="https://catalogs.mast.stsci.
     :param baseurl: The base URL for the request
     :type baseurl: str
     :return: The table containing the metadata, with columns name, type, and description.
-    :rtype: Astropy Table 
+    :rtype: Astropy Table
     """
 
     checklegal(table,release)
@@ -314,18 +314,12 @@ def ps1metadata(table="mean",release="dr1",baseurl="https://catalogs.mast.stsci.
 def mastQuery(request):
     """Perform a MAST query.
 
-    Parameters
-    ----------
-    request : dictionary
-        The MAST request json object.
-
-    Returns
-    -------
-    head : HTTP header
-        The response HTTP headers.
-    content :
-        The data obtained.
-
+    :param request: The MAST request json object.
+    :type request: dictionary
+    :return: The response HTTP headers.
+    :rtype: HTTP header
+    :return: The data obtained.
+    :rtype: str
     """
 
     server='mast.stsci.edu'
@@ -361,16 +355,10 @@ def mastQuery(request):
 def resolve(name):
     """Get the RA and Dec for an object using the MAST name resolver.
 
-    Parameters
-    ----------
-    name : str
-        Name of the object of interest.
-
-    Returns
-    -------
-    (objRa, objDec) : tuple
-        Position of resolved object.
-
+    :param name: Name of the object of interest.
+    :type name: str
+    :return: Position of resolved object, in degrees.
+    :rtype: tuple
     """
 
     resolverRequest = {'service':'Mast.Name.Lookup',
@@ -394,6 +382,11 @@ def checklegal(table,release):
     """Checks if this combination of table and release is acceptable.
        Raises a VelueError exception if there is problem.
 
+    :param table: Table type. Can be 'mean', 'stack', or 'detection'
+    :type table: str
+    :param release: The Pan-STARRS data release. Can be 'dr1' or 'dr2'.
+    :type release: str
+    :raises ValueError: Raises error if table and release combination are invalid.
     """
 
     releaselist = ("dr1", "dr2")
@@ -409,27 +402,22 @@ def checklegal(table,release):
 def ps1search(table="mean",release="dr1",format="csv",columns=None,baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False,**kw):
     """Do a general search of the PS1 catalog (possibly without ra/dec/radius).
 
-    Parameters
-    ----------
-    table: str
-        Can be 'mean', 'stack', or 'detection'.
-    release: str
-        PS1 data release. Can be 'dr1' or 'dr2'.
-    format: str
-        Can be 'csv', 'votable', or 'json'.
-    columns: list
-        Column names to include (None means use defaults).
-    baseurl: str
-        Base URL for the request.
-    verbose: bool
-        If true, print info about request.
-    **kw: dictionary
-        Other parameters (e.g., 'nDetections.min':2).  Note that this is required!
-
-    Returns
-    -------
-    r : 'format'
-        Result of PS1 query, in 'csv', 'votable', or 'json' format.
+    :param table: Table type. Can be 'mean', 'stack', or 'detection'
+    :type table: str
+    :param release: The Pan-STARRS data release. Can be 'dr1' or 'dr2'.
+    :type release: str
+    :param format: Can be 'csv', 'votable', or 'json'.
+    :type format: str
+    :param columns: Column names to include (None means use defaults).
+    :type columns: str
+    :param baseurl: Base URL for the request.
+    :type baseurl: str
+    :param verbose: If true, print info about request.
+    :type verbose: bool
+    :param **kw: Other parameters (e.g., 'nDetections.min':2).  Note that this is required!
+    :type **kw: dictionary
+    :return: Result of PS1 query, in 'csv', 'votable', or 'json' format.
+    :rtype: Same as 'format'
     """
 
     data = kw.copy()
@@ -469,31 +457,28 @@ def ps1search(table="mean",release="dr1",format="csv",columns=None,baseurl="http
 def ps1cone(ra,dec,radius,table="stack",release="dr1",format="csv",columns=None,baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False,**kw):
     """Do a cone search of the PS1 catalog. Note that this is just a thin wrapper for the function 'ps1search'.
 
-    Parameters
-    ----------
-    ra, dec: float
-        Central coordinates for the cone search, in J2000 degrees.
-    radius : float
-        Search radius, in degrees (<= 0.5 degrees)
-    table: str
-        Can be 'mean', 'stack', or 'detection'.
-    release: str
-        PS1 data release. Can be 'dr1' or 'dr2'.
-    format: str
-        Can be 'csv', 'votable', or 'json'.
-    columns: list
-        Column names to include (None means use defaults).
-    baseurl: str
-        Base URL for the request.
-    verbose: bool
-        If true, print info about request.
-    **kw: dictionary
-        Other parameters (e.g., 'nDetections.min':2).
-
-    Returns
-    -------
-    r : 'format'
-        Result of PS1 query, in 'csv', 'votable', or 'json' format.
+    :param ra: Right ascension of central coordinate, in J200 degrees.
+    :type ra: float
+    :param dec: Declination of central coordinate, in J2000 degrees.
+    :type dec: float
+    :param radius: Search radius, in degrees (<= 0.5 degrees)
+    :type radius: float
+    :param table: Table type. Can be 'mean', 'stack', or 'detection'
+    :type table: str
+    :param release: The Pan-STARRS data release. Can be 'dr1' or 'dr2'.
+    :type release: str
+    :param format: Can be 'csv', 'votable', or 'json'.
+    :type format: str
+    :param columns: Column names to include (None means use defaults).
+    :type columns: str
+    :param baseurl: Base URL for the request.
+    :type baseurl: str
+    :param verbose: If true, print info about request.
+    :type verbose: bool
+    :param **kw: Other parameters (e.g., 'nDetections.min':2).  Note that this is required!
+    :type **kw: dictionary
+    :return: Result of PS1 query, in 'csv', 'votable', or 'json' format.
+    :rtype: Same as 'format'
     """
 
     data = kw.copy()
@@ -506,16 +491,10 @@ def ps1cone(ra,dec,radius,table="stack",release="dr1",format="csv",columns=None,
 def create_df(tns_loc):
     """Combine all supernova data into a single dataframe.
 
-    Parameters
-    ----------
-    tns_loc : str
-        Filepath where files containing TNS data is stored.
-
-    Returns
-    -------
-    df : Pandas DataFrame
-        Dataframe of all TNS metadata.
-
+    :param tns_loc: Filepath where files containing TNS data is stored.
+    :type tns_loc: str
+    :param df: Dataframe of all TNS metadata.
+    :type df: Pandas DataFrame
     """
 
     files = [f for f in listdir(tns_loc) if isfile(join(tns_loc, f))]
@@ -535,20 +514,14 @@ def ps1metadata(table="mean", release="dr1", baseurl="https://catalogs.mast.stsc
     """Return metadata for the specified catalog and table. Snagged from the
        wonderful API at https://ps1images.stsci.edu/ps1_dr2_api.html.
 
-    Parameters
-    ----------
-    table: str
-        Can be 'mean', 'stack', or 'detection'.
-    release: str
-        PS1 data release. Can be 'dr1' or 'dr2'.
-    baseurl: str
-        Base URL for the request.
-
-    Returns
-    -------
-    tab : Astropy Table
-        Table with columns name, type, description.
-
+    :param table: Table type. Can be 'mean', 'stack', or 'detection'
+    :type table: str
+    :param release: The Pan-STARRS data release. Can be 'dr1' or 'dr2'.
+    :type release: str
+    :param baseurl: Base URL for the request.
+    :type baseurl: str
+    :return: Table with columns name, type, description.
+    :rtype: Astropy Table
     """
 
     checklegal(table,release)
@@ -565,22 +538,19 @@ def ps1metadata(table="mean", release="dr1", baseurl="https://catalogs.mast.stsc
 def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
     """Querying PS1 for all objects within rad arcsec of each SN.
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        Dataframe of transient information (name and coordinates).
-    fn : str
-        The output data frame of all PS1 potential hosts.
-    dict_fn : str
-        The filename of the dictionary to keep track of transient-candidate host matches.
+    :param df: Dataframe of transient information (name and coordinates).
+    :type df: Pandas DataFrame
+    :param fn: Filename of PS1 candidate host dataframe.
+    :type fn: str
+    :param dict_fn: The filename of the dictionary to keep track of transient-candidate host matches.
         Keys are transient names, values are lists containing objIDs of all host candidates.
-    path : str
-        The filepath where df will be saved.
-    rad : float
-        The search radius, in arcsec.
-    append : bool
-        If True, append results to fn. If False, create a new file.
-
+    :type dict_fn: dictionary
+    :param path: The filepath where df will be saved.
+    :type path: str
+    :param rad: The search radius, in arcsec.
+    :type rad: float
+    :param append: If True, append results to fn. If False, create a new file.
+    :type append: bool, optional
     """
 
     i = 0
@@ -646,22 +616,19 @@ def find_host_info_PS1(df, fn, dict_fn, path, rad, append=0):
 def find_host_info_SH(df, fn, dict_fn, path, rad):
     """VO Cone Search for all objects within rad arcsec of SNe (for Southern-Hemisphere (SH) objects).
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        Dataframe of transient information (name and coordinates).
-    fn : str
-        The output data frame of all PS1 potential hosts.
-    dict_fn : str
-        The filename of the dictionary to keep track of transient-candidate host matches.
+    :param df: Dataframe of transient information (name and coordinates).
+    :type df: Pandas DataFrame
+    :param fn: Filename of PS1 candidate host dataframe.
+    :type fn: str
+    :param dict_fn: The filename of the dictionary to keep track of transient-candidate host matches.
         Keys are transient names, values are lists containing objIDs of all host candidates.
-    path : str
-        The filepath where df will be saved.
-    rad : float
-        The search radius, in arcsec.
-    append : bool
-        If True, append results to fn. If False, create a new file.
-
+    :type dict_fn: dictionary
+    :param path: The filepath where df will be saved.
+    :type path: str
+    :param rad: The search radius, in arcsec.
+    :type rad: float
+    :param append: If True, append results to fn. If False, create a new file.
+    :type append: bool, optional
     """
 
     i = 0
@@ -712,18 +679,15 @@ def find_host_info_SH(df, fn, dict_fn, path, rad):
 def southernSearch(ra, dec, rad):
     """Conducts a cone search for Skymapper objects at a given position.
 
-    Parameters
-    ----------
-    ra, dec : float
-        Search position, in degrees.
-    rad : float
-        Search radius, in degrees.
 
-    Returns
-    -------
-    fullDF : Pandas DataFrame
-        Dataframe of Skymapper objects formatted to be joined with PS1 sources.
-
+    :param ra: Right ascension of central coordinate, in J200 degrees.
+    :type ra: float
+    :param dec: Declination of central coordinate, in J2000 degrees.
+    :type dec: float
+    :param radius: Search radius, in degrees (<= 0.5 degrees)
+    :type radius: float
+    :return: Dataframe of Skymapper objects formatted to be joined with PS1 sources.
+    :rtype: Pandas DataFrame.
     """
 
     searchCoord = SkyCoord(ra*u.deg, dec*u.deg, frame='icrs')
@@ -898,20 +862,14 @@ def southernSearch(ra, dec, rad):
 def getDR2_petrosianSizes(ra_arr, dec_arr, rad):
     """Retrieves petrosian radius information from DR2 for panstarrs sources.
 
-    Parameters
-    ----------
-    ra_arr : list
-        List of right ascension values, in degrees.
-    dec_arr : list
-        List of declination values, in degrees.
-    rad : float
-        The search radius, in arcseconds.
-
-    Returns
-    -------
-    df_petro_full : Pandas DataFrame
-        Dataframe containing dr2 petrosian radiuses.
-
+    :param ra_arr: List of right ascension values, in degrees.
+    :type ra_arr: list
+    :param dec_arr: List of declination values, in degrees.
+    :type dec_arr: list
+    :param rad: The search radius, in arcseconds.
+    :type rad: float
+    :return: Dataframe containing dr2 petrosian radiuses.
+    :rtype: Pandas DataFrame
     """
 
     if len(ra_arr) < 1:
@@ -934,20 +892,14 @@ def getDR2_petrosianSizes(ra_arr, dec_arr, rad):
 def getDR2_halfLightSizes(ra_arr, dec_arr, rad):
     """Retrieves half-light radius information from DR2 for panstarrs sources.
 
-    Parameters
-    ----------
-    ra_arr : list
-        List of right ascension values, in degrees.
-    dec_arr : list
-        List of declination values, in degrees.
-    rad : float
-        The search radius, in arcseconds.
-
-    Returns
-    -------
-    df_halfLight_full : Pandas DataFrame
-        Dataframe containing dr2 half-light radiuses.
-
+    :param ra_arr: List of right ascension values, in degrees.
+    :type ra_arr: list
+    :param dec_arr: List of declination values, in degrees.
+    :type dec_arr: list
+    :param rad: The search radius, in arcseconds.
+    :type rad: float
+    :return: Dataframe containing dr2 half-light radiuses.
+    :rtype: Pandas DataFrame
     """
 
     if len(ra_arr) < 1:
