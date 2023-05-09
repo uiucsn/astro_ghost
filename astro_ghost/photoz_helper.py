@@ -190,7 +190,7 @@ def serial_objID_search(objIDs,table='forced_mean',release='dr2',columns=None,ve
     :type objIDs: type
     :param table: Description of param
     :type table: type
-    :param release : Description of param
+    :param release: Description of param
     :type release: type
     :param columns: Description of param
     :type columns: type
