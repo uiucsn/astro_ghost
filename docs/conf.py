@@ -36,7 +36,9 @@ extensions = [
     'sphinx_automodapi.automodapi',
     'sphinx_automodapi.smart_resolver',
     'sphinx_toolbox.shields',
-    'sphinx_toolbox.github'
+    'sphinx_toolbox.github',
+    'sphinx_tabs.tabs',
+    'sphinx-prompt',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
