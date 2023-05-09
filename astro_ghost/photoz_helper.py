@@ -35,12 +35,10 @@ import tarfile
 def build_sfd_dir(fname='./sfddata-master.tar.gz'):
     """Downloads directory of Galactic dust maps for extinction correction.
 
-    Parameters
-    ----------
-    fname : str
-        Filename for dustmaps.
-
+    :param fname: Filename for dustmaps.
+    :type fname: str
     """
+
     url = 'https://github.com/kbarbary/sfddata/archive/master.tar.gz'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
@@ -56,12 +54,10 @@ def build_sfd_dir(fname='./sfddata-master.tar.gz'):
 def get_photoz_weights(fname='./MLP_lupton.hdf5'):
     """Get weights for MLP photo-z model.
 
-    Parameters
-    ----------
-    fname : str
-        Filename of saved MLP weights.
-
+    :param fname: Filename of saved MLP weights.
+    :type fname: str
     """
+
     url = 'https://uofi.box.com/shared/static/n1yiy818mv5b5riy2h3dg5yk2by3swos.hdf5'
     response = requests.get(url, stream=True)
     if response.status_code == 200:

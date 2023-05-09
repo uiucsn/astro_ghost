@@ -14,6 +14,15 @@ import matplotlib.pyplot as plt
 from astro_ghost.PS1QueryFunctions import find_all
 
 def getSimbadInfo(df):
+    """Check if a given PS1 object is in Simbad.
+
+    :param df: PS1 properties for candidate hosts.
+    :type df: Pandas DataFrame
+    :return: PS1 properties for hosts, with added column
+        'hasSimbad'.
+    :rtype: Pandas DataFrame
+    """
+
     df.reset_index(inplace=True, drop=True)
 
     df['hasSimbad'] = 0
@@ -23,10 +32,10 @@ def getSimbadInfo(df):
     for index, row in df.iterrows():
         tempRA = row['raMean']
         tempDEC = row['decMean']
-        # create a sky coordinate to query NED
+        # create a sky coordinate to query
         c = SkyCoord(ra=tempRA*u.degree, dec=tempDEC*u.degree, frame='icrs')
-        # execute query
 
+        # execute query
         result_table = Simbad.query_region(c, radius=(0.00055555)*u.deg)
         if result_table:
             df.at[index, 'hasSimbad'] = 1

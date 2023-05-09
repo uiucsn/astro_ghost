@@ -9,28 +9,24 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
     """Star-galaxy separation, using a random forest trained on the PS1-STRM-classified star
        and galaxy labels given in Beck et al., 2021.
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        Dataframe of PS1 sources.
-    model_path : str
-        Filepath to the saved random forest model.
-    plot : bool
-        If True, shows the separated stars and galaxies in Ap - Kron vs Ap Mag space.
-    verbose : bool
-        If true, print details of the classification routine.
-    starcut : str
-        Strings corresponding to the classification thresholds required to classify a star as such.
+    :param df: Dataframe of PS1 sources.
+    :type df: Pandas DataFrame
+    :param model_path: Filepath to the saved random forest model.
+    :type model_path: str, optional
+    :param plot: If True, shows the separated stars and galaxies in Ap - Kron vs Ap Mag space.
+    :type plot: bool, optional
+    :param verbose: If true, print details of the classification routine.
+    :type verbose: bool, optional
+    :param starcut: Labels corresponding to the classification thresholds required to classify a star as such.
         Options are 'gentle' (P>0.8), normal (P>0.5), and aggressive (P>0.3).
+    :type starcut: str
 
-    Returns
-    -------
-    df_gals : Pandas DataFrame
-        PS1 sources classified as galaxies.
-    df_stars : Pandas DataFrame
-        PS1 sources classified as stars.
-
+    :return: A dataframe of sources classified as galaxies.
+    :rtype: Pandas DataFrame
+    :return: A dataframe of sources classified as stars.
+    :rtype: Pandas DataFrame
     """
+
     # remove all sources with bad values for any required PS1 properties
     df_dropped = df.dropna(subset=['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag'])
     only_na = df[~df.index.isin(df_dropped.index)]
@@ -117,26 +113,22 @@ def separateStars_South(df, plot=0, verbose=0, starcut='gentle'):
     """Star-galaxy separation in the southern hemisphere, using a simple
        SkyMapper_StarClass threshold cut.
 
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        Dataframe of PS1 sources.
-    plot : bool
-        If True, shows the separated stars and galaxies in Ap - Kron vs Ap Mag space.
-    verbose : bool
-        If true, print details of the classification routine.
-    starcut : str
-        Strings corresponding to the classification thresholds required to classify a star as such.
+    :param df: Dataframe of PS1 sources.
+    :type df: Pandas DataFrame
+    :param plot: If True, shows the separated stars and galaxies in Ap - Kron vs Ap Mag space.
+    :type plot: bool, optional
+    :param verbose: If true, print details of the classification routine.
+    :type verbose: bool, optional
+    :param starcut: Labels corresponding to the classification thresholds required to classify a star as such.
         Options are 'gentle' (P>0.8), normal (P>0.5), and aggressive (P>0.3).
+    :type starcut: str
 
-    Returns
-    -------
-    df_gals : Pandas DataFrame
-        PS1 sources classified as galaxies.
-    df_stars : Pandas DataFrame
-        PS1 sources classified as stars.
-
+    :return: A dataframe of sources classified as galaxies.
+    :rtype: Pandas DataFrame
+    :return: A dataframe of sources classified as stars.
+    :rtype: Pandas DataFrame
     """
+
     df_dropped = df[df['SkyMapper_StarClass']>0]
     only_na = df[~df.index.isin(df_dropped.index)]
     if starcut is 'normal':
