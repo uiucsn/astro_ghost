@@ -211,21 +211,22 @@ def geturl(ra, dec, size=240, output_size=None, filters="grizy", format="jpg", c
 def getcolorim(ra, dec, size=240, output_size=None, filters="grizy", format="jpg"):
     """Get a PS1 color image at a sky position.
 
-    ra, dec : float
-        The position in degrees.
-    size : int
-        The extracted image size in pixels (0.25 arcsec/pixel).
-    output_size : int
-        The output (display) image size in pixels (default = size).
+    :param ra: Right ascention of position, in degrees.
+    :type ra: float
+    :param dec: Declination of position, in degrees.
+    :type dec: float
+    :param size: The extracted image size in pixels (0.25 arcsec/pixel)
+    :type size: int
+    :param output_size: output (display) image size in pixels (default = size).
         The output_size has no effect for fits format images.
-    filters : str
-        The string with filters to include.
-    format : str
-        The data format (options are "jpg", "png")
-    Returns
-    -------
-    im : PIL Image
-        The image.
+    :type output_size: int
+    :param filters: The string with filters to include.
+    :type filters: str
+    :param format: The data format (options are "jpg", "png" or "fits").
+    :type format: str
+
+    :return: The image.
+    :rtype: PIL Image
     """
 
     if format not in ("jpg","png"):
@@ -238,23 +239,22 @@ def getcolorim(ra, dec, size=240, output_size=None, filters="grizy", format="jpg
 def get_PS1_type(ra, dec, size, band, type):
     """Download and save PS1 imaging data in a given band of a given type.
 
-    Parameters
-    ----------
-    ra, dec : float
-        The position in degrees.
-    size : int
-        The size of the image in pixels.
-    band : str
-        The PS1 band.
-    type : str
-        The type of imaging data to obtain. Options are given below for the PS1 stack:
+    :param ra: Right ascention of position, in degrees.
+    :type ra: float
+    :param dec: Declination of position, in degrees.
+    :type dec: float
+    :param size: The extracted image size in pixels (0.25 arcsec/pixel)
+    :type size: int
+    :param band: The PS1 band.
+    :type band: str
+    :param type: The type of imaging data to obtain. Options are given below for the PS1 stack:
             'stack.mask' images indicate which pixels in the stack are good and which are bad
             'stack.wt' images are the stack variance images
             'stack.num' images contain the number of warps with valid data which contributed to each pixel
             'stack.exp' images contain the exposure time in seconds which contributed to each pixel
             'stack.expwt' images are weighted exposure time maps
         See more information at https://outerspace.stsci.edu/display/PANSTARRS/PS1+Stack+images.
-
+    :type type: str
     """
 
     fitsurl = geturl(ra, dec, size=size, filters="{}".format(band), format="fits", type=type)
@@ -264,20 +264,19 @@ def get_PS1_type(ra, dec, size, band, type):
 def get_PS1_Pic(objID, ra, dec, size, band, safe=False):
     """Downloads PS1 picture (in fits) at a given position.
 
-    Parameters
-    ----------
-    objID : int
-        The PS1 objID of the object of interest (to save as filename).
-    ra, dec : float
-        The position in degrees.
-    size : int
-        The size of the of the image, in pixels (image is size x size).
-    band : str
-        The PS1 passband.
-    safe : bool
-        If True, include the objID of the object of interest in the filename
+    :param objID: The PS1 objID of the object of interest (to save as filename).
+    :type objID: int
+    :param ra: Right ascention of position, in degrees.
+    :type ra: float
+    :param dec: Declination of position, in degrees.
+    :type dec: float
+    :param size: The extracted image size in pixels (0.25 arcsec/pixel)
+    :type size: int
+    :param band: The PS1 band.
+    :type band: str
+    :param safe: If True, include the objID of the object of interest in the filename
         (useful when saving multiple files at comparable positions).
-
+    :type safe: bool, optional
     """
 
     fitsurl = geturl(ra, dec, size=size, filters="{}".format(band), format="fits")
@@ -290,20 +289,14 @@ def get_PS1_Pic(objID, ra, dec, size, band, safe=False):
 def ps1metadata(table="mean",release="dr1",baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs"):
     """Return metadata for the specified catalog and table.
 
-    Parameters
-    ----------
-    table : str
-        Table type. Can be 'mean', 'stack', or 'detection'
-    release: str
-        The Pan-STARRS data release. Can be 'dr1' or 'dr2'.
-    baseurl: str
-        The base URL for the request
-
-    Returns
-    -------
-    Astropy Table
-        The table containing the metadata, with columns name, type, and description.
-
+    :param table: Table type. Can be 'mean', 'stack', or 'detection'
+    :type table: str
+    :param release: The Pan-STARRS data release. Can be 'dr1' or 'dr2'.
+    :type release: str
+    :param baseurl: The base URL for the request
+    :type baseurl: str
+    :return: The table containing the metadata, with columns name, type, and description.
+    :rtype: Astropy Table 
     """
 
     checklegal(table,release)
