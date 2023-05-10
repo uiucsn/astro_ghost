@@ -11,8 +11,8 @@ GHOST
    :target: https://pypi.org/project/astro-ghost/
    :alt: PyPI - Downloads
 
-.. image:: https://img.shields.io/readthedocs/astro-ghost
-   :target: https://astro-ghost.readthedocs.io/en/latest/
+.. image:: https://img.shields.io/readthedocs/uiucsnastro-ghost
+   :target: https://uiucsnastro-ghost.readthedocs.io/en/latest/
    :alt: Read the Docs
 
 "At the last dim horizon, we search among ghostly errors of observations for
@@ -29,7 +29,7 @@ Installation
 ------------
 
 For details on installing and using GHOST, see the
-`documentation <https://astro-ghost.readthedocs.io/en/latest/>`_.
+`documentation <https://uiucsnastro-ghost.readthedocs.io/en/latest/>`_.
 
 
 Citation
