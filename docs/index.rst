@@ -1,97 +1,62 @@
-***********
-Astro GHOST
-***********
-
-Galaxies HOsting Supernovae and other Transients (GHOST): A database of
-supernovae and the photometric and spectroscopic properties of their host
-galaxies.
-
-Installation
-============
-
-1. Create a clean conda environment.
-
-2. Run the following code:
-
-.. code-block:: bash
-
-   pip install astro_ghost
-
-Or, download this repo and run
-
-.. code-block:: bash
-
-   python setup.py install
-
-from the main directory.
+Galaxies Hosting Supernovae and other Transients (GHOST)
+=========================================================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
+   :hidden:
+   :caption: Installation Guide
 
-   source/modules
+   /source/installation
 
-Example Usage
-=============
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Getting Started
 
-.. code-block:: python
+   /source/basicusage
 
-    import os
-    import sys
-    from astro_ghost.PS1QueryFunctions import getAllPostageStamps
-    from astro_ghost.TNSQueryFunctions import getTNSSpectra
-    from astro_ghost.NEDQueryFunctions import getNEDSpectra
-    from astro_ghost.ghostHelperFunctions import getTransientHosts, getGHOST
-    from astropy.coordinates import SkyCoord
-    from astropy import units as u
-    import pandas as pd
-    from datetime import datetime
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Detailed Tutorials
 
-    #we want to include print statements so we know what the algorithm is doing
-    verbose = 1
+   /source/detailedtutorials
 
-    #download the database from ghost.ncsa.illinois.edu
-    #note: real=False creates an empty database, which
-    #allows you to use the association methods without
-    #needing to download the full database first
-    getGHOST(real=False, verbose=verbose)
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Available Modules
 
-    #create a list of the supernova names, their skycoords, and their classes (these three are from TNS)
-    snName = ['SN 2012dt', 'SN 1998bn', 'SN 1957B']
+   /source/catalogmodules
+   /source/preprocessingmodules
+   /source/associationmodules
+   /source/wrappermodules
+   /source/supplementalmodules
 
-    snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
-                SkyCoord(187.32867*u.deg, -23.16367*u.deg, frame='icrs'), \
-                SkyCoord(186.26125*u.deg, +12.899444*u.deg, frame='icrs')]
+.. meta::
+   :description lang=en: Automate building, versioning, and hosting of your technical documentation continuously on Read the Docs.
 
-    snClass = ['SN IIP', 'SN', 'SN Ia']
+.. Adds a hidden link for the purpose of validating Read the Docs' Mastodon profile
+.. raw:: html
 
-    # run the association algorithm!
-    # this first checks the GHOST database for a SN by name, then by coordinates, and
-    # if we have no match then it manually associates them.
-    hosts = getTransientHosts(snName, snCoord, snClass, verbose=verbose, starcut='normal')
+   <a style="display: none;" rel="me" href="https://fosstodon.org/@readthedocs">Mastodon</a>
 
-    #create directories to store the host spectra, the transient spectra, and the postage stamps
-    hSpecPath = "./hostSpectra/"
-    tSpecPath = "./SNspectra/"
-    psPath = "./hostPostageStamps/"
-    paths = [hSpecPath, tSpecPath, psPath]
-    for tempPath in paths:
-        if not os.path.exists(tempPath):
-            os.makedirs(tempPath)
+GHOST refers to a database of ~16,175 supernovae and the photometric properties of their host galaxies. Photometry is provided by the Pan-STARRS 3-pi survey in the Northern Hemisphere, 
+and SkyMapper in the Southern Hemisphere. GHOST also refers to the software to associate new transients with host galaxies. The package is actively maintained -
+if there's a feature you'd like to see, please get in touch!
 
-    now = datetime.now()
-    dateStr = "%i%.02i%.02i" % (now.year,now.month,now.day)
-    rad = 30 #arcsec
-    fn_SN = 'transients_%s.csv' % dateStr
-    transients = pd.read_csv("./transients_%s/tables/%s"%(dateStr,fn_SN))
+First time here?
+----------------
 
-    #get postage stamps and spectra
-    getAllPostageStamps(hosts, 120, psPath, verbose) #get postage stamps of hosts
-    getNEDSpectra(hosts, hSpecPath, verbose) #get spectra of hosts
-    getTNSSpectra(transients, tSpecPath, verbose) #get spectra of transients (if on TNS)
+We have a few places for you to get started:
 
-The database of supernova-host galaxy matches can be found at http://ghost.ncsa.illinois.edu/static/GHOST.csv, and retrieved using the getGHOST() function. This database will need to be created before running the association pipeline. Helper functions can be found in ghostHelperFunctions.py for querying and getting quick stats about SNe within the database. The software to associate these supernovae with host galaxies is also provided, and tutorial.py provides examples for using this code.
+.. descriptions here are active
 
+:doc:`/source/installation`
+   Install the astro_ghost package.
 
-GHOST Viewer
-============
-In addition to these software tools, a website has been constructed for rapid viewing of many objects in this database. It is located at ghost.ncsa.illinois.edu.  Json files containing supernova and host information can be found at http://ghost.ncsa.illinois.edu/static/json.tar.gz. host spectra, SN spectra, and SN photometry are found at http://ghost.ncsa.illinois.edu/static/hostSpectra.zip, http://ghost.ncsa.illinois.edu/static/SNspectra.zip, and http://ghost.ncsa.illinois.edu/static/SNphotometry.zip.
+:doc:`/source/basicusage`
+   Retrieve the GHOST database, and associate transients with their most likely host galaxies.
+
+:doc:`For the Experts </source/detailedtutorials>`
+   Some more detailed tutorials for those who want to dig into the nuts and bolts of the code. 
