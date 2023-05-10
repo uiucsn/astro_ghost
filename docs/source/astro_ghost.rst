@@ -108,6 +108,14 @@ astro\_ghost.stellarLocus module
    :undoc-members:
    :show-inheritance:
 
+astro\_ghost.test\_tutorial module
+----------------------------------
+
+.. automodule:: astro_ghost.test_tutorial
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
