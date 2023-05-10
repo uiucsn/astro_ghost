@@ -1,6 +1,6 @@
 from astropy import units as u
 from astropy.coordinates import SkyCoord
-from astroquery.ned import Ned
+from astroquery.ipac.ned import Ned
 import re
 import numpy as np
 from astro_ghost.PS1QueryFunctions import find_all
