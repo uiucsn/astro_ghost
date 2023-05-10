@@ -48,7 +48,7 @@ if there's a feature you'd like to see, please get in touch!
 First time here?
 ----------------
 
-We have a few places for you to get started:
+Check out the following pages: 
 
 .. descriptions here are active
 
@@ -60,3 +60,24 @@ We have a few places for you to get started:
 
 :doc:`For the Experts </source/detailedtutorials>`
    Some more detailed tutorials for those who want to dig into the nuts and bolts of the code. 
+
+If you use the GHOST package or database in your work, please cite the associated paper::
+
+   @ARTICLE{2021ApJ...908..170G,
+       author = {{Gagliano}, Alex and {Narayan}, Gautham and {Engel}, Andrew and {Carrasco Kind}, Matias and {LSST Dark Energy Science Collaboration}},
+       title = "{GHOST: Using Only Host Galaxy Information to Accurately Associate and Distinguish Supernovae}",
+       journal = {\apj},
+       year = 2021,
+       month = feb,
+       volume = {908},
+       number = {2},
+       eid = {170},
+       pages = {170},
+       doi = {10.3847/1538-4357/abd02b},
+       archivePrefix = {arXiv},
+       eprint = {2008.09630},
+       primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2021ApJ...908..170G},
+       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+    }
+

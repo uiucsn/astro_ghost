@@ -10,11 +10,3 @@ ghostHelperFunctions
    :members:
    :undoc-members:
    :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: astro_ghost
-   :members:
-   :undoc-members:
-   :show-inheritance:
