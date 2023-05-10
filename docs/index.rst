@@ -25,6 +25,11 @@ Or, download this repo and run
 
 from the main directory.
 
+.. toctree::
+   :maxdepth: 4
+
+   source/modules
+
 Example Usage
 =============
 
