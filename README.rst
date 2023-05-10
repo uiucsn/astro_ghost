@@ -9,7 +9,7 @@ GHOST
 
 .. image:: https://img.shields.io/pypi/dm/astro-ghost
    :target: https://pypi.org/project/astro-ghost/
-   :alt: PyPI - Downloads
+   :alt: PyPI
 
 .. image:: https://img.shields.io/readthedocs/uiucsnastro-ghost
    :target: https://uiucsnastro-ghost.readthedocs.io/en/latest/
