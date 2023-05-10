@@ -6,11 +6,6 @@ Galaxies HOsting Supernovae and other Transients (GHOST): A database of
 supernovae and the photometric and spectroscopic properties of their host
 galaxies.
 
-.. toctree::
-   :maxdepth: 4
-
-   astro_ghost
-
 Installation
 ============
 

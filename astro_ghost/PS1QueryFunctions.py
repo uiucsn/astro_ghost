@@ -171,11 +171,11 @@ def geturl(ra, dec, size=240, output_size=None, filters="grizy", format="jpg", c
     :type output_size: int
     :param filters: The string with filters to include.
     :type filters: str
-    :param format: The data format (options are "jpg", "png" or "fits").
+    :param format: The data format (options are \\"jpg\\", \\"png" or \\"fits\\").
     :type format: str
     :param color: If True, creates a color image (only for jpg or png format).
         If False, return a list of URLs for single-filter grayscale images.
-    :type color:
+    :type color: bool, optional
     :return: The url for the image to download.
     :rtype: str
     """
