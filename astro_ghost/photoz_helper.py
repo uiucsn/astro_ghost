@@ -1,6 +1,5 @@
 from astropy.table import Table
-import pkg_resources
-
+#import pkg_resources
 import sys
 import re
 import numpy as np
@@ -358,7 +357,6 @@ def load_lupton_model(model_path):
 
         return model
     mymodel = model()
-    #stream = pkg_resources.resource_stream(__name__, model_path)
     mymodel.load_weights(model_path)
 
     NB_BINS = 360

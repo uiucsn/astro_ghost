@@ -5,36 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from astropy.table import Table
 import scipy.interpolate as scinterp
-import pkg_resources
-
-def convert_to_SDSS(conversions, g_iPS1, band, mPS1):
-    """Convert PS1 to SDSS photometry. Recalibration done via the coefficients in
-       Hypercalibration: A Pan-starrs1-Based recalibration of the sloan digital sky survey
-       photometry (Finkbeiner et al., 2016). Publication can be found at
-       https://iopscience.iop.org/article/10.3847/0004-637X/822/2/66.
-
-    :param conversions: Coefficients from Finkbeiner et al., 2016.
-    :type conversions: Pandas DataFrame
-    :param g_iPS1: Apparent g - i color of the source in PS1.
-    :type g_iPS1: float
-    :param band: Band in which to calculate the conversion.
-    :type band: str
-    :param mPS1: AB apparent magnitude of the source in PS1.
-    :type mPS1: float
-
-    Returns
-    -------
-    :return: Estimated AB apparent magnitude of the source in SDSS.
-    :rtype: float
-
-    """
-    a0 = conversions.loc[conversions['Band'] == band, 'a_0'].values[0]
-    a1 = conversions.loc[conversions['Band'] == band, 'a_1'].values[0]
-    a2 = conversions.loc[conversions['Band'] == band, 'a_2'].values[0]
-    a3 = conversions.loc[conversions['Band'] == band, 'a_3'].values[0]
-    mPS1_mSDSS = a0 + a1*g_iPS1 + a2*g_iPS1**2 + a3*g_iPS1**3
-    mSDSS = mPS1 - (mPS1_mSDSS)
-    return mSDSS
+import importlib_resources
 
 def calc_7DCD(df):
     """Calculates the color distance (7DCD) of objects in df from the
@@ -49,8 +20,8 @@ def calc_7DCD(df):
     df.replace(999.00, np.nan)
     df.replace(-999.00, np.nan)
 
-    #read the stellar locus table from SDSS
-    stream = pkg_resources.resource_stream(__name__, 'tonry_ps1_locus.txt')
+    #read the stellar locus table from PS1
+    stream = importlib_resources.files(__name__).joinpath('tonry_ps1_locus.txt')
     skt = Table.read(stream, format='ascii')
 
     gr = scinterp.interp1d(skt['ri'], skt['gr'], kind='cubic', fill_value='extrapolate')
@@ -117,7 +88,8 @@ def plotLocus(df, color=False, save=False, type="", timestamp=""):
             plt.show()
     else:
         #read the stellar locus table from PS1
-        skt = Table.read('./tonry_ps1_locus.txt', format='ascii')
+        stream = importlib_resources.files(__name__).joinpath('tonry_ps1_locus.txt')
+        skt = Table.read(stream, format='ascii')
 
         gr = scinterp.interp1d(skt['ri'], skt['gr'], kind='cubic', fill_value='extrapolate')
         iz = scinterp.interp1d(skt['ri'], skt['iz'], kind='cubic', fill_value='extrapolate')
@@ -134,7 +106,7 @@ def plotLocus(df, color=False, save=False, type="", timestamp=""):
             c = 'violet'
         g = sns.JointGrid(x="i-z", y="g-r", data=df, height=9, ratio=5, xlim=(-0.4, 0.8), ylim=(-0.2, 2.0), space=0)
         g = g.plot_joint(sns.kdeplot, color=c,gridsize=200)
-        plt.plot(iz_new, gr_new, '--', c='#8c837c', lw=2)
+        g.ax_joint.plot(iz_new, gr_new, '--', c='#8c837c', lw=2)
         plt.xlabel(r"$i-z$",fontsize=18)
         plt.ylabel(r"$g-r$",fontsize=18)
         g = g.plot_marginals(sns.kdeplot, color=c, shade=True)

@@ -1,6 +1,5 @@
 from bs4 import BeautifulSoup
 import requests
-from astro_ghost.PS1QueryFunctions import create_df
 import urllib.request
 from astro_ghost.PS1QueryFunctions import find_all
 from astro_ghost.ghostHelperFunctions import remove_prefix

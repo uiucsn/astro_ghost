@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from astro_ghost.stellarLocus import *
 import pickle
-import pkg_resources
+import importlib_resources
 
 def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='gentle'):
     """Star-galaxy separation, using a random forest trained on the PS1-STRM-classified star
@@ -34,7 +34,7 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
 
     # load random forest model
     modelName = "Star_Galaxy_RealisticModel_GHOST_PS1ClassLabels.sav"
-    stream = pkg_resources.resource_stream(__name__, modelName)
+    stream = importlib_resources.files(__name__).joinpath(modelName).open("rb")
     if verbose:
         print("Loading model %s."%modelName)
     model = pickle.load(stream)
@@ -58,14 +58,13 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
     test_X = np.asarray(unsure[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
 
     # define probability threshold for classification
-    if starcut is 'normal':
-        test_y = model.predict(test_X)
-    elif starcut is 'aggressive':
-        test_y = model.predict_proba(test_X)[:,1] > 0.3
-    elif starcut is 'gentle':
-        test_y = model.predict_proba(test_X)[:,1] > 0.8
-    else:
+    cutdict = {'normal':0.5, 'aggressive':0.3, 'gentle':0.8}
+
+    try:
+        test_y = model.predict_proba(test_X)[:,1] > cutdict[starcut]
+    except:
         print("Error! I didn't understand your starcut option.")
+
     unsure['class'] = test_y
     test_stars = unsure[unsure['class'] == 1]
     test_gals = unsure[unsure['class'] == 0]
@@ -131,12 +130,14 @@ def separateStars_South(df, plot=0, verbose=0, starcut='gentle'):
 
     df_dropped = df[df['SkyMapper_StarClass']>0]
     only_na = df[~df.index.isin(df_dropped.index)]
-    if starcut is 'normal':
-        df_stars = df_dropped[df_dropped['SkyMapper_StarClass']>=0.5]
-    elif starcut is 'aggressive':
-        df_stars = df_dropped[df_dropped['SkyMapper_StarClass']>=0.3]
-    elif starcut is 'gentle':
-        df_stars = df_dropped[df_dropped['SkyMapper_StarClass']>=0.8]
+
+    # define probability threshold for classification
+    cutdict = {'normal':0.5, 'aggressive':0.3, 'gentle':0.8}
+    try:
+        df_stars = df_dropped[df_dropped['SkyMapper_StarClass']> cutdict[starcut]]
+    except:
+        print("Error! I didn't understand your starcut option.")
+
     df_class_gals = df_dropped[~df_dropped.index.isin(df_stars.index)]
     df_stars.reset_index(inplace=True, drop=True)
     df_class_gals.reset_index(inplace=True, drop=True)

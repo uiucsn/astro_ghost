@@ -12,9 +12,10 @@ from astropy.wcs import WCS
 from astropy.utils.data import get_pkg_data_filename
 from matplotlib import pyplot as plt
 from matplotlib import colors
-from photutils import Background2D
 from astropy.stats import sigma_clipped_stats, SigmaClip
-from photutils import CircularAperture, DAOStarFinder, MedianBackground, MeanBackground
+from photutils.detection import DAOStarFinder
+from photutils.background import MeanBackground, MedianBackground, Background2D
+from photutils.aperture import CircularAperture
 from joblib import dump, load
 import gc
 import warnings

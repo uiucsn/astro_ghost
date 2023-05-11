@@ -63,13 +63,6 @@ def getNEDInfo(df):
     ra = df["raMean"]
     dec = df["decMean"]
 
-    # setup lists for ra and dec in hr format, names of NED-identified object, and
-    # separation between host in PS1 and host in NED
-    ra_hms = []
-    dec_dms = []
-    names = []
-    sep = []
-
     missingCounter = 0
 
     for index, row in df.iterrows():
@@ -89,53 +82,37 @@ def getNEDInfo(df):
 
         try:
             #query NED with a 2'' radius.
-            result_table = Ned.query_region(c, radius=(0.00055555)*u.deg, equinox='J2000.0')
-
+            result_table = Ned.query_region(c, radius=(2/3600)*u.deg, equinox='J2000.0')
             if len(result_table) > 0:
                 missingCounter = 0
         except:
             missingCounter += 1
         if len(result_table) > 0:
-            result_table = result_table[result_table['Separation'] == np.min(result_table['Separation'])]
-            result_table = result_table[result_table['Type'] != b'SN']
-            result_table = result_table[result_table['Type'] != b'MCld']
-            result_gal = result_table[result_table['Type'] == b'G']
+            #if Messier or NGC object, take that, otherwise take the closest object
+            result_df = result_table.to_pandas()
+            if len(result_df) > 1:
+                result_NGC = result_df[[x.startswith("NGC") for x in result_df['Object Name']]]
+                if len(result_NGC) > 0:
+                    result_df = result_NGC.copy()
+                else:
+                    result_M = result_df[[x.startswith("NGC") for x in result_df['Object Name']]]
+                    if len(result_M) > 0:
+                        result_df = result_M.copy()
+            result_gal = result_df[result_df['Type'] == b'G']
             if len(result_gal) > 0:
-                result_table = result_gal
-            if len(result_table) > 0:
+                result_df = result_gal.copy()
+            #get closest object
+            result_df = result_df[result_df['Separation'] == np.min(result_df['Separation'])]
 
-                # Subset for the objects with listed references and photometry, if more than one option.
-                result_table = result_table[result_table['Photometry Points'] == np.nanmax(result_table['Photometry Points'])]
-                result_table = result_table[result_table['References'] == np.nanmax(result_table['References'])]
+            #remove supernovae, etc
+            result_df = result_df[result_df['Type'] != b'SN']
 
-                # NED Info is presented as:
-                # No. ObjectName	RA	DEC	Type	Velocity	Redshift	Redshift Flag	Magnitude and Filter	Separation	References	Notes	Photometry Points	Positions	Redshift Points	Diameter Points	Associations
-                #Split NED info up - specifically, we want to pull the type, velocity, redshift, mag
-                tempNED = str(np.array(result_table)[0]).split(",")
-                if len(tempNED) > 2:
-                    tempName = tempNED[1].strip().strip("b").strip("'")
-                    if len(tempNED) > 20:
-                        seps = [float(tempNED[9].strip()), float(tempNED[25].strip())]
-                        if np.argmin(seps):
-                            tempNED = tempNED[16:]
-                    tempType =  tempNED[4].strip().strip("b").strip("''")
-                    tempVel = tempNED[5].strip()
-                    tempRed = tempNED[6].strip()
-                    tempRedFlag = tempNED[7].strip().replace("'", "")
-                    tempMag = tempNED[8].strip().strip("b").strip("''").strip(">").strip("<")
-                    if tempName:
-                        df.loc[index, 'NED_name'] = tempName
-                    if tempType:
-                        df.loc[index, 'NED_type'] = tempType
-                    if tempVel:
-                        df.loc[index, 'NED_vel'] = float(tempVel)
-                    if tempRed:
-                        df.loc[index, 'NED_redshift'] = float(tempRed)
-                    if tempMag:
-                        tempMag = re.findall(r"[-+]?\d*\.\d+|\d+", tempMag)[0]
-                        df.loc[index, 'NED_mag'] = float(tempMag)
-                    if tempRedFlag:
-                        df.loc[index, 'NED_redshift_flag'] = str(tempRedFlag)
+            # Note - sometimes the colon appears in names when a sub-structure of a galaxy. Get rid of it below!
+            df.loc[index, 'NED_name'] = result_df['Object Name'].values[0].split(":")[0]
+            df.loc[index, 'NED_type'] = result_df['Type'].values[0]
+            df.loc[index, 'NED_vel'] = result_df['Velocity'].values[0]
+            df.loc[index, 'NED_redshift'] = result_df['Redshift'].values[0]
+            df.loc[index, 'NED_mag'] = result_df['Redshift Flag'].values[0]
 
         # if the method fails for many in a row, it's likely that too many queries have been made.
         if missingCounter > 5000:
