@@ -486,28 +486,6 @@ def ps1cone(ra,dec,radius,table="stack",release="dr1",format="csv",columns=None,
     return ps1search(table=table,release=release,format=format,columns=columns,
                     baseurl=baseurl, verbose=verbose, **data)
 
-def create_df(tns_loc):
-    """Combine all supernova data into a single dataframe.
-
-    :param tns_loc: Filepath where files containing TNS data is stored.
-    :type tns_loc: str
-    :param df: Dataframe of all TNS metadata.
-    :type df: Pandas DataFrame
-    """
-
-    files = [f for f in listdir(tns_loc) if isfile(join(tns_loc, f))]
-    arr = []
-    for file in files:
-        tempPD = pd.read_csv(tns_loc+file)
-        arr.append(tempPD)
-    df = pd.concat(arr)
-    df = df.loc[df['RA'] != '00:00:00.000']
-    df = df.drop_duplicates()
-    df = df.replace({'Anon.': ''})
-    df = df.replace({'2019-02-13.49': ''})
-    df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
-    return df
-
 def ps1metadata(table="mean", release="dr1", baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs"):
     """Return metadata for the specified catalog and table. Snagged from the
        wonderful API at https://ps1images.stsci.edu/ps1_dr2_api.html.

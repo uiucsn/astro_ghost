@@ -1,15 +1,16 @@
 import os
 import pytest
 import sys
-from astro_ghost.PS1QueryFunctions import getAllPostageStamps
-from astro_ghost.TNSQueryFunctions import getTNSSpectra
-from astro_ghost.NEDQueryFunctions import getNEDSpectra
+from astro_ghost.PS1QueryFunctions import *
+from astro_ghost.TNSQueryFunctions import *
+from astro_ghost.NEDQueryFunctions import *
 from astro_ghost.ghostHelperFunctions import *
+from astro_ghost.starSeparation import *
+from astro_ghost.stellarLocus import *
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 import pandas as pd
 from datetime import datetime
-import astro_ghost
 
 #we want to include print statements so we know what the algorithm is doing
 verbose = 1
@@ -26,70 +27,76 @@ def test_getGHOST():
     # GHOST has the correct match for at least NGC 2997
     assert df.loc[df['TransientName'] == 'SN2003jg', 'NED_name'].values[0] == 'NGC 2997'
 
+def test_NED():
+    # test our ability to snag a galaxy name from NED, using the coordinates of NGC 4321
+    df = pd.DataFrame({'objID':23412341234, 'raMean':[185.7288750], 'decMean':[15.82230]})
+    df = getNEDInfo(df)
+    assert df['NED_name'].values[0] == 'NGC 4321'
 
-#create a list of the supernova names and their skycoords (these three are from TNS)
-snName = ['SN 2012dt', 'SN 1998bn', 'SN 1957B']
+def test_associate():
+    #create a list of the supernova names, their skycoords, and their classes (these three are from TNS)
+    snName = ['SN 2012dt', 'SN 1998bn', 'SN 1957B']
 
-snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
-           SkyCoord(187.32867*u.deg, -23.16367*u.deg, frame='icrs'), \
-           SkyCoord(186.26125*u.deg, +12.899444*u.deg, frame='icrs')]
+    snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
+            SkyCoord(187.32867*u.deg, -23.16367*u.deg, frame='icrs'), \
+            SkyCoord(186.26125*u.deg, +12.899444*u.deg, frame='icrs')]
 
-# run the association algorithm!
-# this first checks the GHOST database for a SN by name, then by coordinates, and
-# if we have no match then it manually associates them.
-hosts = getTransientHosts(snName, snCoord, verbose=verbose, starcut='normal', ascentMatch=True, px=64, savepath='/path/to/savedir/', GHOSTpath='/where/did/you/install/GHOSTdb?/')
+    snClass = ['SN IIP', 'SN', 'SN Ia']
 
-#create directories to store the host spectra, the transient spectra, and the postage stamps
-hSpecPath = "./hostSpectra/"
-tSpecPath = "./SNspectra/"
-psPath = "./hostPostageStamps/"
-paths = [hSpecPath, tSpecPath, psPath]
-for tempPath in paths:
-    if not os.path.exists(tempPath):
-        os.makedirs(tempPath)
+    # run the association algorithm with the DLR method!
+    hosts = getTransientHosts(snName, snCoord, snClass, verbose=verbose, starcut='gentle', ascentMatch=False)
+    
+    correctHosts = [SkyCoord(14.1777425*u.deg, -9.9138756*u.deg, frame='icrs'), 
+                    SkyCoord(187.3380517*u.deg, -23.1666716*u.deg, frame='icrs'), 
+                    SkyCoord(186.2655971*u.deg, 12.8869831*u.deg, frame='icrs')]
 
-transients = pd.DataFrame({'Name':snName, 'RA':[x.ra.deg for x in snCoord], 'DEC':[x.dec.deg for x in snCoord]})
+    sep = []
+    for i in np.arange(len(correctHosts)):
+       c1 = correctHosts[i]
+       c2 = SkyCoord(hosts['TransientRA'].values[i]*u.deg, hosts['TransientDEC'].values[i]*u.deg, frame='icrs')
+       sep.append(c2.separation(c2).arcsec)
 
-#get postage stamps and spectra
-getAllPostageStamps(hosts, 120, psPath, verbose) #get postage stamps of hosts
-getNEDSpectra(hosts, hSpecPath, verbose) #get spectra of hosts
-getTNSSpectra(transients, tSpecPath, verbose) #get spectra of transients (if on TNS)
+    #consider a success if the three hosts were found to a 1'' precision
+    assert np.nanmax(sep) < 1
 
-# Helper functions for querying the database
-supernovaCoord = [SkyCoord(344.5011708333333*u.deg, 6.0634388888888875*u.deg, frame='icrs')]
-galaxyCoord = [SkyCoord(344.50184181*u.deg, 6.06983149*u.deg, frame='icrs')]
-snName = ["PTF10llv"]
-table = fullData()
 
-# 1. Get the entry corresponding to a specific transient by its name (or coordinates)
-#    note: The coordinate/name is passed as a list, so multiple entries can be
-#          queried simultaneously
-#    This function returns the matches as a pandas dataframe (df) along with
-#    a list of the sources not found (by name or coordinate)
-df, notFound = getDBHostFromTransientCoords(supernovaCoord)
-df, notFound = getDBHostFromTransientName(snName)
+def test_starSeparation():
+    #classify a few galaxies, classify a few stars
+    sourceType = ['galaxy',  'galaxy', 'star', 'star']
+    ra = [186.7154417, 31.0672500, 191.0597417, 17.8279833]
+    dec = [9.1342306, 20.8474806, 12.3629917, 33.2604472]
+    sourceSet = []
+    for i in np.arange(len(ra)):
+        a = ps1cone(ra[i], dec[i], 1/3600)
+        a = ascii.read(a)
+        sourceSet.append(a.to_pandas().iloc[[0]])
+    sourceDF = pd.concat(sourceSet, ignore_index=True)
+    sourceDF['trueSourceClass'] = sourceType
+    sourceDF = getColors(sourceDF)
+    sourceDF = calc_7DCD(sourceDF)
+    sourceDF = getNEDInfo(sourceDF)
+    gals, stars = separateStars_STRM(sourceDF)
+    #True is stars, False is gals. Passes if all gals are False and all stars are True!
+    assert (np.nansum(gals['class'] == False) + np.nansum(stars['class'])) == len(sourceDF)
 
-# 2. Print summary statistics about a particular host galaxy system or set of systems from a supernova
-getHostStatsFromTransientName(snName)
-getHostStatsFromTransientCoords(supernovaCoord)
 
-# 3. Get stats about the supernovae associated with a host galaxy
-galaxyName = ['UGC 12266']
-getTransientStatsFromHostName(galaxyName)
-getTransientStatsFromHostCoords(galaxyCoord)
+def test_plotLocus():
+    #plot a subset of GHOST data compared to the tonry stellar locus
+    GHOST = fullData()
+    plotLocus(GHOST.iloc[0:500], color=False, save=True, type="Gals", timestamp="")
+    assert len(glob.glob(os.path.join(os.getcwd(), 'PS1_Gals_StellarLocus_.pdf'))) > 0
 
-# 4. get an image of the field by coordinates
-tempSize = 400 #size in pixels
-band = ['grizy']
-getcolorim(galaxyCoord[0].ra.deg, galaxyCoord[0].dec.deg, size=tempSize, filters=band, format="png")
+def test_skymapper_associate():
+    snName = ['AT2023hri']
+    snCoord = [SkyCoord(288.5964917*u.deg,  -54.5636583*u.deg, frame='icrs')]
+    snClass = ['AT']
 
-# 5. get an image of the host galaxy system associated with a supernova (by supernova name)
-getHostImage(snName, save=0)
+    # run the association algorithm with the DLR method!
+    hosts = getTransientHosts(snName, snCoord, snClass, verbose=verbose, starcut='gentle', ascentMatch=False)
+    assert hosts['NED_name'].values[0] == 'ESO 184- G 042'
 
-# 6. Find all supernova-host galaxy matches within a certain search radius (in arcseconds)
-coneSearchPairs(supernovaCoord[0], 1.e3)
-
-#7. Find photometric redshift of host galaxies matches:
-from astro_ghost.photoz_helper import calc_photoz
-posterior_dict, hosts = calc_photoz(hosts)
-print(hosts['photo_z'].values)
+def test_resolve():
+    coords = resolve('M100')
+    c1 = SkyCoord(coords[0]*u.deg, coords[1]*u.deg, frame='icrs')
+    c2 = SkyCoord(185.7288750*u.deg, 15.82230*u.deg, frame='icrs')
+    assert c2.separation(c2).arcsec < 0.1
