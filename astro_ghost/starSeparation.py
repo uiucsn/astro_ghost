@@ -27,10 +27,21 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
     :rtype: Pandas DataFrame
     """
 
-    # remove all sources with bad values for any required PS1 properties
-    df_dropped = df.dropna(subset=['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag'])
-    only_na = df[~df.index.isin(df_dropped.index)]
-    unsure = df_dropped.reset_index(drop=True)
+    #remove known galaxies and stars
+    NED_stars = df[df['NED_type'].isin(['*', '**', 'WD*', '!*', '!V*', 'V*', '!Nova'])]
+    NED_gals = df[df['NED_type'] == 'G']
+
+    #get the remaining objects
+    unsure = df[~df.index.isin(NED_stars.index)]
+    unsure = unsure[~unsure.index.isin(NED_gals.index)]
+
+    #also drop HII regions, QSOs, etc
+    unsure = unsure[~unsure['NED_type'].isin(['HII', 'QSO', 'SNR', 'PN'])]
+
+    #remove all sources with bad values for any required PS1 properties
+    unsure_dropped = unsure.dropna(subset=['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag'])
+    #keep track of the unknown sources with bad values - we don't want to lose them entirely
+    only_na = unsure[~unsure.index.isin(unsure_dropped.index)]
 
     # load random forest model
     modelName = "Star_Galaxy_RealisticModel_GHOST_PS1ClassLabels.sav"
@@ -50,12 +61,11 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
         plt.ylabel(r"Ap - Kron Mag, $i$")
         plt.savefig("TNS_NoClassificationInfo.pdf")
 
-    unsure = unsure.dropna(subset=['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag'])
-    if len(unsure) <1:
+    if len(unsure_dropped) <1:
         if verbose:
             print("No sources in field with feature values, skipping star/galaxy separation...")
-        return df, unsure
-    test_X = np.asarray(unsure[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
+        return df, unsure_dropped
+    test_X = np.asarray(unsure_dropped[['7DCD','gApMag','gApMag_gKronMag','rApMag','rApMag_rKronMag','iApMag', 'iApMag_iKronMag']])
 
     # define probability threshold for classification
     cutdict = {'normal':0.5, 'aggressive':0.3, 'gentle':0.8}
@@ -65,9 +75,9 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
     except:
         print("Error! I didn't understand your starcut option.")
 
-    unsure['class'] = test_y
-    test_stars = unsure[unsure['class'] == 1]
-    test_gals = unsure[unsure['class'] == 0]
+    unsure_dropped['class'] = test_y
+    test_stars = unsure_dropped[unsure_dropped['class'] == 1]
+    test_gals = unsure_dropped[unsure_dropped['class'] == 0]
 
     # plot the distribution of classified stars and galaxies.
     if plot:
@@ -99,13 +109,13 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
         plt.legend(fontsize=16)
         plt.savefig("TNS_iAp_iKronMag_Histogram.pdf")
 
-    # removing the ones where we have no NED identification
-    df = df[~df['NED_type'].isnull()]
-
-    # Adding back in the ones we identified as galaxies from our clustering above:
-    df_gals = pd.concat([test_gals, only_na])
+    # Adding back in the ones we identified as galaxies from our clustering above, and the NED sources.
+    df_gals = pd.concat([test_gals, only_na, NED_gals])
     df_gals.reset_index(inplace=True, drop=True)
-    df_stars = test_stars.drop_duplicates()
+
+    # Adding back in the ones we identified as stars from our clustering above, and the NED sources.
+    df_stars = pd.concat([test_stars, NED_stars])
+    df_stars.reset_index(inplace=True, drop=True)
     return df_gals, df_stars
 
 def separateStars_South(df, plot=0, verbose=0, starcut='gentle'):
@@ -128,18 +138,31 @@ def separateStars_South(df, plot=0, verbose=0, starcut='gentle'):
     :rtype: Pandas DataFrame
     """
 
-    df_dropped = df[df['SkyMapper_StarClass']>0]
-    only_na = df[~df.index.isin(df_dropped.index)]
+    #remove known galaxies and stars
+    NED_stars = df[df['NED_type'].isin(['*', '**', 'WD*', '!*', '!V*', 'V*', '!Nova'])]
+    NED_gals = df[df['NED_type'] == 'G']
+
+    #get the remaining objects
+    unsure = df[~df.index.isin(NED_stars.index)]
+    unsure = unsure[~unsure.index.isin(NED_gals.index)]
+
+    unsure_dropped = unsure[unsure['SkyMapper_StarClass']>0]
+    only_na = unsure[~unsure.index.isin(unsure_dropped.index)]
 
     # define probability threshold for classification
     cutdict = {'normal':0.5, 'aggressive':0.3, 'gentle':0.8}
     try:
-        df_stars = df_dropped[df_dropped['SkyMapper_StarClass']> cutdict[starcut]]
+        test_stars = unsure_dropped[unsure_dropped['SkyMapper_StarClass']> cutdict[starcut]]
     except:
         print("Error! I didn't understand your starcut option.")
 
-    df_class_gals = df_dropped[~df_dropped.index.isin(df_stars.index)]
+    test_gals = unsure_dropped[~unsure_dropped.index.isin(df_stars.index)]
+
+    # Adding back in the ones we identified as galaxies from our clustering above, and the NED sources.
+    df_gals = pd.concat([test_gals, only_na, NED_gals])
+    df_gals.reset_index(inplace=True, drop=True)
+
+    # Adding back in the ones we identified as stars from our clustering above, and the NED sources.
+    df_stars = pd.concat([test_stars, NED_stars])
     df_stars.reset_index(inplace=True, drop=True)
-    df_class_gals.reset_index(inplace=True, drop=True)
-    df_gals = pd.concat([df_class_gals, only_na], ignore_index=True).drop_duplicates()
     return df_gals, df_stars

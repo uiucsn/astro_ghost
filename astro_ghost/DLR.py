@@ -64,8 +64,8 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     :rtype: float
     """
 
-    xr = np.abs(ra_SN.deg - float(ra_host))*3600
-    yr = np.abs(dec_SN.deg - float(dec_host))*3600
+    xr = (ra_SN.deg - float(ra_host))*3600
+    yr = (dec_SN.deg - float(dec_host))*3600
 
     SNcoord = SkyCoord(ra_SN, dec_SN, frame='icrs')
     hostCoord = SkyCoord(ra_host*u.deg, dec_host*u.deg, frame='icrs')
@@ -92,7 +92,8 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     kappa = Q**2 + U**2
     a_over_b = (1 + kappa + 2*np.sqrt(kappa))/(1 - kappa)
 
-    gam = np.arctan(yr/xr)
+    # erratum! 05/20/23 - should be arctan(xr/yr), NOT arctan(yr/xr)
+    gam = np.arctan2(xr/yr)
     theta = phi - gam
 
     DLR = r_a/np.sqrt(((a_over_b)*np.sin(theta))**2 + (np.cos(theta))**2)
@@ -136,8 +137,8 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
     # EVERYTHING IS IN ARCSECONDS
     ## taken from "Understanding Type Ia Supernovae Through Their Host Galaxies..." by Gupta
     #https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1916&context=edissertations
-    xr = np.abs(ra_SN.deg - float(ra_host))*3600
-    yr = np.abs(dec_SN.deg - float(dec_host))*3600
+    xr = (ra_SN.deg - float(ra_host))*3600
+    yr = (dec_SN.deg - float(dec_host))*3600
 
     SNcoord = SkyCoord(ra_SN, dec_SN, frame='icrs')
     hostCoord = SkyCoord(ra_host*u.deg, dec_host*u.deg, frame='icrs')
@@ -149,7 +150,9 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
     if (float(r_a) != float(r_a)) | (float(elong) != float(elong)):
         return dist, badR
 
-    gam = np.arctan(yr/xr)
+    # erratum! 05/20/23 - should be arctan(xr/yr), NOT arctan(yr/xr)
+    gam = np.arctan2(xr/yr)
+
     theta = phi - gam
 
     #elong == a/b, which allows us to substitute here
@@ -239,16 +242,16 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                             ra_SN = ra_SN[0]
                             dec_SN = dec_SN[0]
                         if (dec_SN.deg > -30):
-                            #switching from kron radius to petrosian radius (more robust!)
+                            #switching back to kron radius...
                             for band in 'gri':
-                                #temp_r_a = float(host_df[band + 'HalfLightRad'].values[0])
-                                try:
-                                    temp_r_a = float(host_df[band + 'petR90'].values[0])
-                                except:
-                                    temp_r_a = np.nan
+                                temp_r_a = float(host_df[band + 'KronRad'].values[0])
+                                #try:
+                            #        temp_r_a = float(host_df[band + 'petR90'].values[0])
+                            #    except:
+                            #        temp_r_a = np.nan
                                 if (temp_r_a == temp_r_a) & (temp_r_a > 0):
                                     #r_a = r_b = float(host_df[band + 'HalfLightRad'].values[0])
-                                    r_a = r_b = float(host_df[band + 'petR90'].values[0])
+                                    r_a = r_b = float(host_df[band + 'KronRad'].values[0])
                                     dist, R = calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
                                     break
                         else:

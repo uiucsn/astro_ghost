@@ -117,16 +117,15 @@ def plot_DLR_vectors_GD(size, path, transient, transient_df, host_dict_candidate
     searchRA = transientRA
     searchDEC = transientDEC
 
-    a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(searchRA, searchDEC, int(px*0.25), band), '.')
+    a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(searchRA, searchDEC, int(px*0.25), band), path)
     if not a:
-        get_PS1_Pic(searchRA, searchDEC, px, band)
-        a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(searchRA, searchDEC, int(px*0.25), band), '.')
+        get_PS1_Pic(path, 0, searchRA, searchDEC, px, band)
+        a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(searchRA, searchDEC, int(px*0.25), band), path)
     hdu = fits.open(a[0])[0]
     image_file = get_pkg_data_filename(a[0])
     image_data = fits.getdata(image_file, ext=0)
     wcs = WCS(hdu.header)
-    fig = figure(num=None, figsize=(20,20), facecolor='w', edgecolor='k')
-    fig.add_axes(projection=wcs)
+    fig = plt.figure(num=None, figsize=(20,20), facecolor='w', edgecolor='k')
     axes_coords = [0, 0, 1, 1] # plotting full width and height
     ax = fig.add_axes(axes_coords, projection=wcs)
     axes_coords2 = [-0.045, -0.03, 1.06, 1.08]
@@ -289,11 +288,13 @@ def denoise(img, weight=0.1, eps=1e-3, num_iter_max=200):
 
     return u
 
-def get_clean_img(ra, dec, px, band):
+def get_clean_img(path, ra, dec, px, band):
     """Takes PS1 images, removes bad pixels, and
        estimates new pixel values through a 2D
        interpolation.
 
+    :param path: filepath where the image will be saved.
+    :type path: str
     :param ra: Right ascension of image position, in degrees.
     :type ra: float
     :param dec: Declination of image position, in degrees.
@@ -312,18 +313,20 @@ def get_clean_img(ra, dec, px, band):
 
     #first, mask the data
     if dec > -30:
-        a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.25), band), '.')
+        a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.25), band), path)
         if not a:
-            get_PS1_Pic(0, ra, dec, px, band)
-            a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.25), band), '.')
-        b = find_all("PS1_ra={}_dec={}_{}arcsec_{}_mask.fits".format(ra, dec, int(px*0.25), band), '.')
+            get_PS1_Pic(path, 0, ra, dec, px, band)
+            a = find_all("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.25), band), path)
+        b_fn = "PS1_ra={}_dec={}_{}arcsec_{}_stack.mask.fits".format(ra, dec, int(px*0.25), band)
+        b = find_all(b_fn, path)
         if not b:
-            get_PS1_type(ra, dec, px, band, 'stack.mask')
-            b = find_all("PS1_ra={}_dec={}_{}arcsec_{}_mask.fits".format(ra, dec, int(px*0.25), band), '.')
-        c = find_all("PS1_ra={}_dec={}_{}arcsec_{}_stack.num.fits".format(ra, dec, int(px*0.25), band), '.')
+            get_PS1_type(path, ra, dec, px, band, 'stack.mask')
+            b = find_all(b_fn, path)
+        c_fn = "PS1_ra={}_dec={}_{}arcsec_{}_stack.num.fits".format(ra, dec, int(px*0.25), band)
+        c = find_all(c_fn, path)
         if not c:
-            get_PS1_type(ra, dec, px, band, 'stack.num')
-            c = find_all("PS1_ra={}_dec={}_{}arcsec_{}_stack.num.fits".format(ra, dec, int(px*0.25), band), '.')
+            get_PS1_type(path, ra, dec, px, band, 'stack.num')
+            c = find_all(c_fn, path)
 
         image_data_mask = fits.open(b[0])[0].data
         image_data_num = fits.open(c[0])[0].data
@@ -352,6 +355,7 @@ def get_clean_img(ra, dec, px, band):
         image_masked_num = np.ma.masked_array(image_masked, mask=mask_num)
 
     else:
+        print("Error! Gradient Ascent is not yet implemented for southern-hemisphere sources.")
         a = find_all("SkyMapper_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.5), band), '.')
         if not a:
             get_SkyMapper_Pic(0, ra, dec, px, band)
@@ -483,11 +487,11 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, transientNames, hostDF, trans
         dec = transientDF.loc[transientDF['Name'] == transient_name, 'DEC'].values[0]
 
         startTime = time.time()
-        g_img, wcs, g_hdu  = get_clean_img(ra, dec, px, 'g')
+        g_img, wcs, g_hdu  = get_clean_img(path, ra, dec, px, 'g')
         g_mask = np.ma.masked_invalid(g_img).mask
-        r_img, wcs, r_hdu  = get_clean_img(ra, dec, px, 'r')
+        r_img, wcs, r_hdu  = get_clean_img(path, ra, dec, px, 'r')
         r_mask = np.ma.masked_invalid(r_img).mask
-        i_img, wcs, i_hdu  = get_clean_img(ra, dec, px, 'i')
+        i_img, wcs, i_hdu  = get_clean_img(path, ra, dec, px, 'i')
         i_mask = np.ma.masked_invalid(i_img).mask
         endTime = time.time()
         dTime = endTime - startTime
@@ -496,9 +500,9 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, transientNames, hostDF, trans
 
         # cleanup - remove the fits files when we're done using them
         for band in ['g', 'r', 'i']:
-            os.remove("PS1_ra={}_dec={}_{}arcsec_{}_stack.num.fits".format(ra, dec, int(px*0.25), band))
-            os.remove("PS1_ra={}_dec={}_{}arcsec_{}_mask.fits".format(ra, dec, int(px*0.25), band))
-            os.remove("PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.25), band))
+            os.remove(path + "/PS1_ra={}_dec={}_{}arcsec_{}_stack.num.fits".format(ra, dec, int(px*0.25), band))
+            os.remove(path + "/PS1_ra={}_dec={}_{}arcsec_{}_stack.mask.fits".format(ra, dec, int(px*0.25), band))
+            os.remove(path + "/PS1_ra={}_dec={}_{}arcsec_{}.fits".format(ra, dec, int(px*0.25), band))
 
         nancount = 0
         obj_interp = []
@@ -705,9 +709,9 @@ def gradientAscent(path, SN_dict, SN_dict_postDLR, transientNames, hostDF, trans
             #lookup by ra, dec
             try:
                 if size == 'large':
-                    a = query_ps1_noname(float(coords[0]), float(coords[1]), 20)
+                    a = ps1cone(float(coords[0]), float(coords[1]), 20/3600)
                 else:
-                    a = query_ps1_noname(float(coords[0]), float(coords[1]), 5)
+                    a = ps1cone(float(coords[0]), float(coords[1]), 5/3600)
             except TypeError:
                  continue
             if a:

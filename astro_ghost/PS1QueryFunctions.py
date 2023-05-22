@@ -234,9 +234,11 @@ def getcolorim(ra, dec, size=240, output_size=None, filters="grizy", format="jpg
     im = Image.open(BytesIO(r.content))
     return im
 
-def get_PS1_type(ra, dec, size, band, type):
+def get_PS1_type(path, ra, dec, size, band, type):
     """Download and save PS1 imaging data in a given band of a given type.
 
+    :param path: filepath where the image will be saved.
+    :type path: str
     :param ra: Right ascension of position, in degrees.
     :type ra: float
     :param dec: Declination of position, in degrees.
@@ -257,11 +259,13 @@ def get_PS1_type(ra, dec, size, band, type):
 
     fitsurl = geturl(ra, dec, size=size, filters="{}".format(band), format="fits", type=type)
     fh = fits.open(fitsurl[0])
-    fh.writeto('PS1_ra={}_dec={}_{}arcsec_{}_{}.fits'.format(ra, dec, int(size*0.25), band, type))
+    fh.writeto(path + '/PS1_ra={}_dec={}_{}arcsec_{}_{}.fits'.format(ra, dec, int(size*0.25), band, type))
 
-def get_PS1_Pic(objID, ra, dec, size, band, safe=False):
-    """Downloads PS1 picture (in fits) at a given position.
+def get_PS1_Pic(path, objID, ra, dec, size, band, safe=False):
+    """Downloads PS1 picture (in fits) centered at a given location.
 
+    :param path: The filepath where the fits file will be saved.
+    :type path: str
     :param objID: The PS1 objID of the object of interest (to save as filename).
     :type objID: int
     :param ra: Right ascension of position, in degrees.
@@ -280,9 +284,9 @@ def get_PS1_Pic(objID, ra, dec, size, band, safe=False):
     fitsurl = geturl(ra, dec, size=size, filters="{}".format(band), format="fits")
     fh = fits.open(fitsurl[0])
     if safe==True:
-        fh.writeto('PS1_{}_{}arcsec_{}.fits'.format(objID, int(size*0.25), band))
+        fh.writeto(path + '/PS1_{}_{}arcsec_{}.fits'.format(objID, int(size*0.25), band))
     else:
-        fh.writeto('PS1_ra={}_dec={}_{}arcsec_{}.fits'.format(ra, dec, int(size*0.25), band))
+        fh.writeto(path + '/PS1_ra={}_dec={}_{}arcsec_{}.fits'.format(ra, dec, int(size*0.25), band))
 
 def ps1metadata(table="mean",release="dr1",baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs"):
     """Return metadata for the specified catalog and table.
@@ -831,6 +835,8 @@ def southernSearch(ra, dec, rad):
     for col in leftover:
         fullDF[col] = np.nan
 
+    # arrange in the correct order for combining with northern-hemisphere PS1 sources
+    fullDF = fullDF[PS1_cols]
     fullDF.drop_duplicates(subset=['objID'], inplace=True)
     return fullDF
 
