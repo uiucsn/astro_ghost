@@ -169,10 +169,10 @@ def getColors(df):
     df.replace(999, np.nan, inplace=True)
 
     # create color attributes for all hosts
-    df["i-z"] = df["iApMag"] - df["zApMag"]
     df["g-r"]= df["gApMag"] - df["rApMag"]
     df["r-i"]= df["rApMag"] - df["iApMag"]
-    df["g-i"] = df["gApMag"] - df["iApMag"]
+    df["i-z"] = df["iApMag"] - df["zApMag"]
+#    df["g-i"] = df["gApMag"] - df["iApMag"]
     df["z-y"] = df["zApMag"] - df["yApMag"]
 
     df['g-rErr'] = np.sqrt(df['gApMagErr']**2 + df['rApMagErr']**2)
@@ -181,23 +181,17 @@ def getColors(df):
     df['z-yErr'] = np.sqrt(df['zApMagErr']**2 + df['yApMagErr']**2)
 
     # To be sure we're getting physical colors
-    df.loc[df['i-z'] > 100, 'i-z'] = np.nan
-    df.loc[df['i-z'] < -100, 'i-z'] = np.nan
-    df.loc[df['g-r'] > 100, 'i-z'] = np.nan
-    df.loc[df['g-r'] < -100, 'i-z'] = np.nan
+    for col in ['g-r', 'r-i', 'i-z', 'z-y']:
+        df.loc[np.abs(df[col]) > 100, col] = np.nan
 
     # and PSF - Kron mag "morphology" information
-    df["gApMag_gKronMag"] = df["gApMag"] - df["gKronMag"]
-    df["rApMag_rKronMag"] = df["rApMag"] - df["rKronMag"]
-    df["iApMag_iKronMag"] = df["iApMag"] - df["iKronMag"]
-    df["zApMag_zKronMag"] = df["zApMag"] - df["zKronMag"]
-    df["yApMag_yKronMag"] = df["yApMag"] - df["yKronMag"]
-
-    # to be sure we're getting physical mags
-    df.loc[df['iApMag_iKronMag'] > 100, 'iApMag_iKronMag'] = np.nan
-    df.loc[df['iApMag_iKronMag'] < -100, 'iApMag_iKronMag'] = np.nan
-    df.loc[df['iApMag'] > 100, 'iApMag'] = np.nan
-    df.loc[df['iApMag'] < -100, 'iApMag'] = np.nan
+    for band in 'grizy':
+        # to be sure we're getting physical mags
+        col = '%sApMag_%sKronMag'%(band, band)
+        df[col] = df["%sApMag"%band] - df["%sKronMag"%band]
+        df.loc[np.abs(df[col]) > 100, col] = np.nan
+        col = '%sApMag'%band
+        df.loc[np.abs(df[col]) > 100, col] = np.nan
     return df
 
 def makeCuts(df,cuts=[],dict=""):
@@ -230,11 +224,8 @@ def makeCuts(df,cuts=[],dict=""):
         elif cut == "coords":
             df = df.dropna(subset=['raMean', 'decMean'])
         elif cut == "mag":
-            df = df[pd.notnull(df['gApMag'])]
-            df = df[pd.notnull(df['rApMag'])]
-            df = df[pd.notnull(df['iApMag'])]
-            df = df[pd.notnull(df['zApMag'])]
-            df = df[pd.notnull(df['yApMag'])]
+            for band in 'grizy':
+                df = df[pd.notnull(df['%sApMag'%band])]
         elif cut =="primary":
             if dict != "":
                 df_mod = df[df["primaryDetection"] == 1]

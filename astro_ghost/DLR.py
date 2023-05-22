@@ -24,14 +24,9 @@ def choose_band_SNR(host_df):
 
     bands = 'grizy'
     try:
-        gSNR = float(1/host_df["gPSFMagErr"])
-        rSNR = float(1/host_df["rPSFMagErr"])
-        iSNR = float(1/host_df["iPSFMagErr"])
-        zSNR = float(1/host_df["zPSFMagErr"])
-        ySNR = float(1/host_df["yPSFMagErr"])
-
-        SNR = np.array([gSNR, rSNR, iSNR, zSNR, ySNR])
-        i = np.nanargmax(SNR)
+        for band in bands:
+             SNR.append(float(1/host_df["%sPSFMagErr"%band]))
+        i = np.nanargmax(np.array(SNR))
     except:
         #if we have issues getting the band with the highest SNR, just use r-band
         i = 1

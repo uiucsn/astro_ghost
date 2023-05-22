@@ -672,15 +672,16 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
     #begin doing the heavy lifting to associate transients with hosts
     host_DF = get_hosts(path, fn_SN, fn_Host, rad)
-    halfLightSizes = getDR2_petrosianSizes(snRA_arr, snDEC_arr, rad)
-    host_DF_new = host_DF.merge(halfLightSizes, on='objID')
-    host_DF = host_DF_new if not halfLightSizes.empty else host_DF
+    #get rid of new galaxy sizes for now - test DLR by itself!
+    #galaxySizes = getDR2_forcedGalaxySizes(snRA_arr, snDEC_arr, rad)
+    #host_DF_new = host_DF.merge(galaxySizes, on='objID',how='outer')
+    #host_DF = host_DF_new if not galaxySizes.empty else host_DF
 
     if len(host_DF) < 1:
         print("ERROR: Found no hosts in cone search during manual association!")
         return None
 
-    cuts = ["n", "quality", "coords", "duplicate"]
+    cuts = ["n", "coords", "duplicate"]
 
     transient_dict =[]
     # this bit of trickery is required to combine northern-hemisphere and
@@ -749,6 +750,9 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
     with open(path+"/dictionaries/checkpoint_preDLR.p", 'wb') as fp:
            dump(host_dict_nospace, fp)
+
+    #return the candidates list before DLR for debugging purposes
+    #return host_gals_DF
 
     host_DF, host_dict_nospace_postDLR, noHosts, GD_SN = chooseByDLR(path, host_gals_DF, transients, fn, host_dict_nospace, todo="r")
 
