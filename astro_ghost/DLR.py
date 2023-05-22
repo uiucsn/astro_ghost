@@ -92,7 +92,6 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     kappa = Q**2 + U**2
     a_over_b = (1 + kappa + 2*np.sqrt(kappa))/(1 - kappa)
 
-    # erratum! 05/20/23 - should be arctan(xr/yr), NOT arctan(yr/xr)
     gam = np.arctan2(xr/yr)
     theta = phi - gam
 
@@ -150,7 +149,6 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
     if (float(r_a) != float(r_a)) | (float(elong) != float(elong)):
         return dist, badR
 
-    # erratum! 05/20/23 - should be arctan(xr/yr), NOT arctan(yr/xr)
     gam = np.arctan2(xr/yr)
 
     theta = phi - gam
