@@ -1,12 +1,17 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib import colors
 from astro_ghost.sourceCleaning import clean_dict
+from astro_ghost.NEDQueryFunctions import getNEDInfo
 from astropy import units as u
-from astropy.coordinates import SkyCoord, Angle
+from astropy.coordinates import SkyCoord, Angle, Distance
 from astropy.wcs import WCS
+from astropy.cosmology import FlatLambdaCDM, z_at_value
 from astropy.utils.data import get_pkg_data_filename
+from astroquery.vizier import Vizier
+
 
 def choose_band_SNR(host_df):
     """Gets the PS1 band (of grizy) with the highest SNR in PSF mag.
@@ -32,6 +37,54 @@ def choose_band_SNR(host_df):
         #if we have issues getting the band with the highest SNR, just use r-band
         i = 1
     return bands[i]
+
+def calc_DLR_glade(ra_SN, dec_SN, ra_host, dec_host, r_a, a_over_b, phi):
+    """TODO: Short summary.
+
+    Parameters
+    ----------
+    ra_SN : type
+        Description of parameter `ra_SN`.
+    dec_SN : type
+        Description of parameter `dec_SN`.
+    ra_host : type
+        Description of parameter `ra_host`.
+    dec_host : type
+        Description of parameter `dec_host`.
+    r_a : type
+        Description of parameter `r_a`.
+    a_over_b : type
+        Description of parameter `a_over_b`.
+    phi : type
+        Description of parameter `phi`.
+
+    Returns
+    -------
+    type
+        Description of returned object.
+
+    """
+    xr = (ra_SN- float(ra_host))*3600
+    yr = (dec_SN - float(dec_host))*3600
+
+    SNcoord = SkyCoord(ra_SN*u.deg, dec_SN*u.deg, frame='icrs')
+    hostCoord = SkyCoord(ra_host*u.deg, dec_host*u.deg, frame='icrs')
+    sep = SNcoord.separation(hostCoord)
+    dist = sep.arcsecond
+    badR = 10000000000.0
+
+    gam = np.arctan2(xr, yr)
+
+    theta = phi - gam
+
+    DLR = r_a/np.sqrt(((a_over_b)*np.sin(theta))**2 + (np.cos(theta))**2)
+
+    R = float(dist/DLR)
+
+    if (R != R):
+        return dist, badR
+
+    return dist, R
 
 def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     """Calculate the directional light radius for a given galaxy and transient pair. Calculation is adapted from
@@ -319,3 +372,138 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
         return
     elif todo =="r":
         return hosts, dict_mod, noHosts, GA_SN
+
+#new method - beta!
+def chooseByGladeDLR(path, fn, snDF, todo='r'):
+    """TODO: Short summary.
+
+    Parameters
+    ----------
+    path : type
+        Description of parameter `path`.
+    fn : type
+        Description of parameter `fn`.
+    snDF : type
+        Description of parameter `snDF`.
+    todo : type
+        Description of parameter `todo`.
+
+    Returns
+    -------
+    type
+        Description of returned object.
+
+    """
+    if todo=="s":
+        if not os.path.exists(path+'/dictionaries'):
+             os.makedirs(path+'/dictionaries')
+        if not os.path.exists(path+'/tables'):
+             os.makedirs(path+'/tables')
+
+    f = open(path+fn, 'w')
+
+    foundHostDF = []
+    noGladeHosts = []
+
+    for idx, row in snDF.iterrows():
+        name = str(row['Name'])
+        ra_SN = float(row['RA'])
+        dec_SN = float(row['DEC'])
+        class_SN = str(row['Obj. Type'])
+
+        #query the glade catalog
+        result = Vizier.query_region(SkyCoord(ra=ra_SN, dec=dec_SN,unit=(u.deg, u.deg),frame='icrs'),width="1d",catalog=["VII/275/glade1"])
+        hosts = result[0].to_pandas()
+        hosts.dropna(subset=['a_b', 'maj', 'min'], inplace=True)
+        if len(hosts)<1:
+            noGladeHosts.append(name)
+            continue
+        hosts['MajorRad'] = hosts['maj']*60/2 #in arcsec, to radius
+        hosts['MinorRad'] = hosts['min']*60/2 #in arcsec, to radius
+
+        #get names for the galaxies that match
+        hosts.rename(columns={'RAJ2000':'raMean','DEJ2000':'decMean'}, inplace=True)
+        hosts = getNEDInfo(hosts)
+
+        R_dict = {}
+        ra_dict = {}
+        dist_dict = {}
+        for idx, row in hosts.iterrows():
+            tempHost = row['NED_name']
+            phi = np.radians(row['PAHyp'])
+            r_a = row['MajorRad']
+
+            #if it's a mostly round galaxy, the position angle doesn't matter!
+            if (phi != phi) & (row['a_b'] >= 0.9):
+                phi = 0
+            dist, R = calc_DLR_glade(ra_SN, dec_SN, row['raMean'], row['decMean'], r_a, row['a_b'], phi)
+
+            R_dict[tempHost] = R
+            ra_dict[tempHost] = r_a
+            dist_dict[tempHost] = dist
+
+            hosts.loc[hosts['NED_name'] == tempHost, 'dist/DLR'] = R
+            hosts.loc[hosts['NED_name'] == tempHost, 'dist'] = dist
+
+        print("\n transient = \\", file=f)
+        print(name, file=f)
+        print("offset/DLR = \\", file=f)
+        #round for printing purposes
+        R_dict_print = {k:round(v,2) if isinstance(v,float) else v for k,v in R_dict.items()}
+        print(R_dict_print, file=f)
+        ra_dict_print = {k:round(v,2) if isinstance(v,float) else v for k,v in ra_dict.items()}
+        print("candidate semi-major axis = \\", file=f)
+        print(ra_dict_print, file=f)
+
+        #subset so that we're less than 5 in DLR units
+        chosenHost = min(R_dict, key=R_dict.get)
+        if R_dict[chosenHost] > 5.0:
+            #If we can't find a host, say that this galaxy has no host
+            noGladeHosts.append(name)
+            print("No host chosen! r/DLR > 5.0.", file=f)
+            continue
+        else:
+            print("Selecting GLADE host: %s"%chosenHost, file=f)
+            foundHost = hosts.loc[hosts['NED_name'] == chosenHost]
+
+            #add in the associated transient's information
+            foundHost['TransientRA'] = ra_SN
+            foundHost['TransientDEC'] = dec_SN
+            foundHost['TransientName'] = name
+            foundHost['TransientClass'] = class_SN
+
+            foundHostDF.append(foundHost)
+
+            f.flush()
+    if len(foundHostDF) > 0:
+        foundHostDF = pd.concat(foundHostDF)
+        # adding some relevant redshift information
+        foundHostDF['GLADE_redshift'] = np.nan
+        foundHostDF['GLADE_redshift_flag'] = ''
+
+        #assume standard cosmology
+        cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
+
+        for idx, row in foundHostDF.iterrows():
+            if row['Dist'] == row['Dist']:
+                dist = Distance(value=row['Dist'], unit=u.Mpc)
+                calc_z = z_at_value(cosmo.luminosity_distance, dist, zmin=1.e-5, zmax=1, method='Bounded').value
+                foundHostDF['GLADE_redshift'] = calc_z
+                if row['Flag'] <= 3:
+                    foundHostDF['GLADE_redshift_flag'] = 'SPEC'
+                else:
+                    foundHostDF['GLADE_redshift_flag'] = 'PHOT'
+        #print some relevant information to terminal
+        print("Found %i hosts in GLADE! See %s for details."%(len(foundHostDF), fn))
+        if todo == "s":
+            foundHostDF.to_csv("../tables/gladeDLR_hosts.csv")
+            return
+        elif todo == "r":
+            return foundHostDF, noGladeHosts
+
+    else:
+        foundHostDF = pd.DataFrame({'TransientName':[], 'raMean':[], 'decMean':[]})
+        print("Found no hosts in GLADE.")
+        if todo == 'r':
+            return foundHostDF, noGladeHosts
+    f.close()

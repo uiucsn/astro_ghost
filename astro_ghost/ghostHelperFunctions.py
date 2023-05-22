@@ -20,12 +20,52 @@ from astro_ghost.gradientAscent import gradientAscent
 from astro_ghost.starSeparation import separateStars_STRM, separateStars_South
 from astro_ghost.sourceCleaning import clean_dict, removePS1Duplicates, getColors, makeCuts
 from astro_ghost.stellarLocus import calc_7DCD
-from astro_ghost.DLR import chooseByDLR
+from astro_ghost.DLR import chooseByDLR, chooseByGladeDLR
 import requests
 import pickle
 import glob
 from datetime import datetime
 from joblib import dump, load
+import pandas as pd
+
+#we do a lot of copies, sub-selects and rewrites - no need to warn about everything!
+pd.options.mode.chained_assignment = None  # default='warn'
+
+def cleanup(path):
+    """TODO: Short summary.
+
+    Parameters
+    ----------
+    path : type
+        Description of parameter `path`.
+
+    Returns
+    -------
+    type
+        Description of returned object.
+
+    """
+    tablePath = path+"/tables/"
+    printoutPath = path+'/printouts/'
+
+    paths = [tablePath, printoutPath]
+
+    for tempPath in paths:
+        if not os.path.exists(tempPath):
+            os.mkdir(tempPath)
+
+    #move tables to the tables directory, and printouts to the printouts directory
+    printouts = glob.glob(path+'/*.txt')
+    for p in printouts:
+        fn = remove_prefix(p, path)
+        os.rename(p, printoutPath+fn)
+
+    table_ext = ['csv', 'gz']
+    for end in table_ext:
+        tables = glob.glob(path+'/*.%s'%end)
+        for t in tables:
+            fn = remove_prefix(t, path)
+            os.rename(t, tablePath+fn)
 
 def getGHOST(real=False, verbose=False, installpath='', clobber=False):
     """Downloads the GHOST database.
@@ -523,7 +563,7 @@ def fullData(GHOSTpath=''):
     fullTable = pd.read_csv(GHOSTpath+"/database/GHOST.csv")
     return fullTable
 
-def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=True, starcut='gentle', ascentMatch=False, px=800, savepath='./', GHOSTpath='', redo_search=True):
+def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=False, starcut='normal', ascentMatch=False, px=800, savepath='./', GHOSTpath='', redo_search=True):
     """The wrapper function for the main host association pipeline. The function first
        searches the pre-existing GHOST database by transient name, then by transient coordinates, and finally
        associates the remaining transients not found.
@@ -656,10 +696,10 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
     dateStr = str(datetime.today()).replace("-", '').replace(".", '').replace(":", "").replace(" ", '')
 
-    fn_Host = "SNe_TNS_%s_PS1Hosts_%iarcsec.csv" % (dateStr, rad)
-    fn_SN = 'transients_%s.csv' % dateStr
-    fn_Dict = fn_Host[:-4] + ".p"
-    dir_name = fn_SN[:-4]
+    fn_host = "SNe_TNS_%s_PS1Hosts_%iarcsec.csv" % (dateStr, rad)
+    fn_transients = 'transients_%s.csv' % dateStr
+    fn_dict = fn_host[:-4] + ".p"
+    dir_name = fn_transients[:-4]
     if not os.path.exists(savepath):
         os.mkdir(savepath)
         os.chmod(savepath, 0o777)
@@ -668,154 +708,179 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
     #create temp dataframe with RA and DEC corresponding to the transient
     snDF = pd.DataFrame({'Name':transientName_arr, 'RA':snRA_arr, 'DEC':snDEC_arr, 'HostName':['']*len(snDEC_arr), 'Obj. Type':snClass_arr})
-    snDF.to_csv(path+fn_SN, index=False)
+    snDF.to_csv(path+fn_transients, index=False)
 
-    #begin doing the heavy lifting to associate transients with hosts
-    host_DF = get_hosts(path, fn_SN, fn_Host, rad)
-    #galaxySizes = getDR2_forcedGalaxySizes(snRA_arr, snDEC_arr, rad)
-    #host_DF_new = host_DF.merge(galaxySizes, on='objID',how='outer')
-    #host_DF = host_DF_new if not galaxySizes.empty else host_DF
+    #new method (beta) - before we do anything else, find and associate low-z hosts with GLADE
+    fn_glade = "gladeDLR.txt"
+    foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, snDF, todo="r")
 
-    if len(host_DF) < 1:
-        print("ERROR: Found no hosts in cone search during manual association!")
-        return None
+    #open transients df and drop the transients already found in GLADE. We'll add these back in at the end
+    snDF = snDF[snDF['Name'].isin(noGladeHosts)]
+    fn_transients_preGLADE = fn_transients
+    fn_transients = 'transients_%s_postGlade.csv' % dateStr
+    snDF.to_csv(path+fn_transients, index=False)
 
-    cuts = ["n", "coords", "duplicate"]
-
-    transient_dict =[]
-    # this bit of trickery is required to combine northern-hemisphere and
-    # southern-hemisphere source dictionaries
-    f = open(path+'/dictionaries/'+fn_Dict, "rb")
-    try:
-        while True:
-            transient_dict.append(pickle.load(f))
-    except EOFError:
-        pass
-    temp = transient_dict[0]
-    if len(transient_dict) > 1:
-        for i in np.arange(len(transient_dict)-1):
-            temp.update(transient_dict[i+1])
-    transient_dict = {k.replace(' ', ''): v for k, v in temp.items()}
-    desperate_dict = transient_dict.copy()
-
-    host_DF = getNEDInfo(host_DF)
-
-    host_DF_north = host_DF[host_DF['decMean']>-30].reset_index(drop=True)
-    host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index(drop=True)
-
-    host_DF_north = makeCuts(host_DF_north, cuts, transient_dict)
-
-    host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
-
-    cut_dict = clean_dict(transient_dict, host_DF, [])
-    desperate_dict = cut_dict.copy()
-
-    hostFrac = fracWithHosts(cut_dict)*100
-    if verbose:
-        print("Associated fraction after quality cuts: %.2f%%."%hostFrac)
-
-    #automatically add to host association for gradient ascent
-    lost = np.array([k for k, v in cut_dict.items() if len(v) <1])
-
-    host_DF_north = getColors(host_DF_north)
-    host_DF_north = removePS1Duplicates(host_DF_north)
-    host_DF_north = calc_7DCD(host_DF_north)
-
-    host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
-    host_DF = getSimbadInfo(host_DF)
-    host_DF.to_csv(path+"/candidateHosts_NEDSimbad.csv", index=False)
-
-    host_DF_north = host_DF[host_DF['decMean']>-30].reset_index()
-    host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index()
-
-    host_gals_DF_north, stars_DF_north = separateStars_STRM(host_DF_north, plot=0, verbose=verbose, starcut=starcut)
-    host_gals_DF_south, stars_DF_south = separateStars_South(host_DF_south, plot=0, verbose=verbose, starcut=starcut)
-    host_gals_DF = pd.concat([host_gals_DF_north, host_gals_DF_south],ignore_index=True)
-    stars_DF = pd.concat([stars_DF_north, stars_DF_south],ignore_index=True)
-
-    if verbose:
-        print("Removed %i stars. We now have %i candidate host galaxies."%(len(stars_DF), len(host_gals_DF)))
-
-    cut_dict = clean_dict(cut_dict, host_gals_DF, [])
-    stars_DF.to_csv(path+"removedStars.csv",index=False)
-
-    #plotLocus(host_gals_DF, color=1, save=1, type="Gals", timestamp=dateStr)
-    #plotLocus(stars_DF, color=1, save=1, type="Stars", timestamp=dateStr)
-
-    host_dict_nospace = {k.replace(' ', ''): v for k, v in cut_dict.items()}
-
-    fn = "DLR.txt"
-    transients = pd.read_csv(path+fn_SN)
-
-    with open(path+"/dictionaries/checkpoint_preDLR.p", 'wb') as fp:
-           dump(host_dict_nospace, fp)
-
-    #return the candidates list before DLR for debugging purposes
-    #return host_gals_DF
-
-    host_DF, host_dict_nospace_postDLR, noHosts, GD_SN = chooseByDLR(path, host_gals_DF, transients, fn, host_dict_nospace, todo="r")
-
-    #last-ditch effort -- for the ones with no found host, just pick the nearest NED galaxy.
-    for transient in noHosts:
-          tempDF = host_gals_DF[host_gals_DF['objID'].isin(desperate_dict[transient])]
-          tempDF_gals = tempDF[tempDF['NED_type'].isin(['G', 'PofG', 'GPair', 'GGroup', 'GClstr'])].reset_index()
-          if len(tempDF_gals) < 1:
-             continue
-          transientRA = transients.loc[transients['Name'] == transient, 'RA'].values[0]
-          transientDEC = transients.loc[transients['Name'] == transient, 'DEC'].values[0]
-          transientCoord = SkyCoord(transientRA*u.deg, transientDEC*u.deg, frame='icrs')
-          tempHostCoords = SkyCoord(tempDF_gals['raMean'].values*u.deg, tempDF_gals['decMean'].values*u.deg, frame='icrs')
-          sep = transientCoord.separation(tempHostCoords)
-          desperateMatch = tempDF_gals.iloc[[np.argmin(sep.arcsec)]]
-          host_DF = pd.concat([host_DF, desperateMatch], ignore_index=True)
-          host_dict_nospace_postDLR[transient] = desperateMatch['objID'].values[0]
-          if verbose:
-               print("Desperate match found for %s, %.2f arcsec away." % (transient, sep[np.argmin(sep.arcsec)].arcsec))
-
-    if len(noHosts) > 0:
-        with open(path+"/dictionaries/noHosts_fromDLR.p", 'wb') as fp:
-            dump(noHosts, fp)
-
-    if len(GD_SN) > 0:
-        with open(path+"/dictionaries/badInfo_fromDLR.p", 'wb') as fp:
-             dump(GD_SN, fp)
-
-    #gradient ascent algorithm for the SNe that didn't pass this stage
-    SN_toReassociate = np.concatenate([np.array(noHosts), np.array(GD_SN), np.array(list(lost))])
-
-    if (len(SN_toReassociate) > 0) and (ascentMatch):
-        if verbose:
-            print("%i transients with no host found with DLR, %i transients with bad host data with DLR." %(len(noHosts), len(GD_SN)))
-            print("Running gradient ascent for %i remaining transients."%len(SN_toReassociate))
-            print("See GradientAscent.txt for more information.")
-
-        fn_GD= path+'/GradientAscent.txt'
-
-        host_dict_nospace_postDLR_GD, host_DF, unchanged = gradientAscent(path, transient_dict,  host_dict_nospace_postDLR, SN_toReassociate, host_DF, transients, fn_GD, plot=verbose, px=px)
-
-        with open(path+"/dictionaries/gals_postGD.p", 'wb') as fp:
-            dump(host_dict_nospace_postDLR_GD, fp)
-
-        if verbose:
-            print("Hosts not found for %i transients in gradient ascent. Storing names in GD_unchanged.txt" %(len(unchanged)))
-
-        with open(path+"/GD_unchanged.txt", 'wb') as fp:
-            dump(unchanged, fp)
-
-        hostFrac = fracWithHosts(host_dict_nospace_postDLR_GD)*100
-
-        if verbose:
-            print("Associated fraction after gradient ascent: %.2f%%."%hostFrac)
-
-        final_dict = host_dict_nospace_postDLR_GD.copy()
-
+    if len(noGladeHosts) < 1:
+        #just return the GLADE df!
+        foundGladeHosts['GLADE_source'] = True
+        host_DF = foundGladeHosts
     else:
-        final_dict = host_dict_nospace_postDLR.copy()
+        #begin doing the heavy lifting after GLADE to associate transients with hosts
+        host_DF = get_hosts(path, fn_transients, fn_host, rad)
 
-    host_DF = build_ML_df(final_dict, host_DF, transients)
+        if len(host_DF) < 1:
+            print("ERROR: Found no hosts in cone search during manual association!")
+            return None
 
-    with open(path+"/dictionaries/" + "Final_Dictionary.p", 'wb') as fp:
-           dump(final_dict, fp)
+        cuts = ["n", "coords", "quality", "duplicate"]
+
+        transient_dict =[]
+        # this bit of trickery is required to combine northern-hemisphere and
+        # southern-hemisphere source dictionaries
+        f = open(path+'/dictionaries/'+fn_dict, "rb")
+        try:
+            while True:
+                transient_dict.append(pickle.load(f))
+        except EOFError:
+            pass
+        temp = transient_dict[0]
+        if len(transient_dict) > 1:
+            for i in np.arange(len(transient_dict)-1):
+                temp.update(transient_dict[i+1])
+        transient_dict = {k.replace(' ', ''): v for k, v in temp.items()}
+        desperate_dict = transient_dict.copy()
+
+        host_DF = getNEDInfo(host_DF)
+
+        host_DF_north = host_DF[host_DF['decMean']>-30].reset_index(drop=True)
+        host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index(drop=True)
+
+        host_DF_north = makeCuts(host_DF_north, cuts, transient_dict)
+
+        host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
+
+        cut_dict = clean_dict(transient_dict, host_DF, [])
+        desperate_dict = cut_dict.copy()
+
+        hostFrac = fracWithHosts(cut_dict)*100
+        if verbose:
+            print("Associated fraction after quality cuts: %.2f%%."%hostFrac)
+
+        #automatically add to host association for gradient ascent
+        lost = np.array([k for k, v in cut_dict.items() if len(v) <1])
+
+        host_DF_north = getColors(host_DF_north)
+        host_DF_north = removePS1Duplicates(host_DF_north)
+        host_DF_north = calc_7DCD(host_DF_north)
+
+        host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
+        host_DF = getSimbadInfo(host_DF)
+        host_DF.to_csv(path+"/candidateHosts_NEDSimbad.csv", index=False)
+
+        host_DF_north = host_DF[host_DF['decMean']>-30].reset_index()
+        host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index()
+
+        host_gals_DF_north, stars_DF_north = separateStars_STRM(host_DF_north, plot=0, verbose=verbose, starcut=starcut)
+        host_gals_DF_south, stars_DF_south = separateStars_South(host_DF_south, plot=0, verbose=verbose, starcut=starcut)
+        host_gals_DF = pd.concat([host_gals_DF_north, host_gals_DF_south],ignore_index=True)
+        stars_DF = pd.concat([stars_DF_north, stars_DF_south],ignore_index=True)
+
+        if verbose:
+            print("Removed %i stars. We now have %i candidate host galaxies."%(len(stars_DF), len(host_gals_DF)))
+
+        cut_dict = clean_dict(cut_dict, host_gals_DF, [])
+        stars_DF.to_csv(path+"removedStars.csv",index=False)
+
+        #in debugging mode, plotting the ML-identified stars and galaxies along the
+        #stellar locus can be super helpful!!
+        #plotLocus(host_gals_DF, color=1, save=1, type="Gals", timestamp=dateStr)
+        #plotLocus(stars_DF, color=1, save=1, type="Stars", timestamp=dateStr)
+
+        host_dict_nospace = {k.replace(' ', ''): v for k, v in cut_dict.items()}
+
+        fn = "DLR.txt"
+        transients = pd.read_csv(path+fn_transients)
+
+        with open(path+"/dictionaries/checkpoint_preDLR.p", 'wb') as fp:
+               dump(host_dict_nospace, fp)
+
+        host_DF, host_dict_nospace_postDLR, noHosts, GD_SN = chooseByDLR(path, host_gals_DF, transients, fn, host_dict_nospace, todo="r")
+
+        #last-ditch effort -- for the ones with no found host, just pick the nearest NED galaxy.
+        for transient in noHosts:
+              tempDF = host_gals_DF[host_gals_DF['objID'].isin(desperate_dict[transient])]
+              tempDF_gals = tempDF[tempDF['NED_type'].isin(['G', 'PofG', 'GPair', 'GGroup', 'GClstr'])].reset_index()
+              if len(tempDF_gals) < 1:
+                 continue
+              transientRA = transients.loc[transients['Name'] == transient, 'RA'].values[0]
+              transientDEC = transients.loc[transients['Name'] == transient, 'DEC'].values[0]
+              transientCoord = SkyCoord(transientRA*u.deg, transientDEC*u.deg, frame='icrs')
+              tempHostCoords = SkyCoord(tempDF_gals['raMean'].values*u.deg, tempDF_gals['decMean'].values*u.deg, frame='icrs')
+              sep = transientCoord.separation(tempHostCoords)
+              desperateMatch = tempDF_gals.iloc[[np.argmin(sep.arcsec)]]
+              host_DF = pd.concat([host_DF, desperateMatch], ignore_index=True)
+              host_dict_nospace_postDLR[transient] = desperateMatch['objID'].values[0]
+              if verbose:
+                   print("Desperate match found for %s, %.2f arcsec away." % (transient, sep[np.argmin(sep.arcsec)].arcsec))
+
+        if len(noHosts) > 0:
+            with open(path+"/dictionaries/noHosts_fromDLR.p", 'wb') as fp:
+                dump(noHosts, fp)
+
+        if len(GD_SN) > 0:
+            with open(path+"/dictionaries/badInfo_fromDLR.p", 'wb') as fp:
+                 dump(GD_SN, fp)
+
+        #gradient ascent algorithm for the SNe that didn't pass this stage
+        SN_toReassociate = np.concatenate([np.array(noHosts), np.array(GD_SN), np.array(list(lost))])
+
+        if (len(SN_toReassociate) > 0) and (ascentMatch):
+            if verbose:
+                print("%i transients with no host found with DLR, %i transients with bad host data with DLR." %(len(noHosts), len(GD_SN)))
+                print("Running gradient ascent for %i remaining transients."%len(SN_toReassociate))
+                print("See GradientAscent.txt for more information.")
+
+            fn_GD= path+'/GradientAscent.txt'
+
+            host_dict_nospace_postDLR_GD, host_DF, unchanged = gradientAscent(path, transient_dict,  host_dict_nospace_postDLR, SN_toReassociate, host_DF, transients, fn_GD, plot=verbose, px=px)
+
+            with open(path+"/dictionaries/gals_postGD.p", 'wb') as fp:
+                dump(host_dict_nospace_postDLR_GD, fp)
+
+            if verbose:
+                print("Hosts not found for %i transients in gradient ascent. Storing names in GD_unchanged.txt" %(len(unchanged)))
+
+            with open(path+"/GD_unchanged.txt", 'wb') as fp:
+                dump(unchanged, fp)
+
+            hostFrac = fracWithHosts(host_dict_nospace_postDLR_GD)*100
+
+            if verbose:
+                print("Associated fraction after gradient ascent: %.2f%%."%hostFrac)
+
+            final_dict = host_dict_nospace_postDLR_GD.copy()
+
+        else:
+            final_dict = host_dict_nospace_postDLR.copy()
+
+        host_DF = build_ML_df(final_dict, host_DF, transients)
+
+        # add the glade sources back in!
+        if len(foundGladeHosts) > 0:
+            if verbose:
+                print("Adding %i sources from GLADE back into the catalog..."%len(foundGladeHosts))
+
+            host_DF['GLADE_source'] = False
+            foundGladeHosts['GLADE_source'] = True
+
+            #kluge for lookup later
+            foundGladeHosts['objID'] = foundGladeHosts['objName'] = foundGladeHosts['NED_name']
+
+            #combine
+            host_DF = pd.concat([host_DF, foundGladeHosts], ignore_index=True)
+
+        with open(path+"/dictionaries/" + "Final_Dictionary.p", 'wb') as fp:
+               dump(final_dict, fp)
 
     #a few final cleaning steps
     host_DF.drop_duplicates(subset=['TransientName'], inplace=True)
@@ -823,34 +888,18 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
     host_DF.reset_index(inplace=True, drop=True)
     host_DF['TransientName'] = [x.replace(" ", "") for x in host_DF['TransientName']]
 
-    matchFrac = len(host_DF)/len(transients)*100
+    allTransients = pd.read_csv(path+fn_transients_preGLADE)
+
+    matchFrac = len(host_DF)/len(allTransients)*100
     print("Found matches for %.1f%% of events."%matchFrac)
     if verbose:
         print("Saving table of hosts to %s."%(path+"tables/FinalAssociationTable.csv"))
 
     host_DF.to_csv(path+"FinalAssociationTable.csv", index=False)
 
-    tablePath = path+"/tables/"
-    printoutPath = path+'/printouts/'
+    #sort things into the relevant folders
+    cleanup(path)
 
-    paths = [tablePath, printoutPath]
-
-    for tempPath in paths:
-        if not os.path.exists(tempPath):
-            os.mkdir(tempPath)
-
-    #move tables to the tables directory, and printouts to the printouts directory
-    printouts = glob.glob(path+'/*.txt')
-    for p in printouts:
-        fn = remove_prefix(p, path)
-        os.rename(p, printoutPath+fn)
-
-    table_ext = ['csv', 'gz']
-    for end in table_ext:
-        tables = glob.glob(path+'/*.%s'%end)
-        for t in tables:
-            fn = remove_prefix(t, path)
-            os.rename(t, tablePath+fn)
     #remove if there's an extra index column
     try:
         del host_DF['index']
