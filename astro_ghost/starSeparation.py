@@ -159,7 +159,7 @@ def separateStars_South(df, plot=0, verbose=0, starcut='gentle'):
     test_gals = unsure_dropped[~unsure_dropped.index.isin(test_stars.index)]
 
     # Adding back in the ones we identified as galaxies from our clustering above, and the NED sources.
-    df_gals = pd.concat([test_gals, only_na, NED_gals])
+    df_gals = pd.concat([test_gals, NED_gals])
     df_gals.reset_index(inplace=True, drop=True)
 
     # Adding back in the ones we identified as stars from our clustering above, and the NED sources.
