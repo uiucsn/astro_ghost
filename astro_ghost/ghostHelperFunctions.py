@@ -672,7 +672,6 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
     #begin doing the heavy lifting to associate transients with hosts
     host_DF = get_hosts(path, fn_SN, fn_Host, rad)
-    #get rid of new galaxy sizes for now - test DLR by itself!
     #galaxySizes = getDR2_forcedGalaxySizes(snRA_arr, snDEC_arr, rad)
     #host_DF_new = host_DF.merge(galaxySizes, on='objID',how='outer')
     #host_DF = host_DF_new if not galaxySizes.empty else host_DF

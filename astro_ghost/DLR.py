@@ -23,9 +23,10 @@ def choose_band_SNR(host_df):
     """
 
     bands = 'grizy'
+    SNR = []
     try:
         for band in bands:
-             SNR.append(float(1/host_df["%sPSFMagErr"%band]))
+             SNR.append(float(1/host_df["%sKronMagErr"%band]))
         i = np.nanargmax(np.array(SNR))
     except:
         #if we have issues getting the band with the highest SNR, just use r-band
@@ -87,7 +88,8 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     kappa = Q**2 + U**2
     a_over_b = (1 + kappa + 2*np.sqrt(kappa))/(1 - kappa)
 
-    gam = np.arctan2(xr/yr)
+    gam = np.arctan2(xr, yr)
+
     theta = phi - gam
 
     DLR = r_a/np.sqrt(((a_over_b)*np.sin(theta))**2 + (np.cos(theta))**2)
@@ -144,7 +146,7 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
     if (float(r_a) != float(r_a)) | (float(elong) != float(elong)):
         return dist, badR
 
-    gam = np.arctan2(xr/yr)
+    gam = np.arctan2(xr, yr)
 
     theta = phi - gam
 
@@ -240,11 +242,11 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                             dist, R = calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
                         else:
                             band = choose_band_SNR(host_df)
-                            r_a = float(host_df['%sradius_frac90'%band].values[0])
+                            r_a = float(host_df['%sKronRad'%band].values[0])
                             if r_a == r_a:
                                 elong = host_df[band + "_elong"].values[0]
                                 phi = np.radians(host_df[band + "_pa"].values[0])
-                                r_a = host_df[band + 'radius_frac90'].values[0]*0.5 #plate scale
+                                r_a = host_df[band + 'KronRad'].values[0]*0.5 #plate scale
 
                                 # in arcsec, the radius containing 90% of the galaxy light.
                                 # This empirically has improved association performance
@@ -258,13 +260,15 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                         hosts.loc[hosts['objID'] == tempHost, 'dist/DLR'] = R
                         hosts.loc[hosts['objID'] == tempHost, 'dist'] = dist
 
+                print("\n transient = \\", file=f)
                 print(name, file=f)
-                print("transient = \\", file=f)
-                print(name, file=f)
-                print("R_dict = \\", file=f)
-                print(R_dict, file=f)
-                print("ra_dict = \\", file=f)
-                print(ra_dict, file=f)
+                print("offset/DLR = \\", file=f)
+                #round for printing purposes
+                R_dict_print = {k:round(v,2) if isinstance(v,float) else v for k,v in R_dict.items()}
+                print(R_dict_print, file=f)
+                ra_dict_print = {k:round(v,2) if isinstance(v,float) else v for k,v in ra_dict.items()}
+                print("candidate semi-major axis = \\", file=f)
+                print(ra_dict_print, file=f)
 
                 #subset so that we're less than 5 in DLR units
                 chosenHost = min(R_dict, key=R_dict.get)
