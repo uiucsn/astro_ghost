@@ -235,18 +235,9 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                             ra_SN = ra_SN[0]
                             dec_SN = dec_SN[0]
                         if (dec_SN.deg > -30):
-                            #switching back to kron radius...
-                            for band in 'gri':
-                                temp_r_a = float(host_df[band + 'KronRad'].values[0])
-                                #try:
-                            #        temp_r_a = float(host_df[band + 'petR90'].values[0])
-                            #    except:
-                            #        temp_r_a = np.nan
-                                if (temp_r_a == temp_r_a) & (temp_r_a > 0):
-                                    #r_a = r_b = float(host_df[band + 'HalfLightRad'].values[0])
-                                    r_a = r_b = float(host_df[band + 'KronRad'].values[0])
-                                    dist, R = calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
-                                    break
+                            band = choose_band_SNR(host_df)
+                            r_a = r_b = float(host_df[band + 'KronRad'].values[0])
+                            dist, R = calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, host_df, band)
                         else:
                             band = choose_band_SNR(host_df)
                             r_a = float(host_df['%sradius_frac90'%band].values[0])
