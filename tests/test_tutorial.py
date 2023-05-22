@@ -45,9 +45,9 @@ def test_associate():
 
     # run the association algorithm with the DLR method!
     hosts = getTransientHosts(snName, snCoord, snClass, verbose=verbose, starcut='gentle', ascentMatch=False)
-    
-    correctHosts = [SkyCoord(14.1777425*u.deg, -9.9138756*u.deg, frame='icrs'), 
-                    SkyCoord(187.3380517*u.deg, -23.1666716*u.deg, frame='icrs'), 
+
+    correctHosts = [SkyCoord(14.1777425*u.deg, -9.9138756*u.deg, frame='icrs'),
+                    SkyCoord(187.3380517*u.deg, -23.1666716*u.deg, frame='icrs'),
                     SkyCoord(186.2655971*u.deg, 12.8869831*u.deg, frame='icrs')]
 
     sep = []
@@ -76,9 +76,9 @@ def test_starSeparation():
     sourceDF = calc_7DCD(sourceDF)
     sourceDF = getNEDInfo(sourceDF)
     gals, stars = separateStars_STRM(sourceDF)
-    #True is stars, False is gals. Passes if all gals are False and all stars are True!
-    assert (np.nansum(gals['class'] == False) + np.nansum(stars['class'])) == len(sourceDF)
 
+    #True is stars, False is gals. Passes if all gals are False and all stars are True!
+    assert (np.nansum(gals['sourceClass'] == False) + np.nansum(stars['sourceClass'])) == len(sourceDF)
 
 def test_plotLocus():
     #plot a subset of GHOST data compared to the tonry stellar locus

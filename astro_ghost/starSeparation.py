@@ -31,6 +31,10 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
     NED_stars = df[df['NED_type'].isin(['*', '**', 'WD*', '!*', '!V*', 'V*', '!Nova'])]
     NED_gals = df[df['NED_type'] == 'G']
 
+    #label the sources we know to be stars and galaxies
+    NED_stars['sourceClass'] = 1
+    NED_gals['sourceClass'] = 0
+
     #get the remaining objects
     unsure = df[~df.index.isin(NED_stars.index)]
     unsure = unsure[~unsure.index.isin(NED_gals.index)]
@@ -75,9 +79,9 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
     except:
         print("Error! I didn't understand your starcut option.")
 
-    unsure_dropped['class'] = test_y
-    test_stars = unsure_dropped[unsure_dropped['class'] == 1]
-    test_gals = unsure_dropped[unsure_dropped['class'] == 0]
+    unsure_dropped['sourceClass'] = test_y
+    test_stars = unsure_dropped[unsure_dropped['sourceClass'] == 1]
+    test_gals = unsure_dropped[unsure_dropped['sourceClass'] == 0]
 
     # plot the distribution of classified stars and galaxies.
     if plot:
@@ -160,9 +164,11 @@ def separateStars_South(df, plot=0, verbose=0, starcut='gentle'):
 
     # Adding back in the ones we identified as galaxies from our clustering above, and the NED sources.
     df_gals = pd.concat([test_gals, NED_gals])
+    df_gals['sourceClass'] = 0
     df_gals.reset_index(inplace=True, drop=True)
 
     # Adding back in the ones we identified as stars from our clustering above, and the NED sources.
     df_stars = pd.concat([test_stars, NED_stars])
+    df_stars['sourceClass'] = 1
     df_stars.reset_index(inplace=True, drop=True)
     return df_gals, df_stars
