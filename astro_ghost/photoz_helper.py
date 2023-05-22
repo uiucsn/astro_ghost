@@ -69,7 +69,7 @@ def ps1objIDsearch(objID,table="mean",release="dr1",format="csv",columns=None,
            baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs", verbose=False,
            **kw):
     """Do an object lookup by objID.
-
+   
     :param objID: list of objIDs (or dictionary?)
     :type objID: List of objIDs
     :param table: Can be \\'mean\\', \\'stack\\', or \\'detection\\'.
@@ -109,18 +109,18 @@ def ps1objIDsearch(objID,table="mean",release="dr1",format="csv",columns=None,
     return urls, datas
 
 def fetch_information_serially(url, data, verbose=False, format='csv'):
-    """Short summary.
-
+    """A helper function called by serial_objID_search-- Queries PanStarrs API for data.
+    
     :param url: Remote PS1 url.
     :type url: str
-    :param data: Description of parameter `data`.
-    :type data:
+    :param data: List of objIDs requesting
+    :type data: list
     :param verbose: If True,
     :type verbose: bool, optional
     :param format: Can be \\'csv\\', \\'json\\', or \\'votable\\'.
-    :type format:
+    :type format: str
     :return:
-    :rtype: Same type as \\'format\\'.
+    :rtype: str in format given by \\'format\\'.
     """
 
     results = []
@@ -137,8 +137,8 @@ def fetch_information_serially(url, data, verbose=False, format='csv'):
     return results
 
 def post_url_parallel(results,YSE_ID):
-    """Short summary.
-
+    """TODO: unused function. The querying of PS servers is the slowest part of the script. How to parallelize?
+     
     :param results: Description of parameter.
     :type results: type
     :param YSE_ID: Description of parameter.
@@ -161,14 +161,14 @@ def post_url_parallel(results,YSE_ID):
     return DF
 
 def post_url_serial(results,YSE_ID):
-    """Short summary.
+    """A helper function called by serial_objID_search. Post-processes the data retrieved from PS1 Servers into a pandas.DataFrame object.
 
-    :param results: Description of parameter.
-    :type results: type
-    :param YSE_ID: Description of parameter.
-    :type YSE_ID: type.
-    :return:
-    :rtype:
+    :param results: The string resulting from PS1 query.
+    :type results: str
+    :param YSE_ID: local integer used for as an index tracking user objects vs retrived objects.
+    :type YSE_ID: int
+    :return: DataFrame object of the retrieved data from PS1 servers
+    :rtype: pandas.DataFrame
     """
     if type(results) != str:
         results = codecs.decode(results,'UTF-8')
@@ -183,22 +183,22 @@ def post_url_serial(results,YSE_ID):
     return DF
 
 def serial_objID_search(objIDs,table='forced_mean',release='dr2',columns=None,verbose=False,**constraints):
-    """Short summary.
-
-    :param objIDs: Description of param
-    :type objIDs: type
-    :param table: Description of param
-    :type table: type
-    :param release: Description of param
-    :type release: type
-    :param columns: Description of param
-    :type columns: type
-    :param verbose: Description of param
-    :type verbose: type.
-    :param \\*\\*constraints: Description of param
-    :type \\*\\*constraints: type.
-    :return: Description of param
-    :rtype: type
+    """Given a list of ObjIDs, queries the PS1 server these object's Forced Mean Photometry, then returns matches as a pandas.DataFrame.
+    
+    :param objIDs: list of PS1 objIDs for objects user would like to query
+    :type objIDs: list
+    :param table: Which table to perform the query on. Default 'forced_mean'
+    :type table: str
+    :param release: Which release to perform the query on. Default 'dr2'
+    :type release: str
+    :param columns: list of what data fields to include; None means use default columns. Default None
+    :type columns: list or None
+    :param verbose: boolean setting level of feedback user received. default False
+    :type verbose: bool
+    :param \\*\\*constraints: Keyword dictionary with an additional constraints for the PS1 query
+    :type \\*\\*constraints: dict
+    :return: list of pd.DataFrame objects. If a match was found, then the Dataframe contains data, else it only contains a local integer.
+    :rtype: pd.DataFrame
     """
 
     constrains=constraints.copy()
@@ -211,7 +211,7 @@ def serial_objID_search(objIDs,table='forced_mean',release='dr2',columns=None,ve
     return DFs
 
 def post_url_parallel(results,YSE_ID):
-    """Short summary.
+    """TODO: unused function. The querying of PS servers is the slowest part of the script. How to parallelize?
 
     :param results: Description of param.
     :type results: type
@@ -232,12 +232,12 @@ def post_url_parallel(results,YSE_ID):
     return DF
 
 def get_common_constraints_columns():
-    """Short summary.
+    """Helper function that returns a dictionary of constraints used for the matching objects in PS1 archive, and the columns of data we requre.
 
-    :return: adfasdf
-    :rtype: adfasdf
-    :return: adfasdf
-    :rtype: asdfasdf
+    :return: dictionary with our constaint that we must have more than one detection
+    :rtype: dict
+    :return: List of PS1 fields required for matching and NN inputs
+    :rtype: list
     """
 
     constraints = {'nDetections.gt':1}
@@ -256,16 +256,16 @@ def get_common_constraints_columns():
     return constraints, columns
 
 def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
-    """Short summary.
+    """Preprocesses the data inside pandas.DataFrame object returned by serial_objID_search to the space of Inputs of our Neural Network.
 
-    :param DF: asdfasdf
-    :type DF: asdfasdf
-    :param PATH: asdfasdf
-    :type PATH: asdfasdf
-    :param ebv: asdfasdf
-    :type ebv: asdfasdf
-    :return: asdfasdf
-    :rtype: asdfasdf
+    :param DF: Dataframe object containing the data for each matched objID
+    :type DF: pandas DataFrame
+    :param PATH: string path to extinction maps data
+    :type PATH: str
+    :param ebv: boolean for lookup of extinction data. If False, all extinctions set to 0.
+    :type ebv: False
+    :return: Preprocessed inputs ready to be used as input to NN
+    :rtype: numpy ndarray
     """
     if ebv:
         m = sfdmap.SFDMap(PATH)
@@ -325,14 +325,14 @@ def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
     return X
 
 def load_lupton_model(model_path):
-    """Short summary.
+    """Helper function that defines and loads the weights of our NN model and the output space of the NN.
 
-    :param model_path: Description of param.
+    :param model_path: path to the model weights.
     :type model_path: str
     :return: Trained photo-z MLP.
-    :rtype: keras tensorflow model.
-    :return: ??
-    :rtype:
+    :rtype: tensorflow keras Model
+    :return: Array of binned redshift space corresponding to the output space of the NN
+    :rtype: numpy ndarray
     """
 
     build_sfd_dir()
@@ -373,17 +373,17 @@ def evaluate(X,mymodel,range_z):
     :param X: PS1 properties of associated hosts.
     :type X: array-like
     :param mymodel: MLP model for photo-z estimation.
-    :type mymodel: keras model
+    :type mymodel: tensorflow keras Model
     :param range_z: Grid over which to evaluate the posterior distribution of photo-zs.
     :type range_z: array-like
 
     :return: Posterior distributions for the grid of redshifts defined as
         \\`np.linspace(0, 1, n)\\`
-    :rtype: ndarray shape of (df.shape[0], n)
+    :rtype: numpy ndarray shape of (df.shape[0], n)
     :return: Means
-    :rtype: ndarray shape of (df.shape[0],)
+    :rtype: numpy ndarray shape of (df.shape[0],)
     :return: Standard deviations
-    :rtype: ndarray shape of (df.shape[0],)
+    :rtype: numpy ndarray shape of (df.shape[0],)
     """
 
     posteriors = mymodel(X,training=False).numpy()
@@ -412,7 +412,7 @@ def calc_photoz(hosts):
     :param hosts: The matched hosts from GHOST.
     :type hosts: pandas DataFrame
     :return: The matched hosts from GHOST, with photo-z point estimates and uncertainties.
-    :rtype: Pandas DataFrame
+    :rtype: pandas DataFrame
     """
 
     if np.nansum(hosts['decMean'] < -30) > 0:
@@ -441,14 +441,14 @@ def get_photoz(df):
         \\`ps1objIDsearch\\` from this module, Pan-STARRS web-portal or via
         astroquery i.e., \\`astroquery.mast.Catalogs.query_{criteria,region}(...,
         catalog=\\'Panstarrs\\',table=\\'forced_mean\\')\\`
-    :type df: Pandas DataFrame
+    :type df: pandas DataFrame
     :return: Posterior distributions for the grid of redshifts defined as
         \\`np.linspace(0, 1, n)\\`
-    :rtype: ndarray shape of (df.shape[0], n)
+    :rtype: numpy ndarray shape of (df.shape[0], n)
     :return: Means
-    :rtype: ndarray shape of (df.shape[0],)
+    :rtype: numpy ndarray shape of (df.shape[0],)
     :return: Standard deviations
-    :rtype: ndarray shape of (df.shape[0],)
+    :rtype: numpy ndarray shape of (df.shape[0],)
     """
 
     # The function load_lupton_model downloads the necessary dust models and
