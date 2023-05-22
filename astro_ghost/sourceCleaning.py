@@ -220,7 +220,7 @@ def makeCuts(df,cuts=[],dict=""):
         if cut == "n":
             df = df[df['nDetections'] >= 10]
         elif cut == "quality":
-            df = df[df["qualityFlag"] < 128]
+            df = df[df["qualityFlag"] <= 165]
         elif cut == "coords":
             df = df.dropna(subset=['raMean', 'decMean'])
         elif cut == "mag":
