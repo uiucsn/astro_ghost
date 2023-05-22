@@ -17,3 +17,7 @@ verbose = 1
 
 
 #need to generate tests for photoz_helper and gradientAscent!!
+
+t = np.linspace(0, 70)
+y = 7.*2.71828**(-(t)/50)/(1+2.71828**(-(t)/11))
+plt.plot(t, y)

@@ -556,7 +556,7 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
     """
 
     #if no names were passed in, add placeholder names for each transient in the search
-    if transientName == ['']:
+    if len(transientName) < 1:
         transientName = []
         print("No transient names listed, adding placeholder names...")
         for i in np.arange(len(snCoord)):
