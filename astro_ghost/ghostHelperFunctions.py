@@ -523,7 +523,7 @@ def fullData(GHOSTpath=''):
     fullTable = pd.read_csv(GHOSTpath+"/database/GHOST.csv")
     return fullTable
 
-def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=False, starcut='normal', ascentMatch=False, px=800, savepath='./', GHOSTpath='', redo_search=True):
+def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=True, starcut='gentle', ascentMatch=False, px=800, savepath='./', GHOSTpath='', redo_search=True):
     """The wrapper function for the main host association pipeline. The function first
        searches the pre-existing GHOST database by transient name, then by transient coordinates, and finally
        associates the remaining transients not found.

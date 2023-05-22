@@ -1,7 +1,7 @@
 Example Usage
 =============
 
-The database of supernova-host galaxy matches can be found at http://ghost.ncsa.illinois.edu/static/GHOST.csv, and retrieved using the getGHOST() function. This database will need to be created before running the association pipeline.
+The database of supernova-host galaxy matches can be retrieved using the getGHOST() function. This database will need to be created before running the association pipeline.
 
 .. code-block:: python
 
@@ -32,12 +32,10 @@ The database of supernova-host galaxy matches can be found at http://ghost.ncsa.
                 SkyCoord(187.32867*u.deg, -23.16367*u.deg, frame='icrs'), \
                 SkyCoord(186.26125*u.deg, +12.899444*u.deg, frame='icrs')]
 
-    snClass = ['SN IIP', 'SN', 'SN Ia']
-
     # run the association algorithm!
     # this first checks the GHOST database for a SN by name, then by coordinates, and
     # if we have no match then it manually associates them.
-    hosts = getTransientHosts(snName, snCoord, snClass, verbose=verbose, starcut='normal')
+    hosts = getTransientHosts(snName, snCoord, verbose=True)
 
     #create directories to store the host spectra, the transient spectra, and the postage stamps
     hSpecPath = "./hostSpectra/"
