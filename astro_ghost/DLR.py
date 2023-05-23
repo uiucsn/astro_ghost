@@ -15,11 +15,12 @@ from astroquery.vizier import Vizier
 
 def choose_band_SNR(host_df):
     """Gets the PS1 band (of grizy) with the highest SNR in PSF mag.
-       From https://www.eso.org/~ohainaut/ccd/sn.html,
-       Error on Mag  ~    1/  (S/N)
-       So calculating S/N for each band as 1/PSFMagErr
-       Estimate the S/N of each band and choose the bands
-       with the highest S/N for the rest of our measurements.
+
+    From https://www.eso.org/~ohainaut/ccd/sn.html,
+    Error on Mag  ~    1/  (S/N)
+    So calculating S/N for each band as 1/PSFMagErr
+    Estimate the S/N of each band and choose the bands
+    with the highest S/N for the rest of our measurements.
 
     :param host_df: The dataframe containing the candidate host galaxy (should just be one galaxy).
     :type host_df: Pandas DataFrame
@@ -40,8 +41,9 @@ def choose_band_SNR(host_df):
 
 def calc_DLR_glade(ra_SN, dec_SN, ra_host, dec_host, r_a, a_over_b, phi):
     """Calculates the DLR between transients and GLADE host galaxy candidates.
-        (very similar to calc_DLR but the parameters are calculated slightly
-         differently)
+
+    (very similar to calc_DLR but the parameters are calculated slightly
+    differently)
 
     :param ra_SN: The right ascension of the SN, in degrees.
     :type ra_SN: float
@@ -86,9 +88,9 @@ def calc_DLR_glade(ra_SN, dec_SN, ra_host, dec_host, r_a, a_over_b, phi):
     return dist, R
 
 def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
-    """Calculate the directional light radius for a given galaxy and transient pair. Calculation is adapted from
-       Gupta et al., 2013 found at
-       https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1916&context=edissertations.
+    """Calculate the directional light radius for a given galaxy and transient pair.
+
+    This calculation is adapted from Gupta et al., 2013.
 
     :param ra_SN: The right ascension of the SN, in degrees.
     :type ra_SN: float
@@ -155,8 +157,10 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
 
 
 def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_band):
-    """ Calculate the DLR method but for Skymapper (southern-hemisphere) sources,
-        which don't have xx and yy moments reported in the catalog.
+    """ Calculate the DLR method but for Skymapper (southern-hemisphere) sources.
+
+    This function differs from calc_DLR in that Skymapper sources
+    don't have second-order (xx, xy, and yy) moments reported in the catalog.
 
     :param ra_SN: The right ascension of the SN, in degrees.
     :type ra_SN: float
@@ -213,8 +217,7 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
     return dist, R
 
 def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
-    """The wrapper function for selecting hosts by the directional light radius method
-       introduced in Gupta et al., 2013.
+    """The wrapper function for selecting hosts by the DLR method (Gupta et al., 2013)
 
     :param path: Filepath where to write out the results of the DLR algorithm.
     :type path: str
@@ -374,9 +377,9 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
 
 #new method - beta!
 def chooseByGladeDLR(path, fn, transients, todo='r'):
-    """The wrapper function for selecting hosts by the directional light radius method
-       introduced in Gupta et al., 2013, with candidate hosts taken from the GLADE
-       (Dalya et al., 2021; arXiv:2110.06184) catalog.
+    """The wrapper function for selecting hosts by the DLR method (Gupta et al., 2013).
+
+    Here, candidate hosts are taken from the GLADE (Dalya et al., 2021; arXiv:2110.06184) catalog.
 
     :param path: Filepath where to write out the results of the DLR algorithm.
     :type path: str
