@@ -390,7 +390,7 @@ def chooseByGladeDLR(path, fn, transients, todo='r'):
     :param todo: If todo == \\'s\\', save the dictionary and the list of remaining sources.
         If todo == \\'r\\', return them.
     :type todo: str
-    :return: The dataframe of GLADE properties for GLADE host galaxies found by DLR.
+    :return: The dataframe of properties for GLADE host galaxies found by DLR.
     :rtype: Pandas DataFrame
     :return: List of transients for which no reliable GLADE host galaxy was found.
     :rtype: array-like

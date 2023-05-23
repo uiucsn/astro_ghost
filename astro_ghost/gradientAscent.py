@@ -22,6 +22,7 @@ import warnings
 
 def updateStep(px, gradx, grady, step, point, size):
     """ Determine direction of movement by image gradients.
+
     :param px: The maximum size of the image, in pixels.
     :type px: int
     :param gradx: The horizontal gradient of the image.
@@ -223,7 +224,8 @@ def plot_ellipse(ax, px, s, ra, dec, color):
 
 def denoise(img, weight=0.1, eps=1e-3, num_iter_max=200):
     """Perform total-variation denoising on a grayscale image.
-       Uses Rudin, Osher and Fatemi algorithm.
+
+    Uses Rudin, Osher and Fatemi algorithm.
 
     :param img: 2-D input data to be de-noised.
     :type img: array-like
@@ -289,9 +291,10 @@ def denoise(img, weight=0.1, eps=1e-3, num_iter_max=200):
     return u
 
 def get_clean_img(path, ra, dec, px, band):
-    """Takes PS1 images, removes bad pixels, and
-       estimates new pixel values through a 2D
-       interpolation.
+    """Generates a clean PS1 image.
+
+    Takes PS1 images, removes bad pixels, and estimates new pixel values through a 2D
+    interpolation.
 
     :param path: filepath where the image will be saved.
     :type path: str
@@ -390,8 +393,9 @@ def get_clean_img(path, ra, dec, px, band):
     return np.array(image_masked), wcs, hdu
 
 def getSteps(SN_dict, transientNames, hostDF):
-    """Calculates a scale factor for the gradient ascent step
-       based on the mean kron radius of the galaxies in the field.
+    """Calculates a scale factor for the gradient ascent step.
+
+    The scale factor is based on the mean kron radius of the galaxies in the field.
 
     :param SN_dict: Key,value pairs of transient names and lists of candidate
         host galaxy objIDs in PS1.
