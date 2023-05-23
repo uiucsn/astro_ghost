@@ -32,8 +32,9 @@ import pandas as pd
 pd.options.mode.chained_assignment = None  # default='warn'
 
 def cleanup(path):
-    """Quick helper function to clean up the working directory
-       after the host-galaxy association.
+    """Cleans up the working directory.
+
+    This is done after host-galaxy association is completed.
 
     :param path: filepath where association files are saved
     :type path: str
@@ -172,10 +173,7 @@ def getGHOST(real=False, verbose=False, installpath='', clobber=False):
             print("Successfully created dummy database.\n")
 
 def fracWithHosts(transient_dict):
-    """Calculates the fraction of supernovae
-       in our dictionary that have at least
-       one candidate host associated with
-       them.
+    """Calculates transient fraction with at least one candidate host.
 
     :param transient_dict: The dictionary of supernovae and their host galaxy candidate objIDs from PS1.
     :type transient_dict: dictionary
@@ -195,8 +193,9 @@ def fracWithHosts(transient_dict):
     return count/len(transient_dict.keys())
 
 def remove_prefix(text, prefix):
-    """Removes the prefix from a string. Very useful for removing the 'SN' from
-       supernova names!
+    """Removes the prefix from a string.
+
+    Very useful for removing the 'SN' from supernova names!
 
     :param text: The full text.
     :type text: str
@@ -209,8 +208,7 @@ def remove_prefix(text, prefix):
     return text[text.startswith(prefix) and len(prefix):]
 
 def getDBHostFromTransientCoords(transientCoords, GHOSTpath=''):
-    """Gets the host associated with a supernova in
-       the GHOST database by the supernova's position, if it exists.
+    """Gets the host of a GHOST transient by position.
 
     :param transientCoords: A list of astropy SkyCoord coordinates of transients.
     :type transientCoords: array-like
@@ -248,8 +246,7 @@ def getDBHostFromTransientCoords(transientCoords, GHOSTpath=''):
     return host_DF, notFound
 
 def getDBHostFromTransientName(transientNames, GHOSTpath=''):
-    """Gets the host associated with a supernova in
-       the GHOST database by the supernova's name, if it exists.
+    """Gets the host of a GHOST transient by transient name.
 
     :param transientNames: A list of transient names.
     :type transientNames: array-like
