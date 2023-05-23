@@ -32,19 +32,13 @@ import pandas as pd
 pd.options.mode.chained_assignment = None  # default='warn'
 
 def cleanup(path):
-    """TODO: Short summary.
+    """Quick helper function to clean up the working directory
+       after the host-galaxy association.
 
-    Parameters
-    ----------
-    path : type
-        Description of parameter `path`.
-
-    Returns
-    -------
-    type
-        Description of returned object.
-
+    :param path: filepath where association files are saved
+    :type path: str
     """
+
     tablePath = path+"/tables/"
     printoutPath = path+'/printouts/'
 
@@ -710,7 +704,7 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
     snDF = pd.DataFrame({'Name':transientName_arr, 'RA':snRA_arr, 'DEC':snDEC_arr, 'HostName':['']*len(snDEC_arr), 'Obj. Type':snClass_arr})
     snDF.to_csv(path+fn_transients, index=False)
 
-    #new method (beta) - before we do anything else, find and associate low-z hosts with GLADE
+    #new low-z method (beta) - before we do anything else, find and associate with GLADE
     fn_glade = "gladeDLR.txt"
     foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, snDF, todo="r")
 
