@@ -11,6 +11,10 @@ GHOST
    :target: https://pypi.org/project/astro-ghost/
    :alt: PyPI
 
+.. image:: https://github.com/uiucsn/astro_ghost/actions/workflows/tests.yml/badge.svg
+   :target: https://github.com/uiucsn/astro_ghost/actions/workflows/tests.yml
+   :alt: Unit Tests
+
 .. image:: https://img.shields.io/readthedocs/uiucsnastro-ghost
    :target: https://uiucsnastro-ghost.readthedocs.io/en/latest/
    :alt: Read the Docs
