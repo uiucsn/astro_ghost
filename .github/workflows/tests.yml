@@ -1,4 +1,4 @@
-name: Run template tests
+name: unit tests
 
 on: [push]
 
