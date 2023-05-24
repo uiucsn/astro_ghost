@@ -89,9 +89,9 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
         c_stars = '#ffbf00'
 
         plt.figure(num=None, figsize=(8, 6), dpi=80, facecolor='w', edgecolor='k')
-        sns.kdeplot(test_gals['iApMag'], test_gals['iApMag_iKronMag'], n_levels=20, shade_lowest=False, shade=False,label='Galaxies', color=c_gals, alpha=0.5,legend=True);
+        sns.kdeplot(test_gals['iApMag'], test_gals['iApMag_iKronMag'], n_levels=20, fill=False,label='Galaxies', color=c_gals, alpha=0.5,legend=True);
         if len(test_stars) > 1:
-            sns.kdeplot(test_stars['iApMag'], test_stars['iApMag_iKronMag'], n_levels=20, shade_lowest=False, shade=False,label='Stars', color=c_stars, alpha=0.5);
+            sns.kdeplot(test_stars['iApMag'], test_stars['iApMag_iKronMag'], n_levels=20, fill=False,label='Stars', color=c_stars, alpha=0.5);
         plt.legend()
         plt.xlim(xmin=13,xmax=23)
         plt.ylim(ymin=-1,ymax=5)
