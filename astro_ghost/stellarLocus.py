@@ -109,6 +109,6 @@ def plotLocus(df, color=False, save=False, type="", timestamp=""):
         g.ax_joint.plot(iz_new, gr_new, '--', c='#8c837c', lw=2)
         plt.xlabel(r"$i-z$",fontsize=18)
         plt.ylabel(r"$g-r$",fontsize=18)
-        g = g.plot_marginals(sns.kdeplot, color=c, shade=True)
+        g = g.plot_marginals(sns.kdeplot, color=c, fill=True)
         if save:
             g.savefig("PS1_%s_StellarLocus_%s.pdf"%(type, timestamp))
