@@ -15,12 +15,11 @@ from astroquery.vizier import Vizier
 
 def choose_band_SNR(host_df):
     """Gets the PS1 band (of grizy) with the highest SNR in PSF mag.
-
-    From https://www.eso.org/~ohainaut/ccd/sn.html,
-    Error on Mag  ~    1/  (S/N)
-    So calculating S/N for each band as 1/PSFMagErr
-    Estimate the S/N of each band and choose the bands
-    with the highest S/N for the rest of our measurements.
+       From https://www.eso.org/~ohainaut/ccd/sn.html,
+       Error on Mag  ~    1/  (S/N)
+       So calculating S/N for each band as 1/PSFMagErr
+       Estimate the S/N of each band and choose the bands
+       with the highest S/N for the rest of our measurements.
 
     :param host_df: The dataframe containing the candidate host galaxy (should just be one galaxy).
     :type host_df: Pandas DataFrame
@@ -28,11 +27,12 @@ def choose_band_SNR(host_df):
     :rtype: str
     """
 
+    host_df.reset_index(inplace=True, drop=True)
     bands = 'grizy'
     SNR = []
     try:
         for band in bands:
-             SNR.append(float(1/host_df["%sKronMagErr"%band]))
+             SNR.append(float(1/host_df.iloc[0, "%sKronMagErr"%band]))
         i = np.nanargmax(np.array(SNR))
     except:
         #if we have issues getting the band with the highest SNR, just use r-band
@@ -40,29 +40,29 @@ def choose_band_SNR(host_df):
     return bands[i]
 
 def calc_DLR_glade(ra_SN, dec_SN, ra_host, dec_host, r_a, a_over_b, phi):
-    """Calculates the DLR between transients and GLADE host galaxy candidates.
+    """TODO: Short summary.
 
-    (very similar to calc_DLR but the parameters are calculated slightly
-    differently)
+    Parameters
+    ----------
+    ra_SN : type
+        Description of parameter `ra_SN`.
+    dec_SN : type
+        Description of parameter `dec_SN`.
+    ra_host : type
+        Description of parameter `ra_host`.
+    dec_host : type
+        Description of parameter `dec_host`.
+    r_a : type
+        Description of parameter `r_a`.
+    a_over_b : type
+        Description of parameter `a_over_b`.
+    phi : type
+        Description of parameter `phi`.
 
-    :param ra_SN: The right ascension of the SN, in degrees.
-    :type ra_SN: float
-    :param dec_SN: The declination of the SN, in degrees.
-    :type dec_SN: float
-    :param ra_host: The right ascension of the host, in degrees.
-    :type ra_host: float
-    :param dec_host: The declination of the host, in degrees.
-    :type dec_host: float
-    :param r_a: The semi-major axis of the host in arcseconds.
-    :type r_a: float
-    :param a_over_b: The candidate host axis ratio.
-    :type a_over_b: float
-    :param phi: The galaxy position angle (in radians).
-    :type phi: float
-    :return: The angular separation between galaxy and transient, in arcseconds.
-    :rtype: float
-    :return: The normalized distance (angular separation divided by the DLR).
-    :rtype: float
+    Returns
+    -------
+    type
+        Description of returned object.
 
     """
     xr = (ra_SN- float(ra_host))*3600
@@ -88,9 +88,9 @@ def calc_DLR_glade(ra_SN, dec_SN, ra_host, dec_host, r_a, a_over_b, phi):
     return dist, R
 
 def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
-    """Calculate the directional light radius for a given galaxy and transient pair.
-
-    This calculation is adapted from Gupta et al., 2013.
+    """Calculate the directional light radius for a given galaxy and transient pair. Calculation is adapted from
+       Gupta et al., 2013 found at
+       https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1916&context=edissertations.
 
     :param ra_SN: The right ascension of the SN, in degrees.
     :type ra_SN: float
@@ -114,6 +114,8 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     :rtype: float
     """
 
+    source.reset_index(inplace=True, drop=True)
+
     xr = (ra_SN.deg - float(ra_host))*3600
     yr = (dec_SN.deg - float(dec_host))*3600
 
@@ -123,18 +125,18 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
     dist = sep.arcsecond
     badR = 10000000000.0
 
-    XX = best_band + 'momentXX'
-    YY = best_band + 'momentYY'
-    XY = best_band + 'momentXY'
+    XX = float(source.loc[0, best_band + 'momentXX'])
+    YY = float(source.loc[0, best_band + 'momentYY'])
+    XY = float(source.loc[0, best_band + 'momentXY'])
 
     # if we don't have spatial information, get rid of it
     # this gets rid of lots of artifacts without radius information
-    if (float(source[XX]) != float(source[XX])) | (float(source[XY]) != float(source[XY])) | \
-        (float(source[YY]) != float(source[YY])):
+    if (XX != XX) | (XY != XY) | \
+        (YY != YY):
         return dist, badR
 
-    U = float(source[XY])
-    Q = float(source[XX]) - float(source[YY])
+    U = XY
+    Q = XX - YY
     if Q == 0:
         return dist, badR
 
@@ -157,10 +159,8 @@ def calc_DLR(ra_SN, dec_SN, ra_host, dec_host, r_a, r_b, source, best_band):
 
 
 def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_band):
-    """ Calculate the DLR method but for Skymapper (southern-hemisphere) sources.
-
-    This function differs from calc_DLR in that Skymapper sources
-    don't have second-order (xx, xy, and yy) moments reported in the catalog.
+    """ Calculate the DLR method but for Skymapper (southern-hemisphere) sources,
+        which don't have xx and yy moments reported in the catalog.
 
     :param ra_SN: The right ascension of the SN, in degrees.
     :type ra_SN: float
@@ -217,7 +217,8 @@ def calc_DLR_SM(ra_SN, dec_SN, ra_host, dec_host, r_a, elong, phi, source, best_
     return dist, R
 
 def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
-    """The wrapper function for selecting hosts by the DLR method (Gupta et al., 2013)
+    """The wrapper function for selecting hosts by the directional light radius method
+       introduced in Gupta et al., 2013.
 
     :param path: Filepath where to write out the results of the DLR algorithm.
     :type path: str
@@ -286,8 +287,8 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                         else:
                             ra_SN = Angle(transient_df["RA"].values, unit=u.deg)
                         dec_SN = Angle(transient_df["DEC"].values, unit=u.degree)
-                        ra_host = host_df['raMean']
-                        dec_host = host_df['decMean']
+                        ra_host = host_df['raMean'].values[0]
+                        dec_host = host_df['decMean'].values[0]
                         if len(np.array(ra_SN)) > 1:
                             ra_SN = ra_SN[0]
                             dec_SN = dec_SN[0]
@@ -364,7 +365,7 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                         GDflag = 0
                         print("Issue with DLR. Try Gradient Descent!", file=f)
                         GA_SN.append(name)
-                    print(float(hosts[hosts['objID'] == chosenHost]['raMean']), float(hosts[hosts['objID'] == chosenHost]['decMean']), file=f)
+                    print(float(hosts[hosts['objID'] == chosenHost]['raMean'].values[0]), float(hosts[hosts['objID'] == chosenHost]['decMean'].values[0]), file=f)
                 f.flush()
     f.close()
     if todo == "s":
@@ -376,24 +377,25 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
         return hosts, dict_mod, noHosts, GA_SN
 
 #new method - beta!
-def chooseByGladeDLR(path, fn, transients, todo='r'):
-    """The wrapper function for selecting hosts by the DLR method (Gupta et al., 2013).
+def chooseByGladeDLR(path, fn, snDF, todo='r'):
+    """TODO: Short summary.
 
-    Here, candidate hosts are taken from the GLADE (Dalya et al., 2021; arXiv:2110.06184) catalog.
+    Parameters
+    ----------
+    path : type
+        Description of parameter `path`.
+    fn : type
+        Description of parameter `fn`.
+    snDF : type
+        Description of parameter `snDF`.
+    todo : type
+        Description of parameter `todo`.
 
-    :param path: Filepath where to write out the results of the DLR algorithm.
-    :type path: str
-    :param fn: Filename to write the results of the associations (useful for debugging).
-    :type fn: str
-    :param transients: DataFrame containing TNS information for all transients.
-    :type transients: Pandas DataFrame
-    :param todo: If todo == \\'s\\', save the dictionary and the list of remaining sources.
-        If todo == \\'r\\', return them.
-    :type todo: str
-    :return: The dataframe of properties for GLADE host galaxies found by DLR.
-    :rtype: Pandas DataFrame
-    :return: List of transients for which no reliable GLADE host galaxy was found.
-    :rtype: array-like
+    Returns
+    -------
+    type
+        Description of returned object.
+
     """
     if todo=="s":
         if not os.path.exists(path+'/dictionaries'):
@@ -406,7 +408,7 @@ def chooseByGladeDLR(path, fn, transients, todo='r'):
     foundHostDF = []
     noGladeHosts = []
 
-    for idx, row in transients.iterrows():
+    for idx, row in snDF.iterrows():
         name = str(row['Name'])
         ra_SN = float(row['RA'])
         dec_SN = float(row['DEC'])
