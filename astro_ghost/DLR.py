@@ -40,29 +40,29 @@ def choose_band_SNR(host_df):
     return bands[i]
 
 def calc_DLR_glade(ra_SN, dec_SN, ra_host, dec_host, r_a, a_over_b, phi):
-    """TODO: Short summary.
+    """Calculates the DLR between transients and GLADE host galaxy candidates.
 
-    Parameters
-    ----------
-    ra_SN : type
-        Description of parameter `ra_SN`.
-    dec_SN : type
-        Description of parameter `dec_SN`.
-    ra_host : type
-        Description of parameter `ra_host`.
-    dec_host : type
-        Description of parameter `dec_host`.
-    r_a : type
-        Description of parameter `r_a`.
-    a_over_b : type
-        Description of parameter `a_over_b`.
-    phi : type
-        Description of parameter `phi`.
+    (very similar to calc_DLR but the parameters are calculated slightly
+    differently)
 
-    Returns
-    -------
-    type
-        Description of returned object.
+    :param ra_SN: The right ascension of the SN, in degrees.
+    :type ra_SN: float
+    :param dec_SN: The declination of the SN, in degrees.
+    :type dec_SN: float
+    :param ra_host: The right ascension of the host, in degrees.
+    :type ra_host: float
+    :param dec_host: The declination of the host, in degrees.
+    :type dec_host: float
+    :param r_a: The semi-major axis of the host in arcseconds.
+    :type r_a: float
+    :param a_over_b: The candidate host axis ratio.
+    :type a_over_b: float
+    :param phi: The galaxy position angle (in radians).
+    :type phi: float
+    :return: The angular separation between galaxy and transient, in arcseconds.
+    :rtype: float
+    :return: The normalized distance (angular separation divided by the DLR).
+    :rtype: float
 
     """
     xr = (ra_SN- float(ra_host))*3600
@@ -378,24 +378,23 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
 
 #new method - beta!
 def chooseByGladeDLR(path, fn, snDF, todo='r'):
-    """TODO: Short summary.
+    """The wrapper function for selecting hosts by the DLR method (Gupta et al., 2013).
 
-    Parameters
-    ----------
-    path : type
-        Description of parameter `path`.
-    fn : type
-        Description of parameter `fn`.
-    snDF : type
-        Description of parameter `snDF`.
-    todo : type
-        Description of parameter `todo`.
+    Here, candidate hosts are taken from the GLADE (Dalya et al., 2021; arXiv:2110.06184) catalog.
 
-    Returns
-    -------
-    type
-        Description of returned object.
-
+    :param path: Filepath where to write out the results of the DLR algorithm.
+    :type path: str
+    :param fn: Filename to write the results of the associations (useful for debugging).
+    :type fn: str
+    :param transients: DataFrame containing TNS information for all transients.
+    :type transients: Pandas DataFrame
+    :param todo: If todo == \\'s\\', save the dictionary and the list of remaining sources.
+        If todo == \\'r\\', return them.
+    :type todo: str
+    :return: The dataframe of properties for GLADE host galaxies found by DLR.
+    :rtype: Pandas DataFrame
+    :return: List of transients for which no reliable GLADE host galaxy was found.
+    :rtype: array-like
     """
     if todo=="s":
         if not os.path.exists(path+'/dictionaries'):
