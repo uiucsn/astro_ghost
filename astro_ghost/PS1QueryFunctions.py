@@ -382,7 +382,7 @@ def resolve(name):
 
 def checklegal(table,release):
     """Checks if this combination of table and release is acceptable.
-       Raises a VelueError exception if there is problem.
+       Raises a ValueError exception if there is problem.
 
     :param table: Table type. Can be \\'mean\\', \\'stack\\', or \\'detection\\'
     :type table: str
@@ -397,7 +397,7 @@ def checklegal(table,release):
     if release=="dr1":
         tablelist = ("mean", "stack")
     else:
-        tablelist = ("mean", "stack", "detection")
+        tablelist = ("mean", "stack", "detection", "forced_mean")
     if table not in tablelist:
         raise ValueError("Bad value for table (for {} must be one of {})".format(release, ", ".join(tablelist)))
 
