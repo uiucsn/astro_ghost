@@ -11,7 +11,7 @@ from astropy.wcs import WCS
 from astropy.cosmology import FlatLambdaCDM, z_at_value
 from astropy.utils.data import get_pkg_data_filename
 from astroquery.vizier import Vizier
-
+from astroquery.ipac.ned import Ned
 
 def choose_band_SNR(host_df):
     """Gets the PS1 band (of grizy) with the highest SNR in PSF mag.
@@ -406,6 +406,7 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r'):
     foundHostDF = []
     noGladeHosts = []
 
+    badRadCount = 0
     for idx, row in snDF.iterrows():
         name = str(row['Name'])
         ra_SN = float(row['RA'])
@@ -420,8 +421,6 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r'):
         GLADE_rad = hosts.dropna(subset=['a_b', 'maj', 'min'])
         GLADE_norad = hosts[~hosts.index.isin(GLADE_rad.index)]
 
-        from astroquery.ipac.ned import Ned
-        badRadCount = 0
         for idx, row in GLADE_norad.iterrows():
             try:
                 result_table = Ned.query_region(SkyCoord(ra=row.RAJ2000*u.degree, dec=row.DEJ2000*u.degree, frame='icrs'), radius=(2/3600)*u.deg, equinox='J2000.0')
@@ -437,9 +436,6 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r'):
             except:
                 badRadCount +=1
 
-        #recombine
-        if verbose:
-            print("No NED radius found for %i GLADE galaxies."%badRadCount)
         hosts = pd.concat([GLADE_rad, GLADE_norad], ignore_index=True)
 
         hosts.dropna(subset=['a_b', 'maj', 'min'], inplace=True)
@@ -523,6 +519,9 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r'):
                     foundHostDF['GLADE_redshift_flag'] = 'PHOT'
         #print some relevant information to terminal
         print("Found %i hosts in GLADE! See %s for details."%(len(foundHostDF), fn))
+        #recombine
+        if verbose:
+            print("No NED radius found for %i GLADE galaxies."%badRadCount)
         if todo == "s":
             foundHostDF.to_csv("../tables/gladeDLR_hosts.csv")
             return
