@@ -7,10 +7,12 @@ from astro_ghost.NEDQueryFunctions import *
 from astro_ghost.ghostHelperFunctions import *
 from astro_ghost.starSeparation import *
 from astro_ghost.stellarLocus import *
+from astro_ghost.photoz_helper import calc_photoz
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 import pandas as pd
 from datetime import datetime
+
 
 #we want to include print statements so we know what the algorithm is doing
 verbose = 1
@@ -100,3 +102,8 @@ def test_resolve():
     c1 = SkyCoord(coords[0]*u.deg, coords[1]*u.deg, frame='icrs')
     c2 = SkyCoord(185.7288750*u.deg, 15.82230*u.deg, frame='icrs')
     assert c2.separation(c2).arcsec < 0.1
+    
+def test_photoz():
+    DF_test = pd.DataFrame({'raMean':[258.026087],'decMean':[40.344349,],'objID':[156412580262833857],})
+    DF_test = calc_photoz(DF_test)
+    assert np.abs(DF_test['photo_z'].iloc[0] - 0.260683) < 0.01
