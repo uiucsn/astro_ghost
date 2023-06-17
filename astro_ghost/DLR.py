@@ -376,8 +376,7 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
     elif todo =="r":
         return hosts, dict_mod, noHosts, GA_SN
 
-#new method - beta!
-def chooseByGladeDLR(path, fn, snDF, todo='r'):
+def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r'):
     """The wrapper function for selecting hosts by the DLR method (Gupta et al., 2013).
 
     Here, candidate hosts are taken from the GLADE (Dalya et al., 2021; arXiv:2110.06184) catalog.
@@ -414,14 +413,44 @@ def chooseByGladeDLR(path, fn, snDF, todo='r'):
         class_SN = str(row['Obj. Type'])
 
         #query the glade catalog
-        result = Vizier.query_region(SkyCoord(ra=ra_SN, dec=dec_SN,unit=(u.deg, u.deg),frame='icrs'),width="1d",catalog=["VII/275/glade1"])
-        hosts = result[0].to_pandas()
+        Vizier.ROW_LIMIT = -1
+        Vizier.TIMEOUT = 500
+        result = Vizier.query_region(SkyCoord(ra=ra_SN, dec=dec_SN,unit=(u.deg, u.deg),frame='icrs'),radius=Angle(1.0, "deg"), catalog=["VII/275/glade1"])
+        if result:
+            hosts = result[0].to_pandas()
+        
+        #NEW (06/14) - query NED for GLADE sources and get their radius
+        GLADE_rad = hosts.dropna(subset=['a_b', 'maj', 'min'])
+        GLADE_norad = hosts[~hosts.index.isin(GLADE_rad.index)]
+
+        from astroquery.ipac.ned import Ned
+        badRadCount = 0
+        for idx, row in GLADE_norad.iterrows():
+            try:
+                result_table = Ned.query_region(SkyCoord(ra=row.RAJ2000*u.degree, dec=row.DEJ2000*u.degree, frame='icrs'), radius=(2/3600)*u.deg, equinox='J2000.0')
+                diameters = Ned.get_table(result_table.to_pandas()['Object Name'].values[0], table='diameters')
+                tempDF = diameters.to_pandas()
+                tempMaj_arcsec = np.nanmedian(tempDF.loc[(tempDF['Major Axis Unit'] == 'arcsec') & (tempDF['Major Axis Flag'] == '(a)'), 'Major Axis'])
+                AxisRatio = np.nanmedian(tempDF.loc[(tempDF['Axis Ratio Flag'] == '(b/a)'), 'Axis Ratio'])
+                tempMin_arcsec = tempMaj_arcsec*AxisRatio
+
+                GLADE_norad.loc[GLADE_norad.index == idx, 'maj'] = tempMaj_arcsec*2./60
+                GLADE_norad.loc[GLADE_norad.index == idx, 'min'] = tempMin_arcsec*2./60
+                GLADE_norad.loc[GLADE_norad.index == idx, 'a_b'] = 1/AxisRatio  
+            except:
+                badRadCount +=1
+
+        #recombine
+        if verbose:
+            print("No NED radius found for %i GLADE galaxies."%badRadCount)
+        hosts = pd.concat([GLADE_rad, GLADE_norad], ignore_index=True)
+
         hosts.dropna(subset=['a_b', 'maj', 'min'], inplace=True)
         if len(hosts)<1:
             noGladeHosts.append(name)
             continue
-        hosts['MajorRad'] = hosts['maj']*60/2 #in arcsec, to radius
-        hosts['MinorRad'] = hosts['min']*60/2 #in arcsec, to radius
+        hosts['MajorRad'] = hosts['maj']*60./2 #in arcsec, to radius
+        hosts['MinorRad'] = hosts['min']*60./2 #in arcsec, to radius
 
         #get names for the galaxies that match
         hosts.rename(columns={'RAJ2000':'raMean','DEJ2000':'decMean'}, inplace=True)

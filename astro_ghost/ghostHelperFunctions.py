@@ -23,6 +23,7 @@ from astro_ghost.stellarLocus import calc_7DCD
 from astro_ghost.DLR import chooseByDLR, chooseByGladeDLR
 import requests
 import pickle
+import pyvo
 import glob
 from datetime import datetime
 from joblib import dump, load
@@ -207,6 +208,56 @@ def remove_prefix(text, prefix):
 
     return text[text.startswith(prefix) and len(prefix):]
 
+def checkSimbadHierarchy(df, verbose=False):
+    """Throw a warning if the source has a parent in simbad!
+
+    :param df: The final associated data frame containing host and transient features.
+    :type df: Pandas DataFrame
+    :return: The dataframe, after correcting for SIMBAD hierarchical information.
+    :rtype: Pandas DataFrame
+    """
+    host_DF = df.copy()
+    HierarchicalHostedSNe = []
+    parents = []
+    for idx, row in host_DF.iterrows():
+        # cone search of the best-fit host in SIMBAD - if it gets it right,
+        #replace the info with the parent information!
+        tap_simbad = pyvo.dal.TAPService("https://simbad.u-strasbg.fr/simbad/sim-tap")
+        query = """SELECT main_id, otype, basic.ra, basic.dec,
+        DISTANCE( POINT('ICRS', ra, dec), POINT('ICRS', {0}, {1})) AS dist,
+        h_link.membership, cluster.id AS cluster
+        FROM (SELECT oid, id FROM basic JOIN ident ON oidref = oid WHERE
+        CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',{0},{1},0.000556))=1 ) AS cluster, basic
+        JOIN h_link ON basic.oid = h_link.parent WHERE h_link.child = cluster.oid ORDER BY dist ASC;
+        """.format(row.raMean, row.decMean)
+        result = tap_simbad.search(query)
+        tap_pandas = result.to_table().to_pandas().reset_index(drop=True)
+        if ((not tap_pandas.empty) and (tap_pandas.loc[0, 'membership'] > 50)):
+            if verbose:
+                print("Warning! Host of %s is the hierarchical child of another object in Simbad, choosing parent as host instead..." % row.TransientName)
+            tap_pandas.drop_duplicates(subset=['main_id'], inplace=True)
+
+            # query PS1 for correct host
+            a = ps1cone(tap_pandas.loc[0, 'ra'], tap_pandas.loc[0, 'dec'], 10./3600)
+            if a:
+                a = ascii.read(a)
+                a = a.to_pandas()
+                parent = a.iloc[[0]]
+                parent['TransientName'] = row.TransientName
+                parent['TransientClass'] = row.TransientClass
+                parent['TransientRA'] = row.TransientRA
+                parent['TransientDEC'] = row.TransientDEC
+                parent = getNEDInfo(parent)
+                HierarchicalHostedSNe.append(row.TransientName)
+                parents.append(parent)
+    if len(parents)>0:
+        parentDF = pd.concat(parents)
+    else:
+        parentDF = pd.DataFrame({})
+    finalHosts_traditional = host_DF.loc[~host_DF['TransientName'].isin(HierarchicalHostedSNe)]
+    host_DF = pd.concat([finalHosts_traditional, parentDF], ignore_index=True)
+    return host_DF
+
 def getDBHostFromTransientCoords(transientCoords, GHOSTpath=''):
     """Gets the host of a GHOST transient by position.
 
@@ -233,7 +284,7 @@ def getDBHostFromTransientCoords(transientCoords, GHOSTpath=''):
         if len(smallTable) < 1:
             notFound.append(transientCoord)
             continue
-        c2 = SkyCoord(smallTable['TransientRA']*u.deg, smallTable['TransientDEC']*u.deg, frame='icrs')
+        c2 = SkyCoord(smallTable['TransientRA'].values*u.deg, smallTable['TransientDEC'].values*u.deg, frame='icrs')
         sep = np.array(transientCoord.separation(c2).arcsec)
         if np.nanmin(sep) <= 1:
             host_idx = np.where(sep == np.nanmin(sep))[0][0]
@@ -703,7 +754,7 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
     #new low-z method (beta) - before we do anything else, find and associate with GLADE
     fn_glade = "gladeDLR.txt"
-    foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, snDF, todo="r")
+    foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, snDF, verbose=verbose, todo="r")
 
     #open transients df and drop the transients already found in GLADE. We'll add these back in at the end
     snDF = snDF[snDF['Name'].isin(noGladeHosts)]
@@ -872,6 +923,8 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
         with open(path+"/dictionaries/" + "Final_Dictionary.p", 'wb') as fp:
                dump(final_dict, fp)
+
+    host_DF = checkSimbadHierarchy(host_DF, verbose=verbose)
 
     #a few final cleaning steps
     host_DF.drop_duplicates(subset=['TransientName'], inplace=True)
