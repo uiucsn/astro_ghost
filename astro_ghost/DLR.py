@@ -418,6 +418,8 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r'):
         result = Vizier.query_region(SkyCoord(ra=ra_SN, dec=dec_SN,unit=(u.deg, u.deg),frame='icrs'),radius=Angle(1.0, "deg"), catalog=["VII/275/glade1"])
         if result:
             hosts = result[0].to_pandas()
+        else:
+            hosts = pd.DataFrame({'a_b':[np.nan], 'maj':[np.nan], 'min':[np.nan]})
         
         #NEW (06/14) - query NED for GLADE sources and get their radius
         GLADE_rad = hosts.dropna(subset=['a_b', 'maj', 'min'])
