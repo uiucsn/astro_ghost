@@ -421,7 +421,7 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r'):
         else:
             hosts = pd.DataFrame({'a_b':[np.nan], 'maj':[np.nan], 'min':[np.nan]})
         
-        #NEW (06/14) - query NED for GLADE sources and get their radius
+        # query NED for GLADE sources and get their radius
         GLADE_rad = hosts.dropna(subset=['a_b', 'maj', 'min'])
         GLADE_norad = hosts[~hosts.index.isin(GLADE_rad.index)]
 
