@@ -233,9 +233,14 @@ def checkSimbadHierarchy(df, verbose=False):
         result = tap_simbad.search(query)
         tap_pandas = result.to_table().to_pandas().reset_index(drop=True)
         if ((not tap_pandas.empty) and (tap_pandas.loc[0, 'membership'] > 50)):
+            tap_pandas.drop_duplicates(subset=['main_id'], inplace=True)
+            tap_pandas.reset_index(drop=True, inplace=True)
+ 
+            if tap_pandas['main_id'].values[0].startswith("VIRTUAL PARENT"):
+                continue
+
             if verbose:
                 print("Warning! Host of %s is the hierarchical child of another object in Simbad, choosing parent as host instead..." % row.TransientName)
-            tap_pandas.drop_duplicates(subset=['main_id'], inplace=True)
 
             # query PS1 for correct host
             a = ps1cone(tap_pandas.loc[0, 'ra'], tap_pandas.loc[0, 'dec'], 10./3600)
