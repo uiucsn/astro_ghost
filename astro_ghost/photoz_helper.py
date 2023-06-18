@@ -100,13 +100,13 @@ def ps1objIDsearch(objID,table="mean",release="dr1",format="csv",columns=None,
     urls = []
     datas = []
     for i in range(len(objID)):
-        url, data = ps1search(table=table,release=release,format=format,columns=columns,
+        data = ps1search(table=table,release=release,format=format,columns=columns,
                     baseurl=baseurl, verbose=verbose, **data_list[i])
 
-        urls.append(url)
+        #urls.append(url)
         datas.append(data)
 
-    return urls, datas
+    return datas
 
 def fetch_information_serially(url, data, verbose=False, format='csv'):
     """A helper function called by serial_objID_search-- Queries PanStarrs API for data.
@@ -202,8 +202,8 @@ def serial_objID_search(objIDs,table='forced_mean',release='dr2',columns=None,ve
     """
 
     constrains=constraints.copy()
-    URLS, DATAS = ps1objIDsearch(objID=objIDs,table='forced_mean',release=release,columns=columns,verbose=verbose,**constraints)
-    Return = fetch_information_serially(URLS,DATAS)
+    Return = ps1objIDsearch(objID=objIDs,table='forced_mean',release=release,columns=columns,verbose=verbose,**constraints)
+    #Return = fetch_information_serially(URLS,DATAS)
     DFs=[]
     for i in range(len(Return)):
         DFs.append(post_url_serial(Return[i],i))
@@ -358,6 +358,7 @@ def load_lupton_model(model_path):
         return model
     mymodel = model()
     mymodel.load_weights(model_path)
+    
 
     NB_BINS = 360
     ZMIN = 0.0
@@ -386,7 +387,7 @@ def evaluate(X,mymodel,range_z):
     :rtype: numpy ndarray shape of (df.shape[0],)
     """
 
-    posteriors = mymodel(X,training=False).numpy()
+    posteriors = mymodel.predict(X)
     point_estimates = np.sum(posteriors*range_z,axis=1)
     for i in range(len(posteriors)):
         posteriors[i,:] /= np.sum(posteriors[i,:])
