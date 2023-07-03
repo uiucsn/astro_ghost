@@ -232,6 +232,7 @@ def checkSimbadHierarchy(df, verbose=False):
         """.format(row.raMean, row.decMean)
         result = tap_simbad.search(query)
         tap_pandas = result.to_table().to_pandas().reset_index(drop=True)
+        tap_pandas.dropna(subset=['membership'], inplace=True)
         if ((not tap_pandas.empty) and (tap_pandas.loc[0, 'membership'] > 50)):
             tap_pandas.drop_duplicates(subset=['main_id'], inplace=True)
             tap_pandas.reset_index(drop=True, inplace=True)
@@ -610,7 +611,7 @@ def fullData(GHOSTpath=''):
     fullTable = pd.read_csv(GHOSTpath+"/database/GHOST.csv")
     return fullTable
 
-def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=False, starcut='normal', ascentMatch=False, px=800, savepath='./', GHOSTpath='', redo_search=True):
+def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=False, starcut='normal', ascentMatch=False, GLADE=True, px=800, savepath='./', GHOSTpath='', redo_search=True):
     """The wrapper function for the main host association pipeline. The function first
        searches the pre-existing GHOST database by transient name, then by transient coordinates, and finally
        associates the remaining transients not found.
@@ -684,7 +685,7 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
             snCoord_remaining = df_transients_remaining['snCoord'].values
             snClass_remaining = df_transients_remaining['snClass'].values
 
-            tempHost3 = findNewHosts(transientName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath)
+            tempHost3 = findNewHosts(transientName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath, GLADE=GLADE)
 
             if (len(transientName_remaining) > 0) and (len(tempHost3)==0) and (redo_search):
                  #bump up the search radius to 150 arcsec for extremely low-redshift hosts...
@@ -698,7 +699,7 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
         print("%i transients found by name, %i transients found by coordinates, %i transients manually associated."% (found_by_name, found_by_coord, found_by_manual))
     return hostDB
 
-def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle', ascentMatch=False, px=800, savepath='./', rad=60):
+def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle', ascentMatch=False, px=800, savepath='./', rad=60, GLADE=True):
     """Associates hosts of transients not in the GHOST database.
 
     :param transientName: List of transients to associate.
@@ -758,19 +759,25 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
     snDF.to_csv(path+fn_transients, index=False)
 
     #new low-z method (beta) - before we do anything else, find and associate with GLADE
-    fn_glade = "gladeDLR.txt"
-    foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, snDF, verbose=verbose, todo="r")
+    if GLADE: 
+        fn_glade = "gladeDLR.txt"
+        foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, snDF, verbose=verbose, todo="r")
 
-    #open transients df and drop the transients already found in GLADE. We'll add these back in at the end
-    snDF = snDF[snDF['Name'].isin(noGladeHosts)]
-    fn_transients_preGLADE = fn_transients
-    fn_transients = 'transients_%s_postGlade.csv' % dateStr
-    snDF.to_csv(path+fn_transients, index=False)
+        #open transients df and drop the transients already found in GLADE. We'll add these back in at the end
+        snDF = snDF[snDF['Name'].isin(noGladeHosts)]
+        fn_transients_preGLADE = fn_transients
+        fn_transients = 'transients_%s_postGlade.csv' % dateStr
+        snDF.to_csv(path+fn_transients, index=False)
+
+    else: 
+        foundGladeHosts = []
+        noGladeHosts = snDF['Name'].values
+        fn_transients_preGLADE = fn_transients
 
     if len(noGladeHosts) < 1:
         #just return the GLADE df!
         foundGladeHosts['GLADE_source'] = True
-        host_DF = foundGladeHosts
+        host_DF = foundGladeHosts 
     else:
         #begin doing the heavy lifting after GLADE to associate transients with hosts
         host_DF = get_hosts(path, fn_transients, fn_host, rad)
@@ -920,8 +927,21 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
             host_DF['GLADE_source'] = False
             foundGladeHosts['GLADE_source'] = True
 
-            #kluge for lookup later
-            foundGladeHosts['objID'] = foundGladeHosts['objName'] = foundGladeHosts['NED_name']
+            #get PS1 photometry for GLADE sources by crossmatching
+            ps1matches = []
+            for idx, row in foundGladeHosts.iterrows():
+                a = ps1cone(row.raMean, row.decMean, 10./3600)
+                if a:
+                    a = ascii.read(a)
+                    a = a.to_pandas()
+                    ps1match = a.iloc[[0]] 
+                    #get rid of coord info - GLADE properties are better!
+                    ps1match.drop(['raMean', 'decMean'], axis=1, inplace=True)
+                    foundGladeHosts.loc[foundGladeHosts.index == idx, 'objID'] = ps1match['objID'].values[0]
+                    ps1matches.append(ps1match)
+            ps1matches = pd.concat(ps1matches)
+            foundGladeHosts = foundGladeHosts.merge(ps1matches, on=['objID'])
+
 
             #combine
             host_DF = pd.concat([host_DF, foundGladeHosts], ignore_index=True)
@@ -932,6 +952,9 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
     host_DF = checkSimbadHierarchy(host_DF, verbose=verbose)
 
     #a few final cleaning steps
+    #first, add back in some features 
+    host_DF = getColors(host_DF)
+    host_DF = calc_7DCD(host_DF)
     host_DF.drop_duplicates(subset=['TransientName'], inplace=True)
     host_DF = host_DF[host_DF['TransientName'] != ""]
     host_DF.reset_index(inplace=True, drop=True)

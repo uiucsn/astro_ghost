@@ -415,7 +415,7 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r'):
         #query the glade catalog
         Vizier.ROW_LIMIT = -1
         Vizier.TIMEOUT = 500
-        result = Vizier.query_region(SkyCoord(ra=ra_SN, dec=dec_SN,unit=(u.deg, u.deg),frame='icrs'),radius=Angle(1.0, "deg"), catalog=["VII/275/glade1"])
+        result = Vizier.query_region(SkyCoord(ra=ra_SN, dec=dec_SN,unit=(u.deg, u.deg),frame='icrs'),radius=Angle(0.2, "deg"), catalog=["VII/275/glade1"])
         if result:
             hosts = result[0].to_pandas()
         else:
@@ -444,7 +444,8 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r'):
 
         #recombine
         if verbose:
-            print("No NED radius found for %i GLADE galaxies."%badRadCount)
+            print("No NED radius found for %i GLADE galaxies."%badRadCount, file=f)
+
         hosts = pd.concat([GLADE_rad, GLADE_norad], ignore_index=True)
 
         hosts.dropna(subset=['a_b', 'maj', 'min'], inplace=True)
