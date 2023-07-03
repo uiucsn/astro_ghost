@@ -953,8 +953,12 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
     #a few final cleaning steps
     #first, add back in some features 
-    host_DF = getColors(host_DF)
-    host_DF = calc_7DCD(host_DF)
+    host_DF_north = host_DF[host_DF['decMean']>-30].reset_index(drop=True)
+    host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index(drop=True)
+    if len(host_DF_north)>0: 
+        host_DF_north = getColors(host_DF_north)
+        host_DF_north = calc_7DCD(host_DF_north)
+    host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
     host_DF.drop_duplicates(subset=['TransientName'], inplace=True)
     host_DF = host_DF[host_DF['TransientName'] != ""]
     host_DF.reset_index(inplace=True, drop=True)
