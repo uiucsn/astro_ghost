@@ -172,7 +172,6 @@ def getColors(df):
     df["g-r"]= df["gApMag"] - df["rApMag"]
     df["r-i"]= df["rApMag"] - df["iApMag"]
     df["i-z"] = df["iApMag"] - df["zApMag"]
-#    df["g-i"] = df["gApMag"] - df["iApMag"]
     df["z-y"] = df["zApMag"] - df["yApMag"]
 
     df['g-rErr'] = np.sqrt(df['gApMagErr']**2 + df['rApMagErr']**2)
