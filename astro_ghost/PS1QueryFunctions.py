@@ -43,7 +43,7 @@ if "CASJOBS_USERID" not in os.environ:
     os.environ['CASJOBS_USERID'] = 'ghostbot'
     os.environ['CASJOBS_PW'] = 'ghostbot'
 
-def create_dummy_df(fullDF=False):
+def create_dummy_df(nRows=1, fullDF=False):
     """Creates a dummy PS1 dataframe (useful for running scripts when no sources found).
 
     :param fullDF: If True, the dummy DataFrame replaces the full GHOST database.
@@ -167,12 +167,11 @@ def ps1crossmatch_GLADE(foundGladeHosts):
             foundGladeHosts.loc[foundGladeHosts.index == idx, 'objID'] = ps1match['objID'].values[0]
             ps1matches.append(ps1match)
     if len(ps1matches) > 0:
-        ps1matches = pd.concat(ps1matches)
+        ps1matches = pd.concat(ps1matches, ignore_index=True)
     else:
         print("Warning! Found no ps1 sources for GLADE galaxies.")
-        ps1matches = create_dummy_df()
-        ps1matches['objID'] = foundGladeHosts['objID']
-    foundGladeHosts = foundGladeHosts.merge(ps1matches, on=['objID'])
+        ps1matches = create_dummy_df(nRows=len(foundGladeHosts))
+    foundGladeHosts = foundGladeHosts.merge(ps1matches, how = 'outer')
     return foundGladeHosts
 
 def get_hosts(path, transient_fn, fn_Host, rad):
