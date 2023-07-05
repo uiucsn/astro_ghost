@@ -169,7 +169,8 @@ def checkSimbadHierarchy(df, verbose=False):
             tap_pandas.drop_duplicates(subset=['main_id'], inplace=True)
             tap_pandas.reset_index(drop=True, inplace=True)
 
-            if tap_pandas['main_id'].values[0].startswith("VIRTUAL PARENT"):
+            if (tap_pandas['main_id'].values[0].startswith("VIRTUAL PARENT")) or (tap_pandas['main_id'].values[0].startswith("NAME"))\
+                or (tap_pandas['main_id'].values[0].endswith("GROUP")):
                 continue
 
             if verbose:
