@@ -29,7 +29,7 @@ from astropy.table import Table
 from pyvo.dal import sia
 import pickle
 from io import BytesIO
-from ghostHelperFunctions import create_dummy_df
+from astro_ghost.ghostHelperFunctions import create_dummy_df
 from astropy.coordinates import SkyCoord
 from astroquery.vo_conesearch import ConeSearch
 from astroquery.vo_conesearch import vos_catalog
