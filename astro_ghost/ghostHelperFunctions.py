@@ -63,6 +63,29 @@ def cleanup(path):
             fn = remove_prefix(t, path)
             os.rename(t, tablePath+fn)
 
+def ps1crossmatch_GLADE(foundGladeHosts):
+    """Gets PS1 photometry for GLADE sources by crossmatching
+
+    :param foundGladeHosts: DataFrame of Glade sources to cross-match in ps1
+    :type foundGladeHosts: Pandas DataFrame
+    """
+    ps1matches = []
+    for idx, row in foundGladeHosts.iterrows():
+        a = ps1cone(row.raMean, row.decMean, 10./3600)
+        if a:
+            a = ascii.read(a)
+            a = a.to_pandas()
+            ps1match = a.iloc[[0]]
+            #get rid of coord info - GLADE properties are better!
+            ps1match.drop(['raMean', 'decMean'], axis=1, inplace=True)
+            foundGladeHosts.loc[foundGladeHosts.index == idx, 'objID'] = ps1match['objID'].values[0]
+            ps1matches.append(ps1match)
+    ps1matches = pd.concat(ps1matches)
+    foundGladeHosts = foundGladeHosts.merge(ps1matches, on=['objID'])
+    if len(ps1matches) < 1:
+        print("Warning! Found no ps1 sources for GLADE galaxies.")
+    return foundGladeHosts
+
 def getGHOST(real=False, verbose=False, installpath='', clobber=False):
     """Downloads the GHOST database.
 
@@ -236,7 +259,7 @@ def checkSimbadHierarchy(df, verbose=False):
         if ((not tap_pandas.empty) and (tap_pandas.loc[0, 'membership'] > 50)):
             tap_pandas.drop_duplicates(subset=['main_id'], inplace=True)
             tap_pandas.reset_index(drop=True, inplace=True)
- 
+
             if tap_pandas['main_id'].values[0].startswith("VIRTUAL PARENT"):
                 continue
 
@@ -759,7 +782,7 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
     snDF.to_csv(path+fn_transients, index=False)
 
     #new low-z method (beta) - before we do anything else, find and associate with GLADE
-    if GLADE: 
+    if GLADE:
         fn_glade = "gladeDLR.txt"
         foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, snDF, verbose=verbose, todo="r")
 
@@ -769,7 +792,7 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
         fn_transients = 'transients_%s_postGlade.csv' % dateStr
         snDF.to_csv(path+fn_transients, index=False)
 
-    else: 
+    else:
         foundGladeHosts = []
         noGladeHosts = snDF['Name'].values
         fn_transients_preGLADE = fn_transients
@@ -777,7 +800,8 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
     if len(noGladeHosts) < 1:
         #just return the GLADE df!
         foundGladeHosts['GLADE_source'] = True
-        host_DF = foundGladeHosts 
+        foundGladeHosts = ps1crossmatch_GLADE(foundGladeHosts)
+        host_DF = foundGladeHosts
     else:
         #begin doing the heavy lifting after GLADE to associate transients with hosts
         host_DF = get_hosts(path, fn_transients, fn_host, rad)
@@ -927,21 +951,7 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
             host_DF['GLADE_source'] = False
             foundGladeHosts['GLADE_source'] = True
 
-            #get PS1 photometry for GLADE sources by crossmatching
-            ps1matches = []
-            for idx, row in foundGladeHosts.iterrows():
-                a = ps1cone(row.raMean, row.decMean, 10./3600)
-                if a:
-                    a = ascii.read(a)
-                    a = a.to_pandas()
-                    ps1match = a.iloc[[0]] 
-                    #get rid of coord info - GLADE properties are better!
-                    ps1match.drop(['raMean', 'decMean'], axis=1, inplace=True)
-                    foundGladeHosts.loc[foundGladeHosts.index == idx, 'objID'] = ps1match['objID'].values[0]
-                    ps1matches.append(ps1match)
-            ps1matches = pd.concat(ps1matches)
-            foundGladeHosts = foundGladeHosts.merge(ps1matches, on=['objID'])
-
+            foundGladeHosts = ps1crossmatch_GLADE(foundGladeHosts)
 
             #combine
             host_DF = pd.concat([host_DF, foundGladeHosts], ignore_index=True)
@@ -952,10 +962,10 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
     host_DF = checkSimbadHierarchy(host_DF, verbose=verbose)
 
     #a few final cleaning steps
-    #first, add back in some features 
+    #first, add back in some features
     host_DF_north = host_DF[host_DF['decMean']>-30].reset_index(drop=True)
     host_DF_south = host_DF[host_DF['decMean']<=-30].reset_index(drop=True)
-    if len(host_DF_north)>0: 
+    if len(host_DF_north)>0:
         host_DF_north = getColors(host_DF_north)
         host_DF_north = calc_7DCD(host_DF_north)
     host_DF = pd.concat([host_DF_north, host_DF_south], ignore_index=True)
