@@ -72,6 +72,32 @@ def getAllPostageStamps(df, tempSize, path=".", verbose=False):
                 except:
                     continue
 
+def ps1crossmatch_GLADE(foundGladeHosts):
+    """Gets PS1 photometry for GLADE sources by crossmatching.
+
+    :param foundGladeHosts: DataFrame of Glade sources to cross-match in ps1
+    :type foundGladeHosts: Pandas DataFrame
+    """
+    ps1matches = []
+    for idx, row in foundGladeHosts.iterrows():
+        a = ps1cone(row.raMean, row.decMean, 10./3600)
+        if a:
+            a = ascii.read(a)
+            a = a.to_pandas()
+            ps1match = a.iloc[[0]]
+            #get rid of coord info - GLADE properties are better!
+            ps1match.drop(['raMean', 'decMean'], axis=1, inplace=True)
+            foundGladeHosts.loc[foundGladeHosts.index == idx, 'objID'] = ps1match['objID'].values[0]
+            ps1matches.append(ps1match)
+    if len(ps1matches) > 0:
+        ps1matches = pd.concat(ps1matches)
+    else:
+        print("Warning! Found no ps1 sources for GLADE galaxies.")
+        ps1matches = create_dummy_df()
+        ps1matches['objID'] = foundGladeHosts['objID']
+    foundGladeHosts = foundGladeHosts.merge(ps1matches, on=['objID'])
+    return foundGladeHosts
+
 def get_hosts(path, transient_fn, fn_Host, rad):
     """Wrapper function for getting candidate host galaxies in PS1 for dec>-30 deg and
        in Skymapper for dec<-30 deg.

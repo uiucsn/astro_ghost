@@ -63,28 +63,83 @@ def cleanup(path):
             fn = remove_prefix(t, path)
             os.rename(t, tablePath+fn)
 
-def ps1crossmatch_GLADE(foundGladeHosts):
-    """Gets PS1 photometry for GLADE sources by crossmatching
+def create_dummy_df(fullDF=False):
+    """Creates a dummy PS1 dataframe (useful for running scripts when no sources found).
 
-    :param foundGladeHosts: DataFrame of Glade sources to cross-match in ps1
-    :type foundGladeHosts: Pandas DataFrame
+    :param fullDF: If True, the dummy DataFrame replaces the full GHOST database.
+    :dtype fullDF: Boolean
+    :return: Empty Pandas DataFrame with PS1 columns.
+    :rtype: Pandas DataFrame
     """
-    ps1matches = []
-    for idx, row in foundGladeHosts.iterrows():
-        a = ps1cone(row.raMean, row.decMean, 10./3600)
-        if a:
-            a = ascii.read(a)
-            a = a.to_pandas()
-            ps1match = a.iloc[[0]]
-            #get rid of coord info - GLADE properties are better!
-            ps1match.drop(['raMean', 'decMean'], axis=1, inplace=True)
-            foundGladeHosts.loc[foundGladeHosts.index == idx, 'objID'] = ps1match['objID'].values[0]
-            ps1matches.append(ps1match)
-    ps1matches = pd.concat(ps1matches)
-    foundGladeHosts = foundGladeHosts.merge(ps1matches, on=['objID'])
-    if len(ps1matches) < 1:
-        print("Warning! Found no ps1 sources for GLADE galaxies.")
-    return foundGladeHosts
+    colnames = ['objName', 'objAltName1', 'objAltName2', 'objAltName3', 'objID',
+        'uniquePspsOBid', 'ippObjID', 'surveyID', 'htmID', 'zoneID',
+        'tessID', 'projectionID', 'skyCellID', 'randomID', 'batchID',
+        'dvoRegionID', 'processingVersion', 'objInfoFlag', 'qualityFlag',
+        'raStack', 'decStack', 'raStackErr', 'decStackErr', 'raMean',
+        'decMean', 'raMeanErr', 'decMeanErr', 'epochMean', 'posMeanChisq',
+        'cx', 'cy', 'cz', 'lambda', 'beta', 'l', 'b', 'nStackObjectRows',
+        'nStackDetections', 'nDetections', 'ng', 'nr', 'ni', 'nz', 'ny',
+        'uniquePspsSTid', 'primaryDetection', 'bestDetection',
+        'gippDetectID', 'gstackDetectID', 'gstackImageID', 'gra', 'gdec',
+        'graErr', 'gdecErr', 'gEpoch', 'gPSFMag', 'gPSFMagErr', 'gApMag',
+        'gApMagErr', 'gKronMag', 'gKronMagErr', 'ginfoFlag', 'ginfoFlag2',
+        'ginfoFlag3', 'gnFrames', 'gxPos', 'gyPos', 'gxPosErr', 'gyPosErr',
+        'gpsfMajorFWHM', 'gpsfMinorFWHM', 'gpsfTheta', 'gpsfCore',
+        'gpsfLikelihood', 'gpsfQf', 'gpsfQfPerfect', 'gpsfChiSq',
+        'gmomentXX', 'gmomentXY', 'gmomentYY', 'gmomentR1', 'gmomentRH',
+        'gPSFFlux', 'gPSFFluxErr', 'gApFlux', 'gApFluxErr', 'gApFillFac',
+        'gApRadius', 'gKronFlux', 'gKronFluxErr', 'gKronRad', 'gexpTime',
+        'gExtNSigma', 'gsky', 'gskyErr', 'gzp', 'gPlateScale',
+        'rippDetectID', 'rstackDetectID', 'rstackImageID', 'rra', 'rdec',
+        'rraErr', 'rdecErr', 'rEpoch', 'rPSFMag', 'rPSFMagErr', 'rApMag',
+        'rApMagErr', 'rKronMag', 'rKronMagErr', 'rinfoFlag', 'rinfoFlag2',
+        'rinfoFlag3', 'rnFrames', 'rxPos', 'ryPos', 'rxPosErr', 'ryPosErr',
+        'rpsfMajorFWHM', 'rpsfMinorFWHM', 'rpsfTheta', 'rpsfCore',
+        'rpsfLikelihood', 'rpsfQf', 'rpsfQfPerfect', 'rpsfChiSq',
+        'rmomentXX', 'rmomentXY', 'rmomentYY', 'rmomentR1', 'rmomentRH',
+        'rPSFFlux', 'rPSFFluxErr', 'rApFlux', 'rApFluxErr', 'rApFillFac',
+        'rApRadius', 'rKronFlux', 'rKronFluxErr', 'rKronRad', 'rexpTime',
+        'rExtNSigma', 'rsky', 'rskyErr', 'rzp', 'rPlateScale',
+        'iippDetectID', 'istackDetectID', 'istackImageID', 'ira', 'idec',
+        'iraErr', 'idecErr', 'iEpoch', 'iPSFMag', 'iPSFMagErr', 'iApMag',
+        'iApMagErr', 'iKronMag', 'iKronMagErr', 'iinfoFlag', 'iinfoFlag2',
+        'iinfoFlag3', 'inFrames', 'ixPos', 'iyPos', 'ixPosErr', 'iyPosErr',
+        'ipsfMajorFWHM', 'ipsfMinorFWHM', 'ipsfTheta', 'ipsfCore',
+        'ipsfLikelihood', 'ipsfQf', 'ipsfQfPerfect', 'ipsfChiSq',
+        'imomentXX', 'imomentXY', 'imomentYY', 'imomentR1', 'imomentRH',
+        'iPSFFlux', 'iPSFFluxErr', 'iApFlux', 'iApFluxErr', 'iApFillFac',
+        'iApRadius', 'iKronFlux', 'iKronFluxErr', 'iKronRad', 'iexpTime',
+        'iExtNSigma', 'isky', 'iskyErr', 'izp', 'iPlateScale',
+        'zippDetectID', 'zstackDetectID', 'zstackImageID', 'zra', 'zdec',
+        'zraErr', 'zdecErr', 'zEpoch', 'zPSFMag', 'zPSFMagErr', 'zApMag',
+        'zApMagErr', 'zKronMag', 'zKronMagErr', 'zinfoFlag', 'zinfoFlag2',
+        'zinfoFlag3', 'znFrames', 'zxPos', 'zyPos', 'zxPosErr', 'zyPosErr',
+        'zpsfMajorFWHM', 'zpsfMinorFWHM', 'zpsfTheta', 'zpsfCore',
+        'zpsfLikelihood', 'zpsfQf', 'zpsfQfPerfect', 'zpsfChiSq',
+        'zmomentXX', 'zmomentXY', 'zmomentYY', 'zmomentR1', 'zmomentRH',
+        'zPSFFlux', 'zPSFFluxErr', 'zApFlux', 'zApFluxErr', 'zApFillFac',
+        'zApRadius', 'zKronFlux', 'zKronFluxErr', 'zKronRad', 'zexpTime',
+        'zExtNSigma', 'zsky', 'zskyErr', 'zzp', 'zPlateScale',
+        'yippDetectID', 'ystackDetectID', 'ystackImageID', 'yra', 'ydec',
+        'yraErr', 'ydecErr', 'yEpoch', 'yPSFMag', 'yPSFMagErr', 'yApMag',
+        'yApMagErr', 'yKronMag', 'yKronMagErr', 'yinfoFlag', 'yinfoFlag2',
+        'yinfoFlag3', 'ynFrames', 'yxPos', 'yyPos', 'yxPosErr', 'yyPosErr',
+        'ypsfMajorFWHM', 'ypsfMinorFWHM', 'ypsfTheta', 'ypsfCore',
+        'ypsfLikelihood', 'ypsfQf', 'ypsfQfPerfect', 'ypsfChiSq',
+        'ymomentXX', 'ymomentXY', 'ymomentYY', 'ymomentR1', 'ymomentRH',
+        'yPSFFlux', 'yPSFFluxErr', 'yApFlux', 'yApFluxErr', 'yApFillFac',
+        'yApRadius', 'yKronFlux', 'yKronFluxErr', 'yKronRad', 'yexpTime',
+        'yExtNSigma', 'ysky', 'yskyErr', 'yzp', 'yPlateScale', 'distance']
+
+    if fullDF:
+        colnames = np.concatenate([colnames, ['NED_name', 'NED_type', 'NED_vel', 'NED_redshift', 'NED_mag',
+    'i-z', 'g-r', 'r-i', 'g-i', 'z-y', 'g-rErr', 'r-iErr', 'i-zErr',
+    'z-yErr', 'gApMag_gKronMag', 'rApMag_rKronMag', 'iApMag_iKronMag',
+    'zApMag_zKronMag', 'yApMag_yKronMag', '7DCD', 'class', 'dist/DLR',
+    'dist', 'TransientClass', 'TransientRA', 'TransientDEC',
+    'TransientRedshift', 'TransientName']])
+    df = pd.DataFrame(columns = colnames)
+    return df
 
 def getGHOST(real=False, verbose=False, installpath='', clobber=False):
     """Downloads the GHOST database.
@@ -123,75 +178,7 @@ def getGHOST(real=False, verbose=False, installpath='', clobber=False):
             print("Successfully downloaded GHOST database.\n")
     else:
         #create dummy database
-        colnames = ['objName', 'objAltName1', 'objAltName2', 'objAltName3', 'objID',
-            'uniquePspsOBid', 'ippObjID', 'surveyID', 'htmID', 'zoneID',
-            'tessID', 'projectionID', 'skyCellID', 'randomID', 'batchID',
-            'dvoRegionID', 'processingVersion', 'objInfoFlag', 'qualityFlag',
-            'raStack', 'decStack', 'raStackErr', 'decStackErr', 'raMean',
-            'decMean', 'raMeanErr', 'decMeanErr', 'epochMean', 'posMeanChisq',
-            'cx', 'cy', 'cz', 'lambda', 'beta', 'l', 'b', 'nStackObjectRows',
-            'nStackDetections', 'nDetections', 'ng', 'nr', 'ni', 'nz', 'ny',
-            'uniquePspsSTid', 'primaryDetection', 'bestDetection',
-            'gippDetectID', 'gstackDetectID', 'gstackImageID', 'gra', 'gdec',
-            'graErr', 'gdecErr', 'gEpoch', 'gPSFMag', 'gPSFMagErr', 'gApMag',
-            'gApMagErr', 'gKronMag', 'gKronMagErr', 'ginfoFlag', 'ginfoFlag2',
-            'ginfoFlag3', 'gnFrames', 'gxPos', 'gyPos', 'gxPosErr', 'gyPosErr',
-            'gpsfMajorFWHM', 'gpsfMinorFWHM', 'gpsfTheta', 'gpsfCore',
-            'gpsfLikelihood', 'gpsfQf', 'gpsfQfPerfect', 'gpsfChiSq',
-            'gmomentXX', 'gmomentXY', 'gmomentYY', 'gmomentR1', 'gmomentRH',
-            'gPSFFlux', 'gPSFFluxErr', 'gApFlux', 'gApFluxErr', 'gApFillFac',
-            'gApRadius', 'gKronFlux', 'gKronFluxErr', 'gKronRad', 'gexpTime',
-            'gExtNSigma', 'gsky', 'gskyErr', 'gzp', 'gPlateScale',
-            'rippDetectID', 'rstackDetectID', 'rstackImageID', 'rra', 'rdec',
-            'rraErr', 'rdecErr', 'rEpoch', 'rPSFMag', 'rPSFMagErr', 'rApMag',
-            'rApMagErr', 'rKronMag', 'rKronMagErr', 'rinfoFlag', 'rinfoFlag2',
-            'rinfoFlag3', 'rnFrames', 'rxPos', 'ryPos', 'rxPosErr', 'ryPosErr',
-            'rpsfMajorFWHM', 'rpsfMinorFWHM', 'rpsfTheta', 'rpsfCore',
-            'rpsfLikelihood', 'rpsfQf', 'rpsfQfPerfect', 'rpsfChiSq',
-            'rmomentXX', 'rmomentXY', 'rmomentYY', 'rmomentR1', 'rmomentRH',
-            'rPSFFlux', 'rPSFFluxErr', 'rApFlux', 'rApFluxErr', 'rApFillFac',
-            'rApRadius', 'rKronFlux', 'rKronFluxErr', 'rKronRad', 'rexpTime',
-            'rExtNSigma', 'rsky', 'rskyErr', 'rzp', 'rPlateScale',
-            'iippDetectID', 'istackDetectID', 'istackImageID', 'ira', 'idec',
-            'iraErr', 'idecErr', 'iEpoch', 'iPSFMag', 'iPSFMagErr', 'iApMag',
-            'iApMagErr', 'iKronMag', 'iKronMagErr', 'iinfoFlag', 'iinfoFlag2',
-            'iinfoFlag3', 'inFrames', 'ixPos', 'iyPos', 'ixPosErr', 'iyPosErr',
-            'ipsfMajorFWHM', 'ipsfMinorFWHM', 'ipsfTheta', 'ipsfCore',
-            'ipsfLikelihood', 'ipsfQf', 'ipsfQfPerfect', 'ipsfChiSq',
-            'imomentXX', 'imomentXY', 'imomentYY', 'imomentR1', 'imomentRH',
-            'iPSFFlux', 'iPSFFluxErr', 'iApFlux', 'iApFluxErr', 'iApFillFac',
-            'iApRadius', 'iKronFlux', 'iKronFluxErr', 'iKronRad', 'iexpTime',
-            'iExtNSigma', 'isky', 'iskyErr', 'izp', 'iPlateScale',
-            'zippDetectID', 'zstackDetectID', 'zstackImageID', 'zra', 'zdec',
-            'zraErr', 'zdecErr', 'zEpoch', 'zPSFMag', 'zPSFMagErr', 'zApMag',
-            'zApMagErr', 'zKronMag', 'zKronMagErr', 'zinfoFlag', 'zinfoFlag2',
-            'zinfoFlag3', 'znFrames', 'zxPos', 'zyPos', 'zxPosErr', 'zyPosErr',
-            'zpsfMajorFWHM', 'zpsfMinorFWHM', 'zpsfTheta', 'zpsfCore',
-            'zpsfLikelihood', 'zpsfQf', 'zpsfQfPerfect', 'zpsfChiSq',
-            'zmomentXX', 'zmomentXY', 'zmomentYY', 'zmomentR1', 'zmomentRH',
-            'zPSFFlux', 'zPSFFluxErr', 'zApFlux', 'zApFluxErr', 'zApFillFac',
-            'zApRadius', 'zKronFlux', 'zKronFluxErr', 'zKronRad', 'zexpTime',
-            'zExtNSigma', 'zsky', 'zskyErr', 'zzp', 'zPlateScale',
-            'yippDetectID', 'ystackDetectID', 'ystackImageID', 'yra', 'ydec',
-            'yraErr', 'ydecErr', 'yEpoch', 'yPSFMag', 'yPSFMagErr', 'yApMag',
-            'yApMagErr', 'yKronMag', 'yKronMagErr', 'yinfoFlag', 'yinfoFlag2',
-            'yinfoFlag3', 'ynFrames', 'yxPos', 'yyPos', 'yxPosErr', 'yyPosErr',
-            'ypsfMajorFWHM', 'ypsfMinorFWHM', 'ypsfTheta', 'ypsfCore',
-            'ypsfLikelihood', 'ypsfQf', 'ypsfQfPerfect', 'ypsfChiSq',
-            'ymomentXX', 'ymomentXY', 'ymomentYY', 'ymomentR1', 'ymomentRH',
-            'yPSFFlux', 'yPSFFluxErr', 'yApFlux', 'yApFluxErr', 'yApFillFac',
-            'yApRadius', 'yKronFlux', 'yKronFluxErr', 'yKronRad', 'yexpTime',
-            'yExtNSigma', 'ysky', 'yskyErr', 'yzp', 'yPlateScale', 'distance',
-            'NED_name', 'NED_type', 'NED_vel', 'NED_redshift', 'NED_mag',
-            'i-z', 'g-r', 'r-i', 'g-i', 'z-y', 'g-rErr', 'r-iErr', 'i-zErr',
-            'z-yErr', 'gApMag_gKronMag', 'rApMag_rKronMag', 'iApMag_iKronMag',
-            'zApMag_zKronMag', 'yApMag_yKronMag', '7DCD', 'class', 'dist/DLR',
-            'dist', 'TransientClass', 'TransientRA', 'TransientDEC',
-            'TransientDiscoveryDate', 'TransientDiscoveryMag',
-            'TransientRedshift', 'TransientDiscoveryYear', 'Transient AltName',
-            'host_logmass', 'host_logmass_min', 'host_logmass_max',
-            'Hubble Residual', 'TransientName']
-        df = pd.DataFrame(columns = colnames)
+        df = create_dummy_df(fullDF=True)
         df.to_csv(installpath + "/database/GHOST.csv",index=False)
         if verbose:
             print("Successfully created dummy database.\n")
