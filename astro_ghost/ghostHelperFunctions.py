@@ -155,6 +155,9 @@ def checkSimbadHierarchy(df, verbose=False):
         # cone search of the best-fit host in SIMBAD - if it gets it right,
         #replace the info with the parent information!
         print(row.raMean, row.decMean)
+        if np.any(np.isnan(row.raMean)) or np.any(np.isnan(row.decMean)): #EDIT: I have found NaNs in here. Skip over them.
+            print('skipping')
+            continue
         tap_simbad = pyvo.dal.TAPService("https://simbad.u-strasbg.fr/simbad/sim-tap")
         query = """SELECT main_id, otype, basic.ra, basic.dec,
         DISTANCE( POINT('ICRS', ra, dec), POINT('ICRS', {0}, {1})) AS dist,
@@ -166,6 +169,7 @@ def checkSimbadHierarchy(df, verbose=False):
         result = tap_simbad.search(query)
         tap_pandas = result.to_table().to_pandas().reset_index(drop=True)
         tap_pandas.dropna(subset=['membership'], inplace=True)
+        tap_pandas.reset_index(drop=True, inplace=True) ###EDIT: Following DropNA need to reset index for .loc([0])
         if ((not tap_pandas.empty) and (tap_pandas.loc[0, 'membership'] > 50)):
             tap_pandas.drop_duplicates(subset=['main_id'], inplace=True)
             tap_pandas.reset_index(drop=True, inplace=True)
