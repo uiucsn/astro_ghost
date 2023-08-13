@@ -156,6 +156,10 @@ def ps1crossmatch_GLADE(foundGladeHosts):
     :type foundGladeHosts: Pandas DataFrame
     """
     ps1matches = []
+ 
+    # Create dummy column of objID - we'll fill these in the loop below.
+    foundGladeHosts['objID'] = foundGladeHosts.index
+    foundGladeHosts = foundGladeHosts.astype({'objID': 'int64'})
     for idx, row in foundGladeHosts.iterrows():
         a = ps1cone(row.raMean, row.decMean, 10./3600)
         if a:
