@@ -154,7 +154,6 @@ def checkSimbadHierarchy(df, verbose=False):
     for idx, row in host_DF.iterrows():
         # cone search of the best-fit host in SIMBAD - if it gets it right,
         #replace the info with the parent information!
-        print(row.raMean, row.decMean)
         tap_simbad = pyvo.dal.TAPService("https://simbad.u-strasbg.fr/simbad/sim-tap")
         query = """SELECT main_id, otype, basic.ra, basic.dec,
         DISTANCE( POINT('ICRS', ra, dec), POINT('ICRS', {0}, {1})) AS dist,
