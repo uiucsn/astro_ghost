@@ -163,8 +163,9 @@ def checkSimbadHierarchy(df, verbose=False):
         JOIN h_link ON basic.oid = h_link.parent WHERE h_link.child = cluster.oid ORDER BY dist ASC;
         """.format(row.raMean, row.decMean)
         result = tap_simbad.search(query)
-        tap_pandas = result.to_table().to_pandas().reset_index(drop=True)
+        tap_pandas = result.to_table().to_pandas()
         tap_pandas.dropna(subset=['membership'], inplace=True)
+        tap_pandas.reset_index(drop=True, inplace=True)
         if ((not tap_pandas.empty) and (tap_pandas.loc[0, 'membership'] > 50)):
             tap_pandas.drop_duplicates(subset=['main_id'], inplace=True)
             tap_pandas.reset_index(drop=True, inplace=True)
