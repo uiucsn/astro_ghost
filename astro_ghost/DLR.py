@@ -510,7 +510,7 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r'):
 
             f.flush()
     if len(foundHostDF) > 0:
-        foundHostDF = pd.concat(foundHostDF)
+        foundHostDF = pd.concat(foundHostDF, ignore_index=True)
         # adding some relevant redshift information
         foundHostDF['GLADE_redshift'] = np.nan
         foundHostDF['GLADE_redshift_flag'] = ''
