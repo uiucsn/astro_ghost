@@ -27,7 +27,7 @@ import asyncio
 import codecs
 
 import time
-import sfdmap
+from sfdmap2 import sfdmap
 import os
 import tarfile
 

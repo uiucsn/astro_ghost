@@ -32,7 +32,6 @@ from io import BytesIO
 from astropy.coordinates import SkyCoord
 from astroquery.vo_conesearch import ConeSearch
 from astroquery.vo_conesearch import vos_catalog
-vos_catalog.list_catalogs("conesearch_good")
 from warnings import simplefilter
 
 # could absolutely be more efficient, but filter out warnings for now
