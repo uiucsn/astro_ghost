@@ -112,7 +112,7 @@ def getNEDInfo(df):
             df.loc[index, 'NED_type'] = result_df['Type'].values[0]
             df.loc[index, 'NED_vel'] = result_df['Velocity'].values[0]
             df.loc[index, 'NED_redshift'] = result_df['Redshift'].values[0]
-            df.loc[index, 'NED_mag'] = result_df['Redshift Flag'].values[0]
+            df.loc[index, 'NED_redshift_flag'] = result_df['Redshift Flag'].values[0]
 
         # if the method fails for many in a row, it's likely that too many queries have been made.
         if missingCounter > 5000:
