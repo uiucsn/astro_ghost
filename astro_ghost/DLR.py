@@ -525,17 +525,17 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r', GWGC=None):
         foundHostDF = pd.concat(foundHostDF, ignore_index=True)
         # adding some relevant redshift information
         foundHostDF['GLADE_redshift'] = np.nan
-        foundHostDF['GLADE_redshift_flag'] = ''
+        #foundHostDF['GLADE_redshift_flag'] = ''
 
         for idx, row in foundHostDF.iterrows():
             if row['Dist'] == row['Dist']:
                 dist = Distance(value=row['Dist'], unit=u.Mpc)
                 calc_z = z_at_value(cosmo.luminosity_distance, dist, zmin=1.e-5, zmax=1, method='Bounded').value
                 foundHostDF['GLADE_redshift'] = calc_z
-                if row['Flag'] <= 3:
-                    foundHostDF['GLADE_redshift_flag'] = 'SPEC'
-                else:
-                    foundHostDF['GLADE_redshift_flag'] = 'PHOT'
+                #if row['Flag'] <= 3:
+                #    foundHostDF['GLADE_redshift_flag'] = 'SPEC'
+                #else:
+                #    foundHostDF['GLADE_redshift_flag'] = 'PHOT'
         #print some relevant information to terminal
         print("Found %i hosts in GLADE! See %s for details."%(len(foundHostDF), fn))
         if todo == "s":
