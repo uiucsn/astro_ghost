@@ -1,6 +1,5 @@
 import numpy as np
 from PIL import Image
-from io import BytesIO
 import os
 import pandas as pd
 import sys
@@ -17,21 +16,20 @@ except ImportError:  # Python 2.x
     from urllib import pathname2url as urlencode
     from urllib import urlretrieve
     import httplib
-from collections import OrderedDict
+#from collections import OrderedDict
 from os import listdir
-from os.path import isfile, join
-from astropy import utils, io, convolution, wcs
+from os.path import join
+#from astropy import utils, io, convolution, wcs
 from astropy import units as u
-from astropy.visualization import make_lupton_rgb,PercentileInterval, AsinhStretch
-from astropy.coordinates import name_resolve, Angle
+#from astropy.visualization import make_lupton_rgb,PercentileInterval, AsinhStretch
+#from astropy.coordinates import name_resolve, Angle
+from astropy.coordinates import Angle
 from astropy.io import fits, ascii
 from astropy.table import Table
-from pyvo.dal import sia
+#from pyvo.dal import sia
 import pickle
 from io import BytesIO
 from astropy.coordinates import SkyCoord
-from astroquery.vo_conesearch import ConeSearch
-from astroquery.vo_conesearch import vos_catalog
 from warnings import simplefilter
 
 # could absolutely be more efficient, but filter out warnings for now
