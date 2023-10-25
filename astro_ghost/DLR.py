@@ -408,7 +408,7 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r', GWGC=None):
     foundHostDF = []
     noGladeHosts = []
 
-    if GWGC:
+    if GWGC is not None:
         GWGC_coords = SkyCoord(GWGC['RAJ2000'].values, GWGC['DEJ200'].values, unit=(u.deg, u.deg)) 
 
     #assume standard cosmology for distance estimates
