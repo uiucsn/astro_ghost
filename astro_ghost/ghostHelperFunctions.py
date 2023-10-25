@@ -693,8 +693,14 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
     #new low-z method (beta) - before we do anything else, find and associate with GLADE
     if GLADE:
+        # snag the GWGC, which we'll use to get radii   
+        stream = importlib_resources.files(__name__).joinpath('gwgc_good.csv')
+        GWGC = pd.read_csv(stream)
+        if verbose:
+            print("Successfully read in GWGC catalog.\n")
+
         fn_glade = "gladeDLR.txt"
-        foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, snDF, verbose=verbose, todo="r")
+        foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, snDF, verbose=verbose, todo="r", GWGC=GWGC)
 
         #open transients df and drop the transients already found in GLADE. We'll add these back in at the end
         snDF = snDF[snDF['Name'].isin(noGladeHosts)]
