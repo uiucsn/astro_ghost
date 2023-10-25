@@ -21,13 +21,13 @@ from astro_ghost.starSeparation import separateStars_STRM, separateStars_South
 from astro_ghost.sourceCleaning import clean_dict, removePS1Duplicates, getColors, makeCuts
 from astro_ghost.stellarLocus import calc_7DCD
 from astro_ghost.DLR import chooseByDLR, chooseByGladeDLR
+import importlib_resources
 import requests
 import pickle
 import pyvo
 import glob
 from datetime import datetime
 from joblib import dump, load
-import pandas as pd
 
 #we do a lot of copies, sub-selects and rewrites - no need to warn about everything!
 pd.options.mode.chained_assignment = None  # default='warn'
