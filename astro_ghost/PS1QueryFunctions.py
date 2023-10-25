@@ -16,17 +16,12 @@ except ImportError:  # Python 2.x
     from urllib import pathname2url as urlencode
     from urllib import urlretrieve
     import httplib
-#from collections import OrderedDict
 from os import listdir
 from os.path import join
-#from astropy import utils, io, convolution, wcs
 from astropy import units as u
-#from astropy.visualization import make_lupton_rgb,PercentileInterval, AsinhStretch
-#from astropy.coordinates import name_resolve, Angle
 from astropy.coordinates import Angle
 from astropy.io import fits, ascii
 from astropy.table import Table
-#from pyvo.dal import sia
 import pickle
 from io import BytesIO
 from astropy.coordinates import SkyCoord
