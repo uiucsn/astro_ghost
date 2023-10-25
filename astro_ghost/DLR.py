@@ -9,8 +9,6 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord, Angle, Distance
 from astropy.wcs import WCS
 from astropy.cosmology import FlatLambdaCDM, z_at_value
-#from astropy.utils.data import get_pkg_data_filename
-#from astroquery.vizier import Vizier
 from astroquery.ipac.ned import Ned
 
 def choose_band_SNR(host_df):
@@ -366,7 +364,6 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                         print("Issue with DLR. Try Gradient Descent!", file=f)
                         GA_SN.append(name)
                     print(float(hosts[hosts['objID'] == chosenHost]['raMean'].values[0]), float(hosts[hosts['objID'] == chosenHost]['decMean'].values[0]), file=f)
-                f.flush()
     f.close()
     if todo == "s":
         with open('../dictionaries/DLR_rankOrdered_hosts.p', 'wb') as fp:
@@ -424,43 +421,6 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r', GWGC=None):
         seps = SkyCoord(ra=ra_SN, dec=dec_SN,unit=(u.deg, u.deg),frame='icrs').separation(GWGC_coords).deg
         hosts = GWGC[seps < 0.2] #within 0.2 deg
 
-        # TODO fix this
-        #query the glade catalog
-        #Vizier.ROW_LIMIT = -1
-        #Vizier.TIMEOUT = 500
-        #result = Vizier.query_region(SkyCoord(ra=ra_SN, dec=dec_SN,unit=(u.deg, u.deg),frame='icrs'),radius=Angle(0.2, "deg"), catalog=["VII/275/glade1"])
-        #if result:
-        #    hosts = result[0].to_pandas()
-        #else:
-        #    hosts = pd.DataFrame({'a_b':[np.nan], 'maj':[np.nan], 'min':[np.nan]})
-
-        # query NED for GLADE sources and get their radius
-        #GLADE_rad = hosts.dropna(subset=['a_b', 'maj', 'min'])
-        #GLADE_norad = hosts[~hosts.index.isin(GLADE_rad.index)]
-
-        #badRadCount = 0
-        #for idx, row in GLADE_norad.iterrows():
-        #    try:
-        #        result_table = Ned.query_region(SkyCoord(ra=row.RAJ2000*u.degree, dec=row.DEJ2000*u.degree, frame='icrs'), radius=(2/3600)*u.deg, equinox='J2000.0')
-        #        diameters = Ned.get_table(result_table.to_pandas()['Object Name'].values[0], table='diameters')
-        #        tempDF = diameters.to_pandas()
-        #        tempMaj_arcsec = np.nanmedian(tempDF.loc[(tempDF['Major Axis Unit'] == 'arcsec') & (tempDF['Major Axis Flag'] == '(a)'), 'Major Axis'])
-        #        AxisRatio = np.nanmedian(tempDF.loc[(tempDF['Axis Ratio Flag'] == '(b/a)'), 'Axis Ratio'])
-        #        tempMin_arcsec = tempMaj_arcsec*AxisRatio
-
-         #       GLADE_norad.loc[GLADE_norad.index == idx, 'maj'] = tempMaj_arcsec*2./60
-         #       GLADE_norad.loc[GLADE_norad.index == idx, 'min'] = tempMin_arcsec*2./60
-         #       GLADE_norad.loc[GLADE_norad.index == idx, 'a_b'] = 1/AxisRatio  
-         #   except:
-         #       badRadCount +=1
-
-        #recombine
-        #if verbose:
-        #    print("No NED radius found for %i GLADE galaxies."%badRadCount, file=f)
-
-        #hosts = pd.concat([GLADE_rad, GLADE_norad], ignore_index=True)
-        #hosts.dropna(subset=['a_b', 'maj', 'min'], inplace=True)
-
         if len(hosts)<1:
             noGladeHosts.append(name)
             continue
@@ -517,10 +477,8 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r', GWGC=None):
             foundHost['TransientDEC'] = dec_SN
             foundHost['TransientName'] = name
             foundHost['TransientClass'] = class_SN
-
             foundHostDF.append(foundHost)
 
-            f.flush()
     if len(foundHostDF) > 0:
         foundHostDF = pd.concat(foundHostDF, ignore_index=True)
         # adding some relevant redshift information
@@ -532,10 +490,7 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r', GWGC=None):
                 dist = Distance(value=row['Dist'], unit=u.Mpc)
                 calc_z = z_at_value(cosmo.luminosity_distance, dist, zmin=1.e-5, zmax=1, method='Bounded').value
                 foundHostDF['GLADE_redshift'] = calc_z
-                #if row['Flag'] <= 3:
-                #    foundHostDF['GLADE_redshift_flag'] = 'SPEC'
-                #else:
-                #    foundHostDF['GLADE_redshift_flag'] = 'PHOT'
+
         #print some relevant information to terminal
         print("Found %i hosts in GLADE! See %s for details."%(len(foundHostDF), fn))
         if todo == "s":
