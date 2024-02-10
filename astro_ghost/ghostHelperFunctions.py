@@ -20,7 +20,7 @@ from astro_ghost.gradientAscent import gradientAscent
 from astro_ghost.starSeparation import separateStars_STRM, separateStars_South
 from astro_ghost.sourceCleaning import clean_dict, removePS1Duplicates, getColors, makeCuts
 from astro_ghost.stellarLocus import calc_7DCD
-from astro_ghost.DLR import chooseByDLR, chooseByGladeDLR
+from astro_ghost.DLR import chooseByDLR, chooseByGladeDLR, calc_DLR
 import importlib_resources
 import requests
 import pickle
@@ -151,6 +151,8 @@ def checkSimbadHierarchy(df, verbose=False):
     host_DF = df.copy()
     HierarchicalHostedSNe = []
     parents = []
+
+    transientCoord = SkyCoord(host_DF['TransientRA'].values[0], host_DF['TransientDEC'].values[0], unit=u.deg)
     for idx, row in host_DF.iterrows():
         # cone search of the best-fit host in SIMBAD - if it gets it right,
         #replace the info with the parent information!
@@ -173,9 +175,6 @@ def checkSimbadHierarchy(df, verbose=False):
             if (tap_pandas['main_id'].values[0].startswith("VIRTUAL PARENT")) or (tap_pandas['otype'].values[0] == 'GrG'):
                 continue
 
-            if verbose:
-                print("Warning! Host of %s is the hierarchical child of another object in Simbad, choosing parent as host instead..." % row.TransientName)
-
             # query PS1 for correct host
             a = ps1cone(tap_pandas.loc[0, 'ra'], tap_pandas.loc[0, 'dec'], 10./3600)
             if a:
@@ -187,8 +186,21 @@ def checkSimbadHierarchy(df, verbose=False):
                 parent['TransientRA'] = row.TransientRA
                 parent['TransientDEC'] = row.TransientDEC
                 parent = getNEDInfo(parent)
-                HierarchicalHostedSNe.append(row.TransientName)
-                parents.append(parent)
+
+                #only choose the new source if the DLR < 5.
+                r_a = np.nanmax([parent['%sKronRad'%i] for i in 'grizy'])
+                bands = 'grizy'
+                best_band = bands[np.argmax([row['%sKronRad'%i] for i in bands])]
+                dist, DLR = calc_DLR(Angle(row['TransientRA'], unit=u.deg), Angle(row['TransientDEC'], unit=u.deg), parent['raMean'].values[0], parent['decMean'].values[0], r_a, r_a, parent, best_band)
+                if DLR < 5:
+                    if verbose:
+                        print("Warning! Host of %s is the hierarchical child of another object in Simbad with dist/DLR<5, choosing parent as host instead..." % row.TransientName)
+                        HierarchicalHostedSNe.append(row.TransientName)
+                        parents.append(parent)
+                else:
+                    if verbose:
+                        print("Host of %s is the hierarchical child of another object in Simbad but dist/DLR>5, keeping existing host." % row.TransientName)
+
     if len(parents)>0:
         parentDF = pd.concat(parents)
     else:
@@ -693,7 +705,7 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
     #new low-z method (beta) - before we do anything else, find and associate with GLADE
     if GLADE:
-        # snag the GWGC, which we'll use to get radii   
+        # snag the GWGC, which we'll use to get radii
         stream = importlib_resources.files(__name__).joinpath('gwgc_good.csv')
         GWGC = pd.read_csv(stream)
         if verbose:
