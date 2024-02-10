@@ -37,16 +37,16 @@ def test_NED():
 
 def test_associate():
     #create a list of the supernova names, their skycoords, and their classes (these three are from TNS)
-    snName = ['SN 2012dt', 'SN 1998bn', 'SN 1957B']
+    transientName = ['SN 2012dt', 'SN 1998bn', 'SN 1957B']
 
-    snCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
+    transientCoord = [SkyCoord(14.162*u.deg, -9.90253*u.deg, frame='icrs'), \
             SkyCoord(187.32867*u.deg, -23.16367*u.deg, frame='icrs'), \
             SkyCoord(186.26125*u.deg, +12.899444*u.deg, frame='icrs')]
 
-    snClass = ['SN IIP', 'SN', 'SN Ia']
+    transientClass = ['SN IIP', 'SN', 'SN Ia']
 
     # run the association algorithm with the DLR method!
-    hosts = getTransientHosts(snName, snCoord, snClass, verbose=verbose, starcut='gentle', ascentMatch=False)
+    hosts = getTransientHosts(transientName, transientCoord, transientClass, verbose=verbose, starcut='gentle', ascentMatch=False)
 
     correctHosts = [SkyCoord(14.1777425*u.deg, -9.9138756*u.deg, frame='icrs'),
                     SkyCoord(187.3380517*u.deg, -23.1666716*u.deg, frame='icrs'),
@@ -89,12 +89,12 @@ def test_plotLocus():
     assert len(glob.glob(os.path.join(os.getcwd(), 'PS1_Gals_StellarLocus_.pdf'))) > 0
 
 def test_skymapper_associate():
-    snName = ['AT2023hri']
-    snCoord = [SkyCoord(288.5964917*u.deg,  -54.5636583*u.deg, frame='icrs')]
-    snClass = ['AT']
+    transientName = ['AT2023hri']
+    transientCoord = [SkyCoord(288.5964917*u.deg,  -54.5636583*u.deg, frame='icrs')]
+    transientClass = ['AT']
 
     # run the association algorithm with the DLR method!
-    hosts = getTransientHosts(snName, snCoord, snClass, verbose=verbose, starcut='gentle', ascentMatch=False)
+    hosts = getTransientHosts(transientName, transientCoord, transientClass, verbose=verbose, starcut='gentle', ascentMatch=False)
     assert hosts['NED_name'].values[0] == 'ESO 184- G 042'
 
 def test_resolve():

@@ -556,15 +556,15 @@ def fullData(GHOSTpath=''):
     fullTable = pd.read_csv(GHOSTpath+"/database/GHOST.csv")
     return fullTable
 
-def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=False, starcut='normal', ascentMatch=False, GLADE=True, px=800, savepath='./', GHOSTpath='', redo_search=True):
+def getTransientHosts(transientName=[''], transientCoord=[''], snClass=[''], verbose=False, starcut='normal', ascentMatch=False, GLADE=True, px=800, savepath='./', GHOSTpath='', redo_search=True):
     """The wrapper function for the main host association pipeline. The function first
        searches the pre-existing GHOST database by transient name, then by transient coordinates, and finally
        associates the remaining transients not found.
 
     :param transientName: List of transients to associate.
     :type transientName: array-like
-    :param snCoord: List of astropy SkyCoord transient positions.
-    :type snCoord: array-like
+    :param transientCoord: List of astropy SkyCoord transient positions.
+    :type transientCoord: array-like
     :param snClass: List of transient classifications (if they exist).
     :type snClass: array-like
     :param verbose: If True, print logging information.
@@ -592,20 +592,20 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
     if len(transientName) < 1:
         transientName = []
         print("No transient names listed, adding placeholder names...")
-        for i in np.arange(len(snCoord)):
+        for i in np.arange(len(transientCoord)):
             transientName.append("Transient_%i" % (i+1))
     hostDB = None
     tempHost1 = tempHost2 = tempHost3 = None
     found_by_name = found_by_coord = found_by_manual = 0
-    if not isinstance(snCoord, list) and not isinstance(snCoord, np.ndarray):
-        snCoord = [snCoord]
+    if not isinstance(transientCoord, list) and not isinstance(transientCoord, np.ndarray):
+        transientCoord = [transientCoord]
         transientName = [transientName]
         snClass = [snClass]
     if len(snClass) != len(transientName):
         snClass = ['']*len(transientName)
 
     transientName = [x.replace(" ", "") for x in transientName]
-    df_transients = pd.DataFrame({'Name':np.array(transientName), 'snCoord':np.array(snCoord), 'snClass':np.array(snClass)})
+    df_transients = pd.DataFrame({'Name':np.array(transientName), 'transientCoord':np.array(transientCoord), 'snClass':np.array(snClass)})
 
     tempHost1, notFoundNames = getDBHostFromTransientName(transientName, GHOSTpath)
     found_by_name = len(transientName) - len(notFoundNames)
@@ -616,27 +616,27 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
 
         df_transients_remaining = df_transients[df_transients['Name'].isin(notFoundNames)]
 
-        snCoord_remaining =  df_transients_remaining['snCoord'].values
+        transientCoord_remaining =  df_transients_remaining['transientCoord'].values
 
-        tempHost2, notFoundCoords = getDBHostFromTransientCoords(snCoord_remaining, GHOSTpath);
+        tempHost2, notFoundCoords = getDBHostFromTransientCoords(transientCoord_remaining, GHOSTpath);
         found_by_coord = len(transientName) - len(notFoundCoords) - found_by_name
         if tempHost2 is None or len(notFoundCoords) > 0:
             if verbose:
                 print("%i transients not found in GHOST by name or coordinates, manually associating..."% len(notFoundCoords))
 
-            df_transients_remaining = df_transients_remaining[df_transients_remaining['snCoord'].isin(notFoundCoords)]
+            df_transients_remaining = df_transients_remaining[df_transients_remaining['transientCoord'].isin(notFoundCoords)]
 
             transientName_remaining =  df_transients_remaining['Name'].values
-            snCoord_remaining = df_transients_remaining['snCoord'].values
+            transientCoord_remaining = df_transients_remaining['transientCoord'].values
             snClass_remaining = df_transients_remaining['snClass'].values
 
-            tempHost3 = findNewHosts(transientName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath, GLADE=GLADE)
+            tempHost3 = findNewHosts(transientName_remaining, transientCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath, GLADE=GLADE)
 
             if (len(transientName_remaining) > 0) and (len(tempHost3)==0) and (redo_search):
                  #bump up the search radius to 150 arcsec for extremely low-redshift hosts...
                  if verbose:
                      print("Couldn't find any hosts! Trying again with a search radius of 150''.")
-                 tempHost3 = findNewHosts(transientName_remaining, snCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath, 150)
+                 tempHost3 = findNewHosts(transientName_remaining, transientCoord_remaining, snClass_remaining, verbose, starcut, ascentMatch, px, savepath, 150)
             found_by_manual = len(tempHost3)
     hostDB = pd.concat([tempHost1, tempHost2, tempHost3], ignore_index=True)
     hostDB.replace(-999.0, np.nan, inplace=True)
@@ -644,13 +644,13 @@ def getTransientHosts(transientName=[''], snCoord=[''], snClass=[''], verbose=Fa
         print("%i transients found by name, %i transients found by coordinates, %i transients manually associated."% (found_by_name, found_by_coord, found_by_manual))
     return hostDB
 
-def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle', ascentMatch=False, px=800, savepath='./', rad=60, GLADE=True):
+def findNewHosts(transientName, transientCoord, snClass, verbose=False, starcut='gentle', ascentMatch=False, px=800, savepath='./', rad=60, GLADE=True):
     """Associates hosts of transients not in the GHOST database.
 
     :param transientName: List of transients to associate.
     :type transientName: array-like
-    :param snCoord: List of astropy SkyCoord transient positions.
-    :type snCoord: array-like
+    :param transientCoord: List of astropy SkyCoord transient positions.
+    :type transientCoord: array-like
     :param snClass: List of transient classifications (if they exist).
     :type snClass: array-like
     :param verbose: If True, print logging information.
@@ -673,18 +673,18 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
 
     if isinstance(transientName, str):
         transientName = transientName.replace(" ", "")
-        snRA = snCoord.ra.degree
-        snDEC = snCoord.dec.degree
+        transientRA = transientCoord.ra.degree
+        transientDEC = transientCoord.dec.degree
     elif isinstance(transientName, list) or isinstance(transientName, np.ndarray):
         transientName = [x.replace(" ", "") for x in transientName]
-        snRA = [x.ra.degree for x in snCoord]
-        snDEC = [x.dec.degree for x in snCoord]
+        transientRA = [x.ra.degree for x in transientCoord]
+        transientDEC = [x.dec.degree for x in transientCoord]
     else:
         print("Error! Please pass in your transient name as either a string or a list/array of strings.\n")
 
     transientName_arr = np.array(transientName)
-    snRA_arr = np.array(snRA)
-    snDEC_arr = np.array(snDEC)
+    transientRA_arr = np.array(transientRA)
+    transientDEC_arr = np.array(transientDEC)
     snClass_arr = np.array(snClass)
 
     dateStr = str(datetime.today()).replace("-", '').replace(".", '').replace(":", "").replace(" ", '')
@@ -700,8 +700,8 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
     path = savepath+dir_name+'/'
 
     #create temp dataframe with RA and DEC corresponding to the transient
-    snDF = pd.DataFrame({'Name':transientName_arr, 'RA':snRA_arr, 'DEC':snDEC_arr, 'HostName':['']*len(snDEC_arr), 'Obj. Type':snClass_arr})
-    snDF.to_csv(path+fn_transients, index=False)
+    transientDF = pd.DataFrame({'Name':transientName_arr, 'RA':transientRA_arr, 'DEC':transientDEC_arr, 'HostName':['']*len(transientDEC_arr), 'Obj. Type':snClass_arr})
+    transientDF.to_csv(path+fn_transients, index=False)
 
     #new low-z method (beta) - before we do anything else, find and associate with GLADE
     if GLADE:
@@ -712,17 +712,17 @@ def findNewHosts(transientName, snCoord, snClass, verbose=False, starcut='gentle
             print("Successfully read in GWGC catalog.\n")
 
         fn_glade = "gladeDLR.txt"
-        foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, snDF, verbose=verbose, todo="r", GWGC=GWGC)
+        foundGladeHosts, noGladeHosts = chooseByGladeDLR(path, fn_glade, transientDF, verbose=verbose, todo="r", GWGC=GWGC)
 
         #open transients df and drop the transients already found in GLADE. We'll add these back in at the end
-        snDF = snDF[snDF['Name'].isin(noGladeHosts)]
+        transientDF = transientDF[transientDF['Name'].isin(noGladeHosts)]
         fn_transients_preGLADE = fn_transients
         fn_transients = 'transients_%s_postGlade.csv' % dateStr
-        snDF.to_csv(path+fn_transients, index=False)
+        transientDF.to_csv(path+fn_transients, index=False)
 
     else:
         foundGladeHosts = []
-        noGladeHosts = snDF['Name'].values
+        noGladeHosts = transientDF['Name'].values
         fn_transients_preGLADE = fn_transients
 
     if len(noGladeHosts) < 1:
