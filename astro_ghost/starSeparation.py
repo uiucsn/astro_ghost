@@ -114,7 +114,10 @@ def separateStars_STRM(df, model_path='.', plot=False, verbose=False, starcut='g
         plt.savefig("TNS_iAp_iKronMag_Histogram.pdf")
 
     # Adding back in the ones we identified as galaxies from our clustering above, and the NED sources.
-    df_gals = pd.concat([test_gals, NED_gals])
+
+    # Also adding back in sources with photometry missing in any band. 
+    #df_gals = pd.concat([test_gals, NED_gals])
+    df_gals = pd.concat([test_gals, NED_gals, only_na])
     df_gals.reset_index(inplace=True, drop=True)
 
     # Adding back in the ones we identified as stars from our clustering above, and the NED sources.
