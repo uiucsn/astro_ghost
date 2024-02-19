@@ -324,8 +324,11 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                 print("candidate semi-major axis = \\", file=f)
                 print(ra_dict_print, file=f)
 
-                #subset so that we're less than 5 in DLR units
+                #Subset so that we're less than 5 in DLR units
+                #Tentative selection of the host with lowest DLR
                 chosenHost = min(R_dict, key=R_dict.get)
+                print(chosenHost) #this is the right host!
+
                 if R_dict[chosenHost] > 5.0:
                     #If we can't find a host, say that this galaxy has no host
                     dict_mod[name] = np.nan
@@ -333,10 +336,12 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                     print("No host chosen! r/DLR > 5.0.", file=f)
                     continue
                 else:
+                    #Truncate candidates at <5 DLR.
                     R_dict_sub = dict((k, v) for k, v in R_dict.items() if v <= 5.0)
                     #Sort from lowest to highest DLR value
                     R_dict_sub = {k: v for k, v in sorted(R_dict_sub.items(), key=lambda item: item[1])}
 
+                    #If there are multiple candidates remaining
                     if len(R_dict_sub.keys()) > 1:
                         gal_hosts = []
                         Simbad_hosts = []
@@ -348,8 +353,10 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                             if (hasSimbad) & (tempType != '*'):
                                 Simbad_hosts.append(key)
                         if len(gal_hosts) > 0:
-                            if gal_hosts[0] != chosenHost and R_dict[gal_hosts[0]] < 5.0:
-                                chosenHost = gal_hosts[0] #only change if we're within the light profile of the galaxy
+                            # only change if we're still within the light profile of the galaxy and previous host has DLR > 1
+                            # (meaning we're outside of the light profile of the previous host)
+                            if (gal_hosts[0] != chosenHost) and (R_dict[gal_hosts[0]] < 5.0) and (R_dict[chosenHost] > 1):
+                                chosenHost = gal_hosts[0]
                                 print("Choosing the galaxy with the smallest DLR - nearest source had DLR > 1!", file=f)
                         if len(Simbad_hosts) > 0:
                             print("Chosen SIMBAD host!", file=f)
@@ -406,7 +413,7 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r', GWGC=None):
     noGladeHosts = []
 
     if GWGC is not None:
-        GWGC_coords = SkyCoord(GWGC['RAJ2000'].values, GWGC['DEJ2000'].values, unit=(u.deg, u.deg)) 
+        GWGC_coords = SkyCoord(GWGC['RAJ2000'].values, GWGC['DEJ2000'].values, unit=(u.deg, u.deg))
 
     #assume standard cosmology for distance estimates
     cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
@@ -417,7 +424,7 @@ def chooseByGladeDLR(path, fn, snDF, verbose=False, todo='r', GWGC=None):
         dec_SN = float(row['DEC'])
         class_SN = str(row['Obj. Type'])
 
-        #broad cone search of GWGC galaxies: 
+        #broad cone search of GWGC galaxies:
         seps = SkyCoord(ra=ra_SN, dec=dec_SN,unit=(u.deg, u.deg),frame='icrs').separation(GWGC_coords).deg
         hosts = GWGC[seps < 0.2] #within 0.2 deg
 
