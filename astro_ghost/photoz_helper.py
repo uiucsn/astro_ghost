@@ -338,7 +338,7 @@ def load_lupton_model(model_path):
     build_sfd_dir()
     get_photoz_weights(model_path)
     def model():
-        INPUT = tf.keras.layers.Input(31)
+        INPUT = tf.keras.layers.Input(shape=(31,))
 
         DENSE1 = tf.keras.layers.Dense(256,activation=tf.keras.layers.LeakyReLU(),kernel_initializer=tf.keras.initializers.he_normal(),kernel_regularizer=tf.keras.regularizers.l2(1e-5))(INPUT)
         DROP1 = tf.keras.layers.Dropout(0.05)(DENSE1)
