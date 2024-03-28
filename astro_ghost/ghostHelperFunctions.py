@@ -887,7 +887,8 @@ def findNewHosts(transientName, transientCoord, snClass, verbose=False, starcut=
         with open(path+"/dictionaries/" + "Final_Dictionary.p", 'wb') as fp:
                dump(final_dict, fp)
 
-    host_DF = checkSimbadHierarchy(host_DF, verbose=verbose)
+    if len(host_DF) > 0:
+        host_DF = checkSimbadHierarchy(host_DF, verbose=verbose)
 
     #a few final cleaning steps
     #first, add back in some features
