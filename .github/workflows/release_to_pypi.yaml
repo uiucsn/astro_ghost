@@ -1,0 +1,32 @@
+name: Release Package to PyPI
+
+on:
+  push:
+    branches:
+      - main  # Set to a default branch
+    tags:
+      - 'v*'  # A semantic versioning tag
+
+jobs:
+  build-and-upload:
+    runs-on: [macos-latest]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.11'  
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools wheel twine
+
+      - name: Build and publish to PyPI
+        env:
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          python setup.py sdist bdist_wheel
+          twine upload dist/* --username $PYPI_USERNAME --password $PYPI_PASSWORD
