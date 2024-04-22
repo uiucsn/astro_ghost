@@ -359,7 +359,7 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                                 print("Choosing the galaxy with the smallest DLR - nearest source had DLR > 1!", file=f)
                         if len(Simbad_hosts) > 0:
                             print("Chosen SIMBAD host!", file=f)
-                            if Simbad_hosts[0] != chosenHost and R_dict[Simbad_hosts[0]] < 5.0:
+                            if Simbad_hosts[0] != chosenHost and R_dict[Simbad_hosts[0]] < 1.0:
                                 chosenHost = Simbad_hosts[0] #only change if we're within the light profile of the galaxy
                                 print("Choosing the simbad source with the smallest DLR!", file=f)
                     dict_mod[name] = chosenHost
