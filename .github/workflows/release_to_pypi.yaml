@@ -12,6 +12,8 @@ jobs:
     runs-on: [macos-latest]
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # This ensures all history and tags are fetched
 
       - name: Set up Python
         uses: actions/setup-python@v3
@@ -29,4 +31,5 @@ jobs:
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           python setup.py sdist bdist_wheel
-          twine upload dist/* --username $PYPI_USERNAME --password $PYPI_PASSWORD
+          python -c "import setuptools_scm; print(setuptools_scm.get_version())"
+          python -m twine upload dist/* --username $PYPI_USERNAME --password $PYPI_PASSWORD
