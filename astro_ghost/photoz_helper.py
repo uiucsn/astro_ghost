@@ -1,32 +1,13 @@
-# from astropy.table import Table
-#import pkg_resources
-# import sys
-# import re
+import pkg_resources
 import numpy as np
-# import pylab
-# import json
 import requests
-# from astropy.io import fits
 from astro_ghost.PS1QueryFunctions import *
-
-# try: # Python 3.x
-#     from urllib.parse import quote as urlencode
-#     from urllib.request import urlretrieve
-#     import http.client as httplib
-# except ImportError:  # Python 2.x
-#     from urllib import pathname2url as urlencode
-#     from urllib import urlretrieve
-#     import httplib
 
 import pandas as pd
 import tensorflow as tf
-# from tensorflow import keras
 
-# from concurrent.futures import ThreadPoolExecutor
-# import asyncio
 import codecs
 
-# import time
 from sfdmap2 import sfdmap
 import os
 import tarfile
