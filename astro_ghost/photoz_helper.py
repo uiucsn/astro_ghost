@@ -356,7 +356,7 @@ def load_lupton_model(model_path=DEFAULT_MODEL_PATH, dust_path=DEFAULT_DUST_PATH
     """
 
     build_sfd_dir(data_dir=dust_path)
-    get_photoz_weights(model_path=model_path)
+    get_photoz_weights(file_path=model_path)
 
     def model():
         INPUT = tf.keras.layers.Input(shape=(31,))
