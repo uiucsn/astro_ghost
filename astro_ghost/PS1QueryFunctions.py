@@ -779,8 +779,8 @@ def southernSearch(ra, dec, rad):
 
         #add the photometry columns
         tempDF = dfPhot[dfPhot['filter']==filter]
-        if len(tempDF) <1:
-            tempDF.append(pd.Series(), ignore_index=True) #add dummy row for the sake of not crashing
+        if len(tempDF) < 1:
+            pd.concat([tempDF, pd.Series()], ignore_index=True) #add dummy row for the sake of not crashing
         for col in tempDF.columns.values:
             if col != 'object_id':
                 tempDF[filter + col] = tempDF[col]
