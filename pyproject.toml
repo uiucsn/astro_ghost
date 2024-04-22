@@ -1,7 +1,13 @@
 [build-system]
+requires = [
+    "setuptools>=40.8.0",
+    "wheel",
+    "setuptools_scm[toml]>=3.4"
+]
+build-backend = "setuptools.build_meta"
 
-requires = ["setuptools",
-            "setuptools_scm",
-            "wheel"]
-
-build-backend = 'setuptools.build_meta'
+[tool.setuptools_scm]
+write_to = "astro_ghost/_version.py"
+write_to_template = "__version__ = '{version}'\n"
+version_scheme = "release-branch-semver"
+local_scheme = "no-local-version"
