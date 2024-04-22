@@ -1,6 +1,9 @@
-*****
+"At the last dim horizon, we search among ghostly errors of observations for
+landmarks that are scarcely more substantial. The search will continue. The
+urge is older than history. It is not satisfied and it will not be oppressed."
+--Edwin Hubble
+
 GHOST
-*****
 -----------
 
 .. image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
@@ -18,11 +21,6 @@ GHOST
 .. image:: https://img.shields.io/readthedocs/uiucsnastro-ghost
    :target: https://uiucsnastro-ghost.readthedocs.io/en/latest/
    :alt: Read the Docs
-
-"At the last dim horizon, we search among ghostly errors of observations for
-landmarks that are scarcely more substantial. The search will continue. The
-urge is older than history. It is not satisfied and it will not be oppressed."
---Edwin Hubble
 
 Welcome to GHOST, the database for supernovae and their host galaxies. This
 database contains ~16k sources in PS1, which were used to predict supernova
