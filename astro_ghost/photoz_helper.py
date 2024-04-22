@@ -1,66 +1,83 @@
-from astropy.table import Table
+# from astropy.table import Table
 #import pkg_resources
-import sys
-import re
+# import sys
+# import re
 import numpy as np
-import pylab
-import json
+# import pylab
+# import json
 import requests
-from astropy.io import fits
+# from astropy.io import fits
 from astro_ghost.PS1QueryFunctions import *
 
-try: # Python 3.x
-    from urllib.parse import quote as urlencode
-    from urllib.request import urlretrieve
-    import http.client as httplib
-except ImportError:  # Python 2.x
-    from urllib import pathname2url as urlencode
-    from urllib import urlretrieve
-    import httplib
+# try: # Python 3.x
+#     from urllib.parse import quote as urlencode
+#     from urllib.request import urlretrieve
+#     import http.client as httplib
+# except ImportError:  # Python 2.x
+#     from urllib import pathname2url as urlencode
+#     from urllib import urlretrieve
+#     import httplib
 
 import pandas as pd
 import tensorflow as tf
-from tensorflow import keras
+# from tensorflow import keras
 
-from concurrent.futures import ThreadPoolExecutor
-import asyncio
+# from concurrent.futures import ThreadPoolExecutor
+# import asyncio
 import codecs
 
-import time
+# import time
 from sfdmap2 import sfdmap
 import os
 import tarfile
 
-def build_sfd_dir(fname='./sfddata-master.tar.gz'):
+DEFAULT_MODEL_PATH = './MLP_lupton.hdf5'
+DEFAULT_DUST_PATH = '.'
+
+
+def build_sfd_dir(file_path='./sfddata-master.tar.gz', data_dir=DEFAULT_DUST_PATH):
     """Downloads directory of Galactic dust maps for extinction correction.
+       [Schlegel, Finkbeiner and Davis (1998)](http://adsabs.harvard.edu/abs/1998ApJ...500..525S).
 
-    :param fname: Filename for dustmaps.
+    :param fname: Filename for dustmaps archive file.
     :type fname: str
+    :param data_path: Target directory in which to extract 'sfddata-master' directory from archive file.
+    :type data_path: str
     """
-
-    url = 'https://github.com/kbarbary/sfddata/archive/master.tar.gz'
-    response = requests.get(url, stream=True)
-    if response.status_code == 200:
-        with open(fname, 'wb') as f:
-            f.write(response.raw.read())
-    tar = tarfile.open(fname)
-    tar.extractall()
+    target_dir = os.path.join(data_dir, 'sfddata-master')
+    if os.path.isdir(target_dir):
+        print(f'''Dust map data directory "{target_dir}" already exists.''')
+        return
+    # Download the data archive file if it is not present
+    if not os.path.exists(file_path):
+        url = 'https://github.com/kbarbary/sfddata/archive/master.tar.gz'
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(file_path, 'wb') as f:
+                f.write(response.raw.read())
+    # Extract the data files
+    tar = tarfile.open(file_path)
+    tar.extractall(data_dir)
     tar.close()
-    os.remove(fname)
+    # Delete archive file
+    os.remove(file_path)
     print("Done creating dust directory.")
     return
 
-def get_photoz_weights(fname='./MLP_lupton.hdf5'):
+
+def get_photoz_weights(file_path=DEFAULT_MODEL_PATH):
     """Get weights for MLP photo-z model.
 
     :param fname: Filename of saved MLP weights.
     :type fname: str
     """
-
+    if os.path.exists(file_path):
+        print(f'''photo-z weights file "{file_path}" already exists.''')
+        return
     url = 'https://uofi.box.com/shared/static/n1yiy818mv5b5riy2h3dg5yk2by3swos.hdf5'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
-        with open(fname, 'wb') as f:
+        with open(file_path, 'wb') as f:
             f.write(response.raw.read())
     print("Done getting photo-z weights.")
     return
@@ -255,7 +272,7 @@ def get_common_constraints_columns():
 
     return constraints, columns
 
-def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
+def preprocess(DF,PATH='../data/sfddata-master/', ebv=True):
     """Preprocesses the data inside pandas.DataFrame object returned by serial_objID_search to the space of Inputs of our Neural Network.
 
     :param DF: Dataframe object containing the data for each matched objID
@@ -324,36 +341,40 @@ def preprocess(DF,PATH='../DATA/sfddata-master/', ebv=True):
 
     return X
 
-def load_lupton_model(model_path):
+
+def load_lupton_model(model_path=DEFAULT_MODEL_PATH, dust_path=DEFAULT_DUST_PATH):
     """Helper function that defines and loads the weights of our NN model and the output space of the NN.
 
     :param model_path: path to the model weights.
     :type model_path: str
+    :param dust_path: path to dust map data files.
+    :type dust_path: str
     :return: Trained photo-z MLP.
     :rtype: tensorflow keras Model
     :return: Array of binned redshift space corresponding to the output space of the NN
     :rtype: numpy ndarray
     """
 
-    build_sfd_dir()
-    get_photoz_weights(model_path)
+    build_sfd_dir(data_dir=dust_path)
+    get_photoz_weights(file_path=model_path)
+
     def model():
         INPUT = tf.keras.layers.Input(shape=(31,))
 
-        DENSE1 = tf.keras.layers.Dense(256,activation=tf.keras.layers.LeakyReLU(),kernel_initializer=tf.keras.initializers.he_normal(),kernel_regularizer=tf.keras.regularizers.l2(1e-5))(INPUT)
+        DENSE1 = tf.keras.layers.Dense(256, activation=tf.keras.layers.LeakyReLU(), kernel_initializer=tf.keras.initializers.he_normal(), kernel_regularizer=tf.keras.regularizers.l2(1e-5))(INPUT)
         DROP1 = tf.keras.layers.Dropout(0.05)(DENSE1)
 
-        DENSE2 = tf.keras.layers.Dense(1024,activation=tf.keras.layers.LeakyReLU(),kernel_initializer=tf.keras.initializers.he_normal(),kernel_regularizer=tf.keras.regularizers.l2(1e-5))(DROP1)
+        DENSE2 = tf.keras.layers.Dense(1024, activation=tf.keras.layers.LeakyReLU(), kernel_initializer=tf.keras.initializers.he_normal(), kernel_regularizer=tf.keras.regularizers.l2(1e-5))(DROP1)
         DROP2 = tf.keras.layers.Dropout(0.05)(DENSE2)
 
-        DENSE3 = tf.keras.layers.Dense(1024,activation=tf.keras.layers.LeakyReLU(),kernel_initializer=tf.keras.initializers.he_normal(),kernel_regularizer=tf.keras.regularizers.l2(1e-5))(DROP2)
+        DENSE3 = tf.keras.layers.Dense(1024, activation=tf.keras.layers.LeakyReLU(), kernel_initializer=tf.keras.initializers.he_normal(), kernel_regularizer=tf.keras.regularizers.l2(1e-5))(DROP2)
         DROP3 = tf.keras.layers.Dropout(0.05)(DENSE3)
 
-        DENSE4 = tf.keras.layers.Dense(1024,activation=tf.keras.layers.LeakyReLU(),kernel_initializer=tf.keras.initializers.he_normal(),kernel_regularizer=tf.keras.regularizers.l2(1e-5))(DROP3)
+        DENSE4 = tf.keras.layers.Dense(1024, activation=tf.keras.layers.LeakyReLU(), kernel_initializer=tf.keras.initializers.he_normal(), kernel_regularizer=tf.keras.regularizers.l2(1e-5))(DROP3)
 
-        OUTPUT = tf.keras.layers.Dense(360,activation=tf.keras.activations.softmax)(DENSE4)
+        OUTPUT = tf.keras.layers.Dense(360, activation=tf.keras.activations.softmax)(DENSE4)
 
-        model = tf.keras.Model(INPUT,OUTPUT)
+        model = tf.keras.Model(INPUT, OUTPUT)
 
         return model
     mymodel = model()
@@ -400,7 +421,7 @@ def evaluate(X,mymodel,range_z):
 
 #'id' column in DF is the 0th ordered index of hosts. missing rows are therefore signalled
 #    by skipped numbers in index
-def calc_photoz(hosts):
+def calc_photoz(hosts, dust_path=DEFAULT_DUST_PATH, model_path=DEFAULT_MODEL_PATH):
     """PhotoZ beta: not tested for missing objids.
        photo-z uses a artificial neural network to estimate P(Z) in range Z = (0 - 1)
        range_z is the value of z
@@ -422,10 +443,10 @@ def calc_photoz(hosts):
         return hosts
     objIDs = hosts['objID'].values.tolist()
     constraints, columns = get_common_constraints_columns()
-    DFs = serial_objID_search(objIDs,columns=columns,**constraints)
+    DFs = serial_objID_search(objIDs, columns=columns, **constraints)
     DF = pd.concat(DFs)
 
-    posteriors, point_estimates, errors = get_photoz(DF)
+    posteriors, point_estimates, errors = get_photoz(DF, dust_path=dust_path, model_path=model_path)
     successIDs = DF['objID'].values
 
     for i in np.arange(len(successIDs)):
@@ -435,7 +456,7 @@ def calc_photoz(hosts):
     return hosts
 
 
-def get_photoz(df):
+def get_photoz(df, dust_path=DEFAULT_DUST_PATH, model_path=DEFAULT_MODEL_PATH):
     """Evaluate photo-z model for Pan-STARRS forced photometry.
 
     :param df: Pan-STARRS forced mean photometry data, you can get it using
@@ -443,6 +464,10 @@ def get_photoz(df):
         astroquery i.e., \\`astroquery.mast.Catalogs.query_{criteria,region}(...,
         catalog=\\'Panstarrs\\',table=\\'forced_mean\\')\\`
     :type df: pandas DataFrame
+    :param dust_path: Path to dust map data files
+    :type dust_path: str
+    :param model_path: path to the data file with weights for MLP photo-z model
+    :type model_path: str
     :return: Posterior distributions for the grid of redshifts defined as
         \\`np.linspace(0, 1, n)\\`
     :rtype: numpy ndarray shape of (df.shape[0], n)
@@ -454,9 +479,7 @@ def get_photoz(df):
 
     # The function load_lupton_model downloads the necessary dust models and
     # weights from the ghost server.
-    dust_path = './sfddata-master'
-    model_path = './MLP_lupton.hdf5'
 
-    model, range_z = load_lupton_model(model_path)
-    X = preprocess(df, dust_path)
+    model, range_z = load_lupton_model(model_path=model_path, dust_path=dust_path)
+    X = preprocess(df, PATH=os.path.join(dust_path, 'sfddata-master'))
     return evaluate(X, model, range_z)
