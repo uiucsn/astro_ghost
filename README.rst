@@ -1,7 +1,7 @@
 "At the last dim horizon, we search among ghostly errors of observations for
 landmarks that are scarcely more substantial. The search will continue. The
 urge is older than history. It is not satisfied and it will not be oppressed."
---Edwin Hubble
+-Edwin Hubble
 
 GHOST
 -----------
