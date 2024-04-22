@@ -355,7 +355,7 @@ def load_lupton_model(model_path=DEFAULT_MODEL_PATH, dust_path=DEFAULT_DUST_PATH
     :rtype: numpy ndarray
     """
 
-    build_sfd_dir(file_path=dust_path)
+    build_sfd_dir(data_dir=dust_path)
     get_photoz_weights(model_path=model_path)
 
     def model():
