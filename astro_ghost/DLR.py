@@ -327,7 +327,6 @@ def chooseByDLR(path, hosts, transients, fn, orig_dict, todo="s"):
                 #Subset so that we're less than 5 in DLR units
                 #Tentative selection of the host with lowest DLR
                 chosenHost = min(R_dict, key=R_dict.get)
-                print(chosenHost) #this is the right host!
 
                 if R_dict[chosenHost] > 5.0:
                     #If we can't find a host, say that this galaxy has no host
