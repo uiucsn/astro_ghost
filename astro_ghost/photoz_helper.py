@@ -481,5 +481,5 @@ def get_photoz(df, dust_path=DEFAULT_DUST_PATH, model_path=DEFAULT_MODEL_PATH):
     # weights from the ghost server.
 
     model, range_z = load_lupton_model(model_path=model_path, dust_path=dust_path)
-    X = preprocess(df, dust_path)
+    X = preprocess(df, PATH=os.path.join(dust_path, 'sfddata-master'))
     return evaluate(X, model, range_z)
