@@ -33,6 +33,7 @@ jobs:
           else
             python setup.py sdist bdist_wheel
             twine upload dist/* --repository testpypi
+          fi
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
