@@ -26,6 +26,9 @@ jobs:
           pip install setuptools wheel twine
 
       - name: Build and Publish Package
+        env:
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             python setup.py egg_info -Db "" sdist bdist_wheel
@@ -34,6 +37,3 @@ jobs:
             python setup.py sdist bdist_wheel
             twine upload dist/* --repository testpypi
           fi
-        env:
-          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
