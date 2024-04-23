@@ -31,4 +31,4 @@ jobs:
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           python setup.py egg_info -Db "" sdist bdist_wheel
-          twine upload --verbose dist/*
+          twine upload dist/* --username $PYPI_USERNAME --password $PYPI_PASSWORD
