@@ -5,7 +5,7 @@ on:
     branches:
       - main  # Set to a default branch
     tags:
-      - '*'  # A semantic versioning tag
+      - 'v*'  # A semantic versioning tag
 
 jobs:
   build-and-upload:
@@ -30,10 +30,5 @@ jobs:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            python setup.py egg_info -Db "" sdist bdist_wheel
-            twine upload dist/*
-          else
-            python setup.py sdist bdist_wheel
-            twine upload dist/* --repository testpypi
-          fi
+          python setup.py egg_info -Db "" sdist bdist_wheel
+          twine upload --verbose dist/*
