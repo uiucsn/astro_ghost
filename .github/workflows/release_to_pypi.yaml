@@ -5,7 +5,7 @@ on:
     branches:
       - main  # Set to a default branch
     tags:
-      - 'v*'  # A semantic versioning tag
+      - '*'  # A semantic versioning tag
 
 jobs:
   build-and-upload:
@@ -37,4 +37,3 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-
