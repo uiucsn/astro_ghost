@@ -7,7 +7,7 @@ import pandas as pd
 import tensorflow as tf
 
 import codecs
-import sfdmap
+from sfdmap2 import sfdmap
 import os
 import tarfile
 
