@@ -30,7 +30,10 @@ def choose_band_SNR(host_df):
     SNR = []
     try:
         for band in bands:
-             SNR.append(float(1/host_df.iloc[0, "%sKronMagErr"%band]))
+             if host_df.iloc[0, "%sKronMagErr"%band] == host_df.iloc[0, "%sKronMagErr"%band]:
+                 SNR.append(float(1/host_df.iloc[0, "%sKronMagErr"%band]))
+             else:
+                 SNR.append(np.nan)
         i = np.nanargmax(np.array(SNR))
     except:
         #if we have issues getting the band with the highest SNR, just use r-band
