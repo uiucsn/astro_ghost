@@ -1,12 +1,37 @@
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astroquery.ipac.ned import Ned
-import re
+from time import sleep
+from datetime import datetime, timezone, timedelta
+import re, os
 import numpy as np
 from astro_ghost.PS1QueryFunctions import find_all
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
+
+NED_TIME_SLEEP = 2
+
+
+def ned_rate_limited():
+    def ned_update_request_time(ned_time_file):
+        with open(ned_time_file, 'w') as fp:
+            fp.write(datetime.now(timezone.utc).isoformat())
+    ned_time_file = '/tmp/ned_last_api_call'
+    delay = False
+    if os.path.exists(ned_time_file):
+        with open(ned_time_file) as fp:
+            ned_last_api_call = fp.read()
+        if ned_last_api_call:
+            last_query = datetime.fromisoformat(ned_last_api_call)
+            current_time = datetime.now(timezone.utc)
+            delay = current_time - last_query < timedelta(seconds=NED_TIME_SLEEP)
+        if not delay or not ned_last_api_call:
+            ned_update_request_time(ned_time_file)
+    else:
+        ned_update_request_time(ned_time_file)
+    return delay
+
 
 def getNEDSpectra(df, path, verbose=False):
     """Downloads NED spectra for the host galaxy, if it exists.
@@ -23,7 +48,11 @@ def getNEDSpectra(df, path, verbose=False):
     transientNames = np.array(df.dropna(subset=['NED_name'])['TransientName'])
     for j in np.arange(len(hostNames)):
         try:
-            spectra = Ned.get_spectra(hostNames[j])
+            while ned_rate_limited():
+                print(f'Avoiding NED rate limit. Sleeping for {NED_TIME_SLEEP} seconds...')
+                sleep(NED_TIME_SLEEP)
+            else:
+                spectra = Ned.get_spectra(hostNames[j])
         except:
             continue
         if spectra:
@@ -82,11 +111,16 @@ def getNEDInfo(df):
 
         try:
             #query NED with a 2'' radius.
-            result_table = Ned.query_region(c, radius=(2/3600)*u.deg, equinox='J2000.0')
-            if len(result_table) > 0:
-                missingCounter = 0
+            while ned_rate_limited():
+                print(f'Avoiding NED rate limit. Sleeping for {NED_TIME_SLEEP} seconds...')
+                sleep(NED_TIME_SLEEP)
+            else:
+                result_table = Ned.query_region(c, radius=(2/3600)*u.deg, equinox='J2000.0')
+                if len(result_table) > 0:
+                    missingCounter = 0
         except:
             missingCounter += 1
+
         if len(result_table) > 0:
             #if Messier or NGC object, take that, otherwise take the closest object
             result_df = result_table.to_pandas()
