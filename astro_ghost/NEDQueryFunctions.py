@@ -16,16 +16,17 @@ NED_TIME_SLEEP = 2
 def ned_rate_limited():
     def ned_update_request_time(ned_time_file):
         with open(ned_time_file, 'w') as fp:
-            fp.write(datetime.now(timezone.utc).strftime())
+            fp.write(datetime.now(timezone.utc).isoformat())
     ned_time_file = '/tmp/ned_last_api_call'
     delay = False
     if os.path.exists(ned_time_file):
         with open(ned_time_file) as fp:
             ned_last_api_call = fp.read()
-        last_query = datetime.strptime(ned_last_api_call)
-        current_time = datetime.now(timezone.utc)
-        delay = current_time - last_query < timedelta(seconds=NED_TIME_SLEEP)
-        if not delay:
+        if ned_last_api_call:
+            last_query = datetime.fromisoformat(ned_last_api_call)
+            current_time = datetime.now(timezone.utc)
+            delay = current_time - last_query < timedelta(seconds=NED_TIME_SLEEP)
+        if not delay or not ned_last_api_call:
             ned_update_request_time(ned_time_file)
     else:
         ned_update_request_time(ned_time_file)
@@ -119,6 +120,7 @@ def getNEDInfo(df):
                     missingCounter = 0
         except:
             missingCounter += 1
+
         if len(result_table) > 0:
             #if Messier or NGC object, take that, otherwise take the closest object
             result_df = result_table.to_pandas()
