@@ -328,7 +328,7 @@ def getcolorim(ra, dec, size=240, output_size=None, filters="grizy", format="jpg
     if format not in ("jpg","png"):
         raise ValueError("format must be jpg or png")
     url = geturl(ra,dec,size=size,filters=filters,output_size=output_size,format=format,color=True, type='stack')
-    r = requests.get(url)
+    r = requests.get(url, timeout=15)
     im = Image.open(BytesIO(r.content))
     return im
 
@@ -401,7 +401,7 @@ def ps1metadata(table="mean",release="dr1",baseurl="https://catalogs.mast.stsci.
 
     checklegal(table,release)
     url = "{baseurl}/{release}/{table}/metadata".format(**locals())
-    r = requests.get(url)
+    r = requests.get(url, timeout=15)
     r.raise_for_status()
     v = r.json()
 
@@ -543,7 +543,7 @@ def ps1search(table="mean",release="dr1",format="csv",columns=None,baseurl="http
         data['columns'] = '[{}]'.format(','.join(columns))
 
     # either get or post works
-    r = requests.get(url, params=data)
+    r = requests.get(url, params=data, timeout=15)
 
     if verbose:
         print(r.url)
@@ -604,7 +604,7 @@ def ps1metadata(table="mean", release="dr1", baseurl="https://catalogs.mast.stsc
 
     checklegal(table,release)
     url = f"{baseurl}/{release}/{table}/metadata"
-    r = requests.get(url)
+    r = requests.get(url, timeout=15)
     r.raise_for_status()
     v = r.json()
 
@@ -768,8 +768,8 @@ def southernSearch(ra, dec, rad):
     """
 
     searchCoord = SkyCoord(ra*u.deg, dec*u.deg, frame='icrs')
-    responseMain = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
-    responsePhot = requests.get("http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.photometry&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
+    responseMain = requests.get(timeout=15, url="http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.master&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
+    responsePhot = requests.get(timeout=15, url="http://skymapper.anu.edu.au/sm-cone/public/query?CATALOG=dr2.photometry&RA=%.5f&DEC=%.5f&SR=%.5f&RESPONSEFORMAT=CSV&VERB=3" %(ra, dec, (rad/3600)))
 
     dfMain = pd.read_csv(BytesIO(responseMain.content))
     dfPhot = pd.read_csv(BytesIO(responsePhot.content))

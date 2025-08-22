@@ -93,7 +93,7 @@ def getGHOST(real=False, verbose=False, installpath='', clobber=False):
             return
     if real:
         url = 'https://www.dropbox.com/s/a0fufc3827pfril/GHOST.csv?dl=1'
-        r = requests.get(url)
+        r = requests.get(url, timeout=15)
         fname = installpath + '/database/GHOST.csv'
         open(fname , 'wb').write(r.content)
         if verbose:

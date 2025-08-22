@@ -53,7 +53,12 @@ def calc_7DCD(df):
 
         temp_7DCD_1val = temp_7DCD_1val_gr + temp_7DCD_1val_ri + temp_7DCD_1val_iz + temp_7DCD_1val_zy
 
-        df.loc[i,"7DCD"] = np.nanmin(np.array(temp_7DCD_1val))
+        # Handle all-NaN arrays to avoid warnings
+        temp_array = np.array(temp_7DCD_1val)
+        if np.all(np.isnan(temp_array)):
+            df.loc[i,"7DCD"] = np.nan
+        else:
+            df.loc[i,"7DCD"] = np.nanmin(temp_array)
     return df
 
 def plotLocus(df, color=False, save=False, type="", timestamp=""):
