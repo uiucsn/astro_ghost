@@ -12,7 +12,15 @@ from sfdmap2 import sfdmap
 import os
 import tarfile
 
-DEFAULT_MODEL_PATH = './MLP_lupton.hdf5'
+import importlib_resources
+
+# Use the model file from the package data
+try:
+    # Try to get the model file from package resources
+    DEFAULT_MODEL_PATH = str(importlib_resources.files(__name__).joinpath('MLP_lupton.hdf5'))
+except:
+    # Fallback to current directory
+    DEFAULT_MODEL_PATH = './MLP_lupton.hdf5'
 DEFAULT_DUST_PATH = '.'
 
 
@@ -32,7 +40,7 @@ def build_sfd_dir(file_path='./sfddata-master.tar.gz', data_dir=DEFAULT_DUST_PAT
     # Download the data archive file if it is not present
     if not os.path.exists(file_path):
         url = 'https://github.com/kbarbary/sfddata/archive/master.tar.gz'
-        response = requests.get(url, stream=True)
+        response = requests.get(url, stream=True, timeout=30)
         if response.status_code == 200:
             with open(file_path, 'wb') as f:
                 f.write(response.raw.read())
@@ -56,11 +64,18 @@ def get_photoz_weights(file_path=DEFAULT_MODEL_PATH):
         print(f'''photo-z weights file "{file_path}" already exists.''')
         return
     url = 'https://uofi.box.com/shared/static/n1yiy818mv5b5riy2h3dg5yk2by3swos.hdf5'
-    response = requests.get(url, stream=True)
-    if response.status_code == 200:
-        with open(file_path, 'wb') as f:
-            f.write(response.raw.read())
-    print("Done getting photo-z weights.")
+    try:
+        response = requests.get(url, stream=True, timeout=30)
+        if response.status_code == 200:
+            with open(file_path, 'wb') as f:
+                f.write(response.raw.read())
+            print("Done getting photo-z weights.")
+        else:
+            print(f"Warning: Could not download photo-z weights. Server returned status code {response.status_code}")
+            print("Photo-z functionality will not be available.")
+    except requests.exceptions.RequestException as e:
+        print(f"Warning: Could not download photo-z weights due to network error: {e}")
+        print("Photo-z functionality will not be available.")
     return
 
 def ps1objIDsearch(objID,table="mean",release="dr1",format="csv",columns=None,
@@ -123,7 +138,7 @@ def fetch_information_serially(url, data, verbose=False, format='csv'):
 
     results = []
     for i in range(len(url)):
-        r = requests.get(url[i], params=data[i])
+        r = requests.get(url[i], params=data[i], timeout=15)
         if verbose:
             print(r.url)
         r.raise_for_status()
